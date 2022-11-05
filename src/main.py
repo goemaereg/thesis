@@ -14,6 +14,7 @@ from util import string_contains_any, t2n
 import wsol
 # import wsol.method
 import itertools
+import tqdm
 
 
 def set_random_seed(seed):
@@ -68,6 +69,12 @@ class Trainer(object):
         self.model = self._set_model()
         self.cross_entropy_loss = nn.CrossEntropyLoss().to(self._DEVICE)#.cuda()
         self.mse_loss = nn.MSELoss(reduction='mean').to(self._DEVICE)#.cuda()
+        batch_set_size = None
+        class_set_size = None
+        if self.args.wsol_method == 'minmaxcam':
+            batch_set_size = self.args.minmaxcam_batch_setsize
+            class_set_size = self.args.minmaxcam_class_setsize
+
         self.optimizer = self._set_optimizer()
         self.loaders = get_data_loader(
             data_roots=self.args.data_paths,
@@ -77,7 +84,10 @@ class Trainer(object):
             resize_size=self.args.resize_size,
             crop_size=self.args.crop_size,
             proxy_training_set=self.args.proxy_training_set,
-            num_val_sample_per_class=self.args.num_val_sample_per_class)
+            num_val_sample_per_class=self.args.num_val_sample_per_class,
+            class_set_size=class_set_size,
+            batch_set_size=batch_set_size
+        )
 
     def _set_performance_meters(self):
         self._EVAL_METRICS += ['localization_IOU_{}'.format(threshold)
@@ -183,9 +193,10 @@ class Trainer(object):
 
         images = images.to(self._DEVICE)  # .cuda()
         # Compute CAMs from B(I) with I=input image
-        result_orig = t2n(self.model(images, labels, return_cam=True,
-                                     clone_cam=False))
+        result_orig = self.model(images, labels,
+                                 return_cam=True, clone_cam=False)
         cams = result_orig['cams']
+        cams = t2n(cams)
         # rescale cams to images input size
         resize = images.shape[2:]
         cams_resized = F.interpolate(cams, size=(resize, resize),
@@ -324,7 +335,8 @@ class Trainer(object):
         num_correct = 0
         num_images = 0
 
-        for i, (images, targets, image_ids) in enumerate(loader):
+        tq0 = tqdm.tqdm(loader, total=len(loader), desc='loader')
+        for i, (images, targets, image_ids) in enumerate(tq0):
             images = images.to(self._DEVICE) #.cuda()
             targets = targets.to(self._DEVICE) #.cuda()
             output_dict = self.model(images)

@@ -8,6 +8,7 @@ from evaluation import BoxEvaluator
 from evaluation import MaskEvaluator
 from evaluation import configure_metadata
 from util import t2n
+import tqdm
 
 _IMAGENET_MEAN = [0.485, .456, .406]
 _IMAGENET_STDDEV = [.229, .224, .225]
@@ -59,12 +60,16 @@ class CAMComputer(object):
 
     def compute_and_evaluate_cams(self):
         print("Computing and evaluating cams.")
-        for images, targets, image_ids in self.loader:
+        tq0 = tqdm.tqdm(self.loader, total=len(self.loader), desc='loader')
+        for images, targets, image_ids in tq0:
             image_size = images.shape[2:]
             images = images.to(self.device) #.cuda()
-            result = t2n(self.model(images, targets, return_cam=True))
+            result = self.model(images, targets, return_cam=True)
             cams = result['cams'].detach().clone()
-            for cam, image_id in zip(cams, image_ids):
+            cams = t2n(cams)
+            cams_it = zip(cams, image_ids)
+            tq1 = tqdm.tqdm(cams_it, total=len(cams), desc='cams')
+            for cam, image_id in tq1:
                 cam_resized = cv2.resize(cam, image_size,
                                          interpolation=cv2.INTER_CUBIC)
                 cam_normalized = normalize_scoremap(cam_resized)
