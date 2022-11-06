@@ -211,10 +211,10 @@ def get_configs():
     parser.add_argument('--cutmix_prob', type=float, default=1.0,
                         help='CutMix Mixing Probability'),
     # see minmaxcam paper
-    parser.add_argument('--minmaxcam_class_setsize', type=int, default=5,
+    parser.add_argument('--minmaxcam_class_set_size', type=int, default=5,
                         help='MinMaxCam class set size'),
     # see minmaxcam paper
-    parser.add_argument('--minmaxcam_batch_setsize', type=int, default=12,
+    parser.add_argument('--minmaxcam_batch_set_size', type=int, default=12,
                         help='MinMaxCam batch set size'),
     # see minmaxcam paper
     parser.add_argument('--minmaxcam_frr_weight', type=int, default=10,

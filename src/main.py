@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from config import get_configs
 from dataloaders import get_data_loader
 from inference import CAMComputer
-from util import string_contains_any, t2n
+from util import string_contains_any #, t2n
 import wsol
 # import wsol.method
 import itertools
@@ -41,9 +41,19 @@ class PerformanceMeter(object):
         self.best_epoch = self.value_per_epoch.index(self.best_value)
 
 
+def accelerator_get():
+    if torch.backends.mps.is_available():
+        device = 'mps'
+    elif torch.cuda.is_available():
+        device = 'cuda:0'
+    else:
+        device = 'cpu'
+    device = 'cpu'
+    return device
+
+
 class Trainer(object):
-    _DEVICE = 'cpu'# torch.device("cuda:0" if torch.cuda.is_available() else
-    # "cpu")
+    _DEVICE = accelerator_get()
     _CHECKPOINT_NAME_TEMPLATE = '{}_checkpoint.pth.tar'
     _SPLITS = ('train', 'val', 'test')
     _EVAL_METRICS = ['loss', 'classification', 'localization']
@@ -72,8 +82,8 @@ class Trainer(object):
         batch_set_size = None
         class_set_size = None
         if self.args.wsol_method == 'minmaxcam':
-            batch_set_size = self.args.minmaxcam_batch_setsize
-            class_set_size = self.args.minmaxcam_class_setsize
+            batch_set_size = self.args.minmaxcam_batch_set_size
+            class_set_size = self.args.minmaxcam_class_set_size
 
         self.optimizer = self._set_optimizer()
         self.loaders = get_data_loader(
@@ -196,11 +206,11 @@ class Trainer(object):
         result_orig = self.model(images, labels,
                                  return_cam=True, clone_cam=False)
         cams = result_orig['cams']
-        cams = t2n(cams)
+        # cams = t2n(cams)
+        cams = cams.unsqueeze(1)
         # rescale cams to images input size
-        resize = images.shape[2:]
-        cams_resized = F.interpolate(cams, size=(resize, resize),
-                                    mode='bilinear')
+        resize = tuple(images.shape[2:])
+        cams_resized = F.interpolate(cams, size=resize, mode='bilinear')
         # normalize cams
         cams_min = torch.amin(cams_resized, dim=(2, 3), keepdim=True)
         cams_max = torch.amax(cams_resized, dim=(2, 3), keepdim=True)
@@ -225,13 +235,12 @@ class Trainer(object):
         loss_frr = 0.0
         ss = self.args.minmaxcam_class_set_size
         bs = self.args.minmaxcam_batch_set_size
-        feature_i_pairs = itertools.combinations(range(ss), 2)
         for b in range(bs):
             loss_crr_ss = 0.0
             f_i_pair_num = 0
             features_i_ss = features_i[b*ss:(b+1)*ss]
             features_o_ss = features_o[b*ss:(b+1)*ss]
-            for j, k in feature_i_pairs:
+            for j, k in itertools.combinations(range(ss), 2):
                 f_i_pair_num += 1
                 feature_i_ss_j = features_i_ss[j].unsqueeze(0)
                 feature_i_ss_k = features_i_ss[k].unsqueeze(0)
@@ -250,11 +259,12 @@ class Trainer(object):
         num_correct = 0
         num_images = 0
 
-        for batch_idx, (images, target, _) in enumerate(loader):
+        tq0 = tqdm.tqdm(loader, total=len(loader), desc='loader')
+        for batch_idx, (images, target, _) in enumerate(tq0):
             images = images.to(self._DEVICE) # images.cuda()
             target = target.to(self._DEVICE) #.cuda()
 
-            if batch_idx % int(len(loader) / 10) == 0:
+            if int(batch_idx // 10) == 0:
                 print(" iteration ({} / {})".format(batch_idx + 1, len(loader)))
 
             # minmaxcam stage I
@@ -336,7 +346,7 @@ class Trainer(object):
         num_images = 0
 
         tq0 = tqdm.tqdm(loader, total=len(loader), desc='loader')
-        for i, (images, targets, image_ids) in enumerate(tq0):
+        for _, (images, targets, image_ids) in enumerate(tq0):
             images = images.to(self._DEVICE) #.cuda()
             targets = targets.to(self._DEVICE) #.cuda()
             output_dict = self.model(images)
@@ -446,13 +456,13 @@ def main():
     trainer = Trainer()
 
     print("===========================================================")
+    print(f"Accelerator: {accelerator_get()}")
     print("Start epoch 0 ...")
     trainer.evaluate(epoch=0, split='val')
     trainer.print_performances()
     trainer.report(epoch=0, split='val')
     trainer.save_checkpoint(epoch=0, split='val')
     print("Epoch 0 done.")
-    return
 
     for epoch in range(trainer.args.epochs):
         print("===========================================================")

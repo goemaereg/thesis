@@ -215,8 +215,7 @@ class MiniBatchSampler(Sampler[int]):
         self.class_set_size = class_set_size
         self.batch_set_size = batch_set_size
         batch_size = self.class_set_size * self.batch_set_size
-        self.batch_num = 1 #(len(self.labels) + batch_size - 1) // batch_size
-
+        self.batch_num = 1 # int((len(self.labels) + batch_size - 1) // batch_size)
     def __iter__(self) -> Iterator[List[int]]:
         for _ in range(self.batch_num):
             label_set = np.random.permutation(
