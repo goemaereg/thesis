@@ -252,16 +252,30 @@ class BoxEvaluator(LocalizationEvaluator):
         """
         idx = 0
         sliced_multiple_iou = []
+        num_thresholds = len(self.cam_threshold_list)
+        num_gt_boxes = multiple_iou.shape[1]
+        multi_iou_copy = multiple_iou.copy()
         for nr_box in number_of_box_list:
-            sliced_multiple_iou.append(
-                max(multiple_iou.max(1)[idx:idx + nr_box]))
+            gt_iou_max = []
+            slice_multi_iou = multi_iou_copy[idx : idx + nr_box]
+            for _ in range(num_gt_boxes):
+                max_iou_index = np.unravel_index(np.argmax(slice_multi_iou), shape=slice_multi_iou.shape)
+                gt_iou_max.append(slice_multi_iou[max_iou_index[0], max_iou_index[1]])
+                # mark max IOU as unavalable ('0') to other (est, gt) combinations in this slice
+                slice_multi_iou[max_iou_index[0], :] = 0
+                slice_multi_iou[:, max_iou_index[1]] = 0
+            sliced_multiple_iou.append(np.asarray(gt_iou_max))
             idx += nr_box
+        multi_iou_per_threshold = np.asarray(sliced_multiple_iou)
+
         # Compute true positives over different IOU thresholds
         for _THRESHOLD in self.iou_threshold_list:
-            correct_threshold_indices = \
-                np.where(np.asarray(sliced_multiple_iou) >= (_THRESHOLD / 100))[0]
-            self.num_correct[_THRESHOLD][correct_threshold_indices] += 1
-        self.cnt += 1
+            num_correct_multi = np.zeros(shape=(num_thresholds, num_gt_boxes))
+            correct_threshold_indices = np.where(multi_iou_per_threshold >= (_THRESHOLD / 100))
+            num_correct_multi[correct_threshold_indices] = 1
+            # reduce to a single score per threshold = true positives per threshold
+            self.num_correct[_THRESHOLD] += np.sum(num_correct_multi, axis=1)
+        self.cnt += num_gt_boxes
 
 
     def accumulate(self, scoremap, image_id):
