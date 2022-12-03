@@ -215,7 +215,7 @@ class MiniBatchSampler(Sampler[int]):
         self.class_set_size = class_set_size
         self.batch_set_size = batch_set_size
         batch_size = self.class_set_size * self.batch_set_size
-        self.batch_num = 1 # int((len(self.labels) + batch_size - 1) // batch_size)
+        self.batch_num = int((len(self.labels) + batch_size - 1) // batch_size)
     def __iter__(self) -> Iterator[List[int]]:
         for _ in range(self.batch_num):
             label_set = np.random.permutation(
@@ -264,22 +264,23 @@ def get_data_loader(data_roots, metadata_root, batch_size, workers,
             num_sample_per_class=(num_val_sample_per_class
                                   if split == 'val' else 0)
         )
-        # MiniBatchSampler used for MinMaxCAM
-        if batch_set_size is not None and class_set_size is not None:
-            batch_size = 1
-            shuffle = None
-            batch_sampler = MiniBatchSampler(
-                dataset,
-                batch_set_size=batch_set_size,
-                class_set_size=class_set_size)
-        # All other methods use default batch loader (batch_size > 1)
-        else:
-            shuffle = split == 'train',
-            batch_sampler = None
+        # default case: if batch_size > 1 then automatic batch loading
+        shuffle = split == 'train'
+        batch_sampler = None
+        _batch_size = batch_size
+        if split == 'train':
+            # MinMaxCAM case: customized MiniBatchSampler
+            if batch_set_size is not None and class_set_size is not None:
+                _batch_size = 1
+                shuffle = None
+                batch_sampler = MiniBatchSampler(
+                    dataset,
+                    batch_set_size=batch_set_size,
+                    class_set_size=class_set_size)
         loaders |= {
          split: DataLoader(
              dataset,
-             batch_size=batch_size,
+             batch_size=_batch_size,
              shuffle=shuffle,
              batch_sampler=batch_sampler,
              num_workers=workers)

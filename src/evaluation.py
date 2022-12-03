@@ -177,13 +177,14 @@ class LocalizationEvaluator(object):
     """
 
     def __init__(self, metadata, dataset_name, split, cam_threshold_list,
-                 iou_threshold_list, mask_root, multi_contour_eval):
+                 iou_threshold_list, mask_root, multi_contour_eval, multi_gt_eval=False):
         self.metadata = metadata
         self.cam_threshold_list = cam_threshold_list
         self.iou_threshold_list = iou_threshold_list
         self.dataset_name = dataset_name
         self.split = split
         self.mask_root = mask_root
+        self.multi_gt_eval = multi_gt_eval
         self.multi_contour_eval = multi_contour_eval
 
     def accumulate(self, scoremap, image_id):
@@ -215,6 +216,54 @@ class BoxEvaluator(LocalizationEvaluator):
             for image_id in self.image_ids}
         return resized_bbox
 
+    def accumulate_maxboxacc_v2(self, multiple_iou, number_of_box_list):
+        # Computes best match (1 box) over sets of estimated and GT-boxes per threshold
+        # Result is 1 IOU value per threshold
+        """
+        Computes best match (1 box) over sets of estimated_boxes and GT-boxes per threshold
+        Result per IOU threshold is 1 IOU value per GT-box per scoremap threshold
+
+        Args:
+            multiple_iou: numpy.ndarray(dtype=np.float,
+                          shape=(num estimated boxes over all scoremap thresholds, num GT-boxes, 4))
+        """
+        idx = 0
+        sliced_multiple_iou = []
+        for nr_box in number_of_box_list:
+            sliced_multiple_iou.append(
+                max(multiple_iou.max(1)[idx:idx + nr_box]))
+            idx += nr_box
+        # Compute true positives over different IOU thresholds
+        for _THRESHOLD in self.iou_threshold_list:
+            correct_threshold_indices = \
+                np.where(np.asarray(sliced_multiple_iou) >= (_THRESHOLD / 100))[0]
+            self.num_correct[_THRESHOLD][correct_threshold_indices] += 1
+        self.cnt += 1
+
+    def accumulate_maxboxacc_v3(self, multiple_iou, number_of_box_list):
+        """
+        Computes best match per threshold per gt-box over sets of estimated_boxes[threshold]
+        Result per IOU threshold is 1 IOU value per GT-box per scoremap threshold
+
+        Args:
+            multiple_iou: numpy.ndarray(dtype=np.float,
+                                        shape=(num estimated boxes in all thresholded scoremaps, num GT-boxes, 4)
+                                       )
+        """
+        idx = 0
+        sliced_multiple_iou = []
+        for nr_box in number_of_box_list:
+            sliced_multiple_iou.append(
+                max(multiple_iou.max(1)[idx:idx + nr_box]))
+            idx += nr_box
+        # Compute true positives over different IOU thresholds
+        for _THRESHOLD in self.iou_threshold_list:
+            correct_threshold_indices = \
+                np.where(np.asarray(sliced_multiple_iou) >= (_THRESHOLD / 100))[0]
+            self.num_correct[_THRESHOLD][correct_threshold_indices] += 1
+        self.cnt += 1
+
+
     def accumulate(self, scoremap, image_id):
         """
         From a score map, a box is inferred (compute_bboxes_from_scoremaps).
@@ -226,29 +275,26 @@ class BoxEvaluator(LocalizationEvaluator):
             scoremap: numpy.ndarray(size=(H, W), dtype=np.float)
             image_id: string.
         """
+
+        # Computes a set of estimated boxes per scoremap threshold
+        # Returns an array of threshold-related np.array objects containing estimated boxes
         boxes_at_thresholds, number_of_box_list = compute_bboxes_from_scoremaps(
             scoremap=scoremap,
             scoremap_threshold_list=self.cam_threshold_list,
             multi_contour_eval=self.multi_contour_eval)
 
+        # concatenates sets of boxes per threshold into a single array of boxes over all thresholds
         boxes_at_thresholds = np.concatenate(boxes_at_thresholds, axis=0)
 
+        # Computes IOU of all combinations of sets of estimated and set of ground-truth boxes
         multiple_iou = calculate_multiple_iou(
             np.array(boxes_at_thresholds),
             np.array(self.gt_bboxes[image_id]))
 
-        idx = 0
-        sliced_multiple_iou = []
-        for nr_box in number_of_box_list:
-            sliced_multiple_iou.append(
-                max(multiple_iou.max(1)[idx:idx + nr_box]))
-            idx += nr_box
-
-        for _THRESHOLD in self.iou_threshold_list:
-            correct_threshold_indices = \
-                np.where(np.asarray(sliced_multiple_iou) >= (_THRESHOLD/100))[0]
-            self.num_correct[_THRESHOLD][correct_threshold_indices] += 1
-        self.cnt += 1
+        if self.multi_gt_eval:
+            self.accumulate_maxboxacc_v3(multiple_iou, number_of_box_list)
+        else:
+            self.accumulate_maxboxacc_v2(multiple_iou, number_of_box_list)
 
     def compute(self):
         """

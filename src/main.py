@@ -15,6 +15,7 @@ import wsol
 # import wsol.method
 import itertools
 import tqdm
+from os.path import join as ospj
 
 
 def set_random_seed(seed):
@@ -264,7 +265,7 @@ class Trainer(object):
             images = images.to(self._DEVICE) # images.cuda()
             target = target.to(self._DEVICE) #.cuda()
 
-            if int(batch_idx // 10) == 0:
+            if int(batch_idx % max(len(loader) // 10, 1)) == 0:
                 print(" iteration ({} / {})".format(batch_idx + 1, len(loader)))
 
             # minmaxcam stage I
@@ -375,6 +376,7 @@ class Trainer(object):
             split=split,
             cam_curve_interval=self.args.cam_curve_interval,
             multi_contour_eval=self.args.multi_contour_eval,
+            multi_gt_eval=self.args.multi_gt_eval,
             log_folder=self.args.log_folder,
             device = self._DEVICE
         )
@@ -410,7 +412,10 @@ class Trainer(object):
                 self._CHECKPOINT_NAME_TEMPLATE.format('last'), epoch)
 
     def report_train(self, train_performance, epoch, split='train'):
-        reporter_instance = self.reporter(self.args.reporter_log_root, epoch)
+        reporter_log_root = ospj(self.args.reporter_log_root, split)
+        if not os.path.isdir(reporter_log_root):
+            os.makedirs(reporter_log_root)
+        reporter_instance = self.reporter(reporter_log_root, epoch)
         reporter_instance.add(
             key='{split}/classification'.format(split=split),
             val=train_performance['classification_acc'])
@@ -420,7 +425,10 @@ class Trainer(object):
         reporter_instance.write()
 
     def report(self, epoch, split):
-        reporter_instance = self.reporter(self.args.reporter_log_root, epoch)
+        reporter_log_root = ospj(self.args.reporter_log_root, split)
+        if not os.path.isdir(reporter_log_root):
+            os.makedirs(reporter_log_root)
+        reporter_instance = self.reporter(reporter_log_root, epoch)
         for metric in self._EVAL_METRICS:
             reporter_instance.add(
                 key='{split}/{metric}'
@@ -457,14 +465,14 @@ def main():
 
     print("===========================================================")
     print(f"Accelerator: {accelerator_get()}")
-    print("Start epoch 0 ...")
+    print("Evaluate epoch 0 ...")
     trainer.evaluate(epoch=0, split='val')
     trainer.print_performances()
     trainer.report(epoch=0, split='val')
     trainer.save_checkpoint(epoch=0, split='val')
     print("Epoch 0 done.")
-
-    for epoch in range(trainer.args.epochs):
+    tq0 = tqdm.tqdm(range(trainer.args.epochs), total=trainer.args.epochs, desc='training epochs')
+    for epoch in tq0:
         print("===========================================================")
         print("Start epoch {} ...".format(epoch + 1))
         trainer.adjust_learning_rate(epoch + 1)

@@ -20,6 +20,8 @@ def mch(**kwargs):
 
 def box_v2_metric(args):
     if args.box_v2_metric:
+        if args.box_v23metric:
+            raise Exception('Incompatible values for box_v2_metric and box_v3_error')
         args.multi_contour_eval = True
         args.multi_iou_eval = True
     else:
@@ -28,6 +30,19 @@ def box_v2_metric(args):
         warnings.warn("MaxBoxAcc metric is deprecated.")
         warnings.warn("Use MaxBoxAccV2 by setting args.box_v2_metric to True.")
 
+def box_v3_metric(args):
+    if args.box_v3_metric:
+        if args.box_v2_metric:
+            raise Exception('Incompatible values for box_v2_metric and box_v3_error')
+        args.multi_gt_eval = True
+        args.multi_contour_eval = True
+        args.multi_iou_eval = True
+    else:
+        args.multi_gt_eval = False
+        args.multi_contour_eval = False
+        args.multi_iou_eval = False
+        warnings.warn("MaxBoxAcc metric is deprecated.")
+        warnings.warn("Use MaxBoxAccV2 by setting args.box_v2_metric to True.")
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -153,6 +168,8 @@ def get_configs():
                         help='input resize size')
     parser.add_argument('--crop_size', type=int, default=224,
                         help='input crop size')
+    parser.add_argument('--multi_gt_box_eval', type=str2bool, nargs='?',
+                        const=True, default=False)
     parser.add_argument('--multi_contour_eval', type=str2bool, nargs='?',
                         const=True, default=True)
     parser.add_argument('--multi_iou_eval', type=str2bool, nargs='?',
@@ -163,6 +180,8 @@ def get_configs():
                         choices=('best', 'last'))
     parser.add_argument('--box_v2_metric', type=str2bool, nargs='?',
                         const=True, default=True)
+    parser.add_argument('--box_v3_metric', type=str2bool, nargs='?',
+                        const=True, default=False)
 
     # Common hyperparameters
     parser.add_argument('--batch_size', default=64, type=int,
@@ -229,6 +248,7 @@ def get_configs():
     args.log_folder = configure_log_folder(args)
     configure_log(args)
     box_v2_metric(args)
+    box_v3_metric(args)
 
     args.architecture_type = get_architecture_type(args.wsol_method)
     args.data_paths = configure_data_paths(args)

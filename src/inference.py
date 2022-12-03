@@ -35,7 +35,7 @@ def normalize_scoremap(cam):
 class CAMComputer(object):
     def __init__(self, model, loader, metadata_root, mask_root,
                  iou_threshold_list, dataset_name, split,
-                 multi_contour_eval, cam_curve_interval=.001, log_folder=None,
+                 multi_contour_eval, multi_gt_eval=False, cam_curve_interval=.001, log_folder=None,
                  device='cpu'):
         self.model = model
         self.model.eval()
@@ -43,7 +43,6 @@ class CAMComputer(object):
         self.split = split
         self.log_folder = log_folder
         self.device = device
-
         metadata = configure_metadata(metadata_root)
         cam_threshold_list = list(np.arange(0, 1, cam_curve_interval))
 
@@ -56,7 +55,8 @@ class CAMComputer(object):
                                           cam_threshold_list=cam_threshold_list,
                                           iou_threshold_list=iou_threshold_list,
                                           mask_root=mask_root,
-                                          multi_contour_eval=multi_contour_eval)
+                                          multi_contour_eval=multi_contour_eval,
+                                          multi_gt_eval=multi_gt_eval)
 
     def compute_and_evaluate_cams(self):
         print("Computing and evaluating cams.")
@@ -74,7 +74,7 @@ class CAMComputer(object):
                                          interpolation=cv2.INTER_CUBIC)
                 cam_normalized = normalize_scoremap(cam_resized)
                 if self.split in ('val', 'test'):
-                    cam_path = ospj(self.log_folder, 'scoremaps', image_id)
+                    cam_path = ospj(self.log_folder, 'scoremaps', self.split, image_id)
                     if not os.path.exists(ospd(cam_path)):
                         os.makedirs(ospd(cam_path))
                     np.save(ospj(cam_path), cam_normalized)
