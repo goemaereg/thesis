@@ -13,6 +13,7 @@ src/data/
 src/dataset/
 src/other/
 src/train_log
+src/synthetic/checkpoint/
 
 # Distribution / packaging
 .Python
