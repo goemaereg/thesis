@@ -22,13 +22,32 @@ def manage_dir(dargs):
     LOSS_INFO_DIR = os.path.join(PROJECT_FOLDER_DIR, f'{model_name}_loss_info.json')
     HEATMAP_SAMPLE_DIR = os.path.join(PROJECT_FOLDER_DIR, f'{model_name}_heatmaps.png')
 
+    DATA_FOLDER_DIR = os.path.join(PROJECT_FOLDER_DIR, 'dataset')
 
-    SHARD_TRAIN_FOLDER_DIR = os.path.join(PROJECT_FOLDER_DIR, 'datatrain.shards')
-    SHARD_VAL_FOLDER_DIR = os.path.join(PROJECT_FOLDER_DIR, 'dataval.shards')
-    SHARD_TEST_FOLDER_DIR = os.path.join(PROJECT_FOLDER_DIR, 'datatest.shards')
-    makedirifnot(SHARD_TRAIN_FOLDER_DIR)
-    makedirifnot(SHARD_VAL_FOLDER_DIR)
-    makedirifnot(SHARD_TEST_FOLDER_DIR)
+    DATA_TRAIN_FOLDER_DIR = os.path.join(DATA_FOLDER_DIR, 'train')
+    DATA_VAL_FOLDER_DIR = os.path.join(DATA_FOLDER_DIR, 'val')
+    DATA_TEST_FOLDER_DIR = os.path.join(DATA_FOLDER_DIR, 'test')
+    makedirifnot(DATA_TRAIN_FOLDER_DIR)
+    makedirifnot(DATA_VAL_FOLDER_DIR)
+    makedirifnot(DATA_TEST_FOLDER_DIR)
+
+    METADATA_FOLDER_DIR = os.path.join(PROJECT_FOLDER_DIR, 'metadata')
+
+    METADATA_TRAIN_FOLDER_DIR = os.path.join(METADATA_FOLDER_DIR, 'train')
+    METADATA_VAL_FOLDER_DIR = os.path.join(METADATA_FOLDER_DIR, 'val')
+    METADATA_TEST_FOLDER_DIR = os.path.join(METADATA_FOLDER_DIR, 'test')
+    makedirifnot(METADATA_TRAIN_FOLDER_DIR)
+    makedirifnot(METADATA_VAL_FOLDER_DIR)
+    makedirifnot(METADATA_TEST_FOLDER_DIR)
+
+    MASKDATA_FOLDER_DIR = os.path.join(PROJECT_FOLDER_DIR, 'maskdata')
+
+    MASKDATA_TRAIN_FOLDER_DIR = os.path.join(MASKDATA_FOLDER_DIR, 'train')
+    MASKDATA_VAL_FOLDER_DIR = os.path.join(MASKDATA_FOLDER_DIR, 'val')
+    MASKDATA_TEST_FOLDER_DIR = os.path.join(MASKDATA_FOLDER_DIR, 'test')
+    makedirifnot(MASKDATA_TRAIN_FOLDER_DIR)
+    makedirifnot(MASKDATA_VAL_FOLDER_DIR)
+    makedirifnot(MASKDATA_TEST_FOLDER_DIR)
 
     METRIC_AGGREGATE_DIR = os.path.join(PROJECT_FOLDER_DIR, f'{model_name}_metric_aggreagate.csv')
 
@@ -41,9 +60,17 @@ def manage_dir(dargs):
         'LOSS_INFO_DIR':LOSS_INFO_DIR,
         'HEATMAP_SAMPLE_DIR': HEATMAP_SAMPLE_DIR, 
 
-        'SHARD_TRAIN_FOLDER_DIR': SHARD_TRAIN_FOLDER_DIR,
-        'SHARD_VAL_FOLDER_DIR': SHARD_VAL_FOLDER_DIR,
-        'SHARD_TEST_FOLDER_DIR': SHARD_TEST_FOLDER_DIR,
+        'DATA_TRAIN_FOLDER_DIR': DATA_TRAIN_FOLDER_DIR,
+        'DATA_VAL_FOLDER_DIR': DATA_VAL_FOLDER_DIR,
+        'DATA_TEST_FOLDER_DIR': DATA_TEST_FOLDER_DIR,
+
+        'METADATA_TRAIN_FOLDER_DIR': METADATA_TRAIN_FOLDER_DIR,
+        'METADATA_VAL_FOLDER_DIR': METADATA_VAL_FOLDER_DIR,
+        'METADATA_TEST_FOLDER_DIR': METADATA_TEST_FOLDER_DIR,
+
+        'MASKDATA_TRAIN_FOLDER_DIR': MASKDATA_TRAIN_FOLDER_DIR,
+        'MASKDATA_VAL_FOLDER_DIR': MASKDATA_VAL_FOLDER_DIR,
+        'MASKDATA_TEST_FOLDER_DIR': MASKDATA_TEST_FOLDER_DIR,
 
         'METRIC_AGGREGATE_DIR': METRIC_AGGREGATE_DIR
     }

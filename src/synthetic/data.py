@@ -1,9 +1,11 @@
 import os
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 import numpy as np
 import joblib
 from skimage.transform import resize
 from utils import manage_dir
+from PIL import Image
 
 
 def prepare_data(dargs):
@@ -11,25 +13,37 @@ def prepare_data(dargs):
 
     DIRS = manage_dir(dargs)
     DATA_MODES = {
-        'train': 'SHARD_TRAIN_FOLDER_DIR',
-        'val': 'SHARD_VAL_FOLDER_DIR',
-        'test': 'SHARD_TEST_FOLDER_DIR',
+        'train': 'DATA_TRAIN_FOLDER_DIR',
+        'val': 'DATA_VAL_FOLDER_DIR',
+        'test': 'DATA_TEST_FOLDER_DIR',
     }
-    SHARD_FOLDER_DIR = DIRS[DATA_MODES[dargs['data_mode']]]
+    METADATA_MODES = {
+        'train': 'METADATA_TRAIN_FOLDER_DIR',
+        'val': 'METADATA_VAL_FOLDER_DIR',
+        'test': 'METADATA_TEST_FOLDER_DIR',
+    }
+    MASKDATA_MODES = {
+        'train': 'MASKDATA_TRAIN_FOLDER_DIR',
+        'val': 'MASKDATA_VAL_FOLDER_DIR',
+        'test': 'MASKDATA_TEST_FOLDER_DIR',
+    }
+    DATA_FOLDER_DIR = DIRS[DATA_MODES[dargs['data_mode']]]
+    METADATA_FOLDER_DIR = DIRS[METADATA_MODES[dargs['data_mode']]]
+    MASKDATA_FOLDER_DIR = DIRS[MASKDATA_MODES[dargs['data_mode']]]
 
-    if len(os.listdir(SHARD_FOLDER_DIR))==0:
-        SHARD_NAME = f'data-{str(dargs["n_classes"])}'
-        SHARD_DIR = os.path.join(SHARD_FOLDER_DIR, str(SHARD_NAME), )
-        print(f'preparing data to {SHARD_DIR}')
-        save_one_chunk(SHARD_DIR, dargs['n_classes'], dargs['n_samples'], realtime_update=False)
+    if len(os.listdir(DATA_FOLDER_DIR))==0:
+        print(f'preparing data to save')
+        save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
+                       dargs['n_classes'], dargs['n_samples'], realtime_update=False)
     else:
-        print(f"Data ALREADY exists at {SHARD_FOLDER_DIR}")
-        SHARD_NAME = f'data-{str(dargs["n_classes"])}'
-        SHARD_DIR = os.path.join(SHARD_FOLDER_DIR, str(SHARD_NAME), )
-        display_some_shard_samples(SHARD_DIR, SHARD_FOLDER_DIR, name=f'samples')
+        print(f"Data ALREADY exists at {DATA_FOLDER_DIR}")
+        # SHARD_NAME = f'data-{str(dargs["n_classes"])}'
+        # DATA_DIR = os.path.join(DATA_FOLDER_DIR, str(SHARD_NAME))
+        # display_some_shard_samples(DATA_DIR, DATA_FOLDER_DIR, name=f'samples')
 
 
-def save_one_chunk(SHARD_DIR, n_classes, n_per_shard, realtime_update=False):
+def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
+                   n_classes, n_per_shard, data_mode='train', realtime_update=False):
     if n_classes==10:
         from objgen.random_simple_gen_implemented import TenClassesPyIO
         dataset = TenClassesPyIO()
@@ -41,8 +55,39 @@ def save_one_chunk(SHARD_DIR, n_classes, n_per_shard, realtime_update=False):
 
     dataset.setup_xai_evaluation_0001(general_meta_setting=None, explanation_setting=None,
         data_size=n_per_shard, realtime_update=realtime_update)
-    joblib.dump(dataset, SHARD_DIR)
-
+    image_ids = []
+    class_labels = []
+    localizations = []
+    for i in range(dataset.__len__()):
+        x, y0 = dataset.__getitem__(i)
+        h = dataset.h[i]  # heatmap
+        # save image
+        image_id = f'SYNTHETIC_{data_mode}_{i + 1}.png'
+        image_ids.append(f'{data_mode}/{image_id}')
+        class_labels.append(f'{data_mode}/{image_id},{str(y0)}')
+        image_path = os.path.join(DATA_FOLDER_DIR, image_id)
+        mpimg.imsave(image_path, x.transpose((1,2,0)))
+        # TODO multiple segmentation masks support
+        # save segmentation mask
+        mask_id = image_id
+        localization = f'{data_mode}/{image_id},{data_mode}/{mask_id}'
+        localizations.append(localization)
+        mask_path = os.path.join(MASKDATA_FOLDER_DIR, mask_id)
+        # binarize heatmap
+        h = (h > 0.0).astype('uint8')*255
+        img = Image.fromarray(h)
+        img.save(mask_path)
+    # write metadata
+    image_ids_path = os.path.join(METADATA_FOLDER_DIR, 'image_ids.txt')
+    with open(image_ids_path, 'w') as f:
+        f.writelines('\n'.join(image_ids))
+    class_labels_path = os.path.join(METADATA_FOLDER_DIR, 'class_labels.txt')
+    with open(class_labels_path, 'w') as f:
+        f.writelines('\n'.join(class_labels))
+    localization_path = os.path.join(METADATA_FOLDER_DIR, 'localization.txt')
+    # TODO support for missing ignore mask in dataloaders.py
+    with open(localization_path, 'w') as f:
+        f.writelines('\n'.join(localizations))
 
 def display_some_shard_samples(SHARD_DIR, SHARD_FOLDER_DIR, name):
     SAMPLES_DIR = os.path.join(SHARD_FOLDER_DIR, 'samples_display')
