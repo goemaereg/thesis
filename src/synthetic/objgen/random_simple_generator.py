@@ -194,7 +194,7 @@ class SimpleRandomFetcher(RandomFetcher):
             d = d*0.
             n = resize(np.random.uniform(0.2,0.7, size=[int(dn/64) for dn in d.shape]), d.shape)
             bg.append(d + n)
-        bg = np.stack(tuple(bg)).transpose(1,2,0)
+        bg = np.stack(tuple(bg)).transpose((1,2,0))
         return bg
 
     def background0002(self, x, y, d):
@@ -204,6 +204,6 @@ class SimpleRandomFetcher(RandomFetcher):
             stretch = np.random.uniform(1e-4,1e-3)
             bgn = 0.5*np.sin(stretch*(d+n*d)*180/np.pi)+0.5
             bg.append(0.5*bgn)
-        bg = np.stack(tuple(bg)).transpose(1,2,0)
+        bg = np.stack(tuple(bg)).transpose((1,2,0))
         return bg
 

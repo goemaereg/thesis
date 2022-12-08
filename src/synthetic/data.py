@@ -34,7 +34,8 @@ def prepare_data(dargs):
     if len(os.listdir(DATA_FOLDER_DIR))==0:
         print(f'preparing data to save')
         save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
-                       dargs['n_classes'], dargs['n_samples'], realtime_update=False)
+                       dargs['n_classes'], dargs['n_samples'], dargs['data_mode'],
+                       dargs['max_instances'], realtime_update=False)
     else:
         print(f"Data ALREADY exists at {DATA_FOLDER_DIR}")
         # SHARD_NAME = f'data-{str(dargs["n_classes"])}'
@@ -43,10 +44,10 @@ def prepare_data(dargs):
 
 
 def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
-                   n_classes, n_per_shard, data_mode='train', realtime_update=False):
+                   n_classes, n_samples, data_mode='train', max_instances=1, realtime_update=False):
     if n_classes==10:
         from objgen.random_simple_gen_implemented import TenClassesPyIO
-        dataset = TenClassesPyIO()
+        dataset = TenClassesPyIO(max_instances=max_instances)
     elif n_classes==3:
         from objgen.random_simple_gen_implemented2 import ThreeClassesPyIO
         dataset = ThreeClassesPyIO()
@@ -54,7 +55,7 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
         raise NotImplementedError()
 
     dataset.setup_xai_evaluation_0001(general_meta_setting=None, explanation_setting=None,
-        data_size=n_per_shard, realtime_update=realtime_update)
+        data_size=n_samples, realtime_update=realtime_update)
     image_ids = []
     class_labels = []
     localizations = []

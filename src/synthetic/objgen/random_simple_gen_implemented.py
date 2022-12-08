@@ -1,5 +1,6 @@
 from .random_simple_generator import SimpleRandomFetcher
 import numpy as np
+import torch.utils.data as data
 
 
 #######################################################################
@@ -9,8 +10,9 @@ import numpy as np
 #######################################################################
 
 class TenClassesRandomFetcher(SimpleRandomFetcher):
-    def __init__(self):
+    def __init__(self, max_instances=1):
         super(TenClassesRandomFetcher, self).__init__()
+        self.max_instances=max_instances
 
     # def setup0001(self, general_meta_setting, explanation_setting, s=None):
     #     self.s = s if s is not None else (512,512) # image shape
@@ -18,12 +20,13 @@ class TenClassesRandomFetcher(SimpleRandomFetcher):
     def uniform_random_draw(self):
         y0 = np.random.randint(10)
         bg_rand = np.random.randint(3)
+        if self.max_instances > 1:
+            return self.draw_n_samples(y0, bg_rand, self.max_instances)
         return self.draw_one_sample(y0, bg_rand)
 
-
-    def draw_one_sample(self, y0, bg_rand):
-        # y0 is 0,1,...,9 
-        # bg_rand is 0, 1, 2
+    def draw_one_sample_no_background(self, y0):
+        # y0 is 0,1,...,9
+        cobj, cimg, heatmap, variables = None, None, None, None
         if y0 == 0:
             cobj, cimg, heatmap, variables = self.get_random_CCellX()
         elif y0 == 1:
@@ -31,17 +34,17 @@ class TenClassesRandomFetcher(SimpleRandomFetcher):
         elif y0 == 2:
             cobj, cimg, heatmap, variables = self.get_random_CCellPX()
         elif y0 == 3:
-            cobj, cimg, heatmap, variables = self.get_random_RCellX() # red
+            cobj, cimg, heatmap, variables = self.get_random_RCellX()  # red
         elif y0 == 4:
-            cobj, cimg, heatmap, variables = self.get_random_RCellXB() # green
+            cobj, cimg, heatmap, variables = self.get_random_RCellXB()  # green
         elif y0 == 5:
-            cobj, cimg, heatmap, variables = self.get_random_RCellXC() # blue
+            cobj, cimg, heatmap, variables = self.get_random_RCellXC()  # blue
         elif y0 == 6:
             tfraction = 0.
             while tfraction < 0.3:
                 cobj, cimg, heatmap, variables = self.get_random_CCellTX()
                 tailpos = cobj.parts['tailpos'].reshape(-1)
-                tfraction = np.round(np.sum(tailpos)/len(tailpos)*100.,2)
+                tfraction = np.round(np.sum(tailpos) / len(tailpos) * 100., 2)
             #     if tfraction < 0.3: print('tfraction (reject)',tfraction)
             # print('tfraction',tfraction)
         elif y0 == 7:
@@ -51,12 +54,20 @@ class TenClassesRandomFetcher(SimpleRandomFetcher):
         elif y0 == 9:
             cobj, cimg, heatmap, variables = None, np.zeros(self.s + (3,)), np.zeros(self.s[:2]), {'type': 'NOISE'}
         # print('[%s] cimg.shape:%s, heatmap.shape:%s'%(str(y0), str(cimg.shape),str(heatmap.shape)))
+
+        return cobj, cimg, heatmap, variables
+
+
+    def draw_one_sample(self, y0, bg_rand):
+        # y0 is 0,1,...,9
+        # bg_rand is 0, 1, 2
+        cobj, cimg, heatmap, variables = self.draw_one_sample_no_background(y0)
                 
         self.background_setting['type'] = bg_rand
         bg = self.generate_background()
         if bg is not None:
             ep = 1e-2
-            pos = np.stack(((cimg[:,:,0]<ep),(cimg[:,:,1]<ep),(cimg[:,:,2]<ep))).transpose(1,2,0)
+            pos = np.stack(((cimg[:,:,0]<ep),(cimg[:,:,1]<ep),(cimg[:,:,2]<ep))).transpose((1,2,0))
             cimg =  cimg + pos * bg 
         cimg = np.clip(cimg, a_min=0., a_max=1.)
 
@@ -65,12 +76,49 @@ class TenClassesRandomFetcher(SimpleRandomFetcher):
 
         return cobj, cimg, heatmap, variables
 
+    def draw_n_samples(self, y0, bg_rand, max_samples=4):
+        images = []
+        heatmaps = []
+        variable_list = []
+        samples = np.random.randint(1, max_samples + 1)
+        for _ in range(samples):
+            _, cimg, heatmap, variables = self.draw_one_sample_no_background(y0)
+            images.append(cimg)
+            heatmaps.append(heatmap)
+            variable_list.append(variables)
 
-import torch.utils.data as data
+        # merge images
+        ep = 1e-2
+        cimg = images[0]
+        for img in images[1:]:
+            mask = img > ep
+            cimg[mask] = img[mask]
+
+        # merge heatmaps
+        heatmap = heatmaps[0]
+        for hmap in heatmaps[1:]:
+            mask = hmap > ep
+            heatmap[mask] = hmap[mask]
+        variables = variable_list[0]
+
+        # merge background
+        self.background_setting['type'] = bg_rand
+        bg = self.generate_background()
+        if bg is not None:
+            ep = 1e-2
+            pos = np.stack(((cimg[:,:,0]<ep),(cimg[:,:,1]<ep),(cimg[:,:,2]<ep))).transpose((1,2,0))
+            cimg =  cimg + pos * bg
+        cimg = np.clip(cimg, a_min=0., a_max=1.)
+
+        variables['y0'] = y0
+        variables['bg_rand'] = bg_rand
+
+        return None, cimg, heatmap, variables
+
 
 class TenClassesPyIO(data.Dataset, TenClassesRandomFetcher):
-    def __init__(self,):
-        super(TenClassesPyIO, self).__init__()
+    def __init__(self, max_instances=1):
+        super(TenClassesPyIO, self).__init__(max_instances=max_instances)
         self.x, self.y = [], []
 
     def __getitem__(self, index):
@@ -89,8 +137,8 @@ class TenClassesPyIO(data.Dataset, TenClassesRandomFetcher):
             if realtime_update:
                 update_text = 'TenClassesPyIO.setup_training_0001() progress %s/%s'%(str(i+1),str(data_size))
                 print('%-64s'%(update_text),end='\r')
-            cobj, cimg, heatmap, variables = self.uniform_random_draw()
-            self.x.append(cimg.transpose(2,0,1))
+            _, cimg, _, variables = self.uniform_random_draw()
+            self.x.append(cimg.transpose((2,0,1)))
             self.y.append(variables['y0'])
         print('%-64s'%('  data prepared.'))
 
@@ -104,8 +152,8 @@ class TenClassesPyIO(data.Dataset, TenClassesRandomFetcher):
             if realtime_update:
                 update_text = 'TenClassesPyIO.setup_xai_evaluation_0001() progress %s/%s'%(str(i+1),str(data_size))
                 print('%-64s'%(update_text),end='\r')
-            cobj, cimg, heatmap, variables = self.uniform_random_draw()
-            self.x.append(cimg.transpose(2,0,1))
+            _, cimg, heatmap, variables = self.uniform_random_draw()
+            self.x.append(cimg.transpose((2,0,1)))
             self.y.append(variables['y0'])
             self.h.append(heatmap)
             self.v.append(variables)
