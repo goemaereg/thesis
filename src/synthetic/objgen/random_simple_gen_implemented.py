@@ -10,9 +10,10 @@ import torch.utils.data as data
 #######################################################################
 
 class TenClassesRandomFetcher(SimpleRandomFetcher):
-    def __init__(self, max_instances=1, type_noise=False):
+    def __init__(self, n_instances=1, random_n_instances=False, type_noise=False):
         super(TenClassesRandomFetcher, self).__init__()
-        self.max_instances=max_instances
+        self.n_instances=n_instances
+        self.random_n_instances = random_n_instances
         self.type_noise = type_noise
 
     # def setup0001(self, general_meta_setting, explanation_setting, s=None):
@@ -22,9 +23,7 @@ class TenClassesRandomFetcher(SimpleRandomFetcher):
         types = 10 if self.type_noise else 9
         y0 = np.random.randint(types)
         bg_rand = np.random.randint(3)
-        if self.max_instances > 1:
-            return self.draw_n_samples(y0, bg_rand, self.max_instances)
-        return self.draw_one_sample(y0, bg_rand)
+        return self.draw_n_instances(y0, bg_rand, self.n_instances)
 
     def draw_one_sample_no_background(self, y0):
         # y0 is 0,1,...,9
@@ -78,45 +77,33 @@ class TenClassesRandomFetcher(SimpleRandomFetcher):
 
         return cobj, cimg, heatmap, variables
 
-    def draw_n_samples(self, y0, bg_rand, max_samples=4):
-        images = []
-        heatmaps = []
+    def draw_n_instances(self, y0, bg_rand, n_instances=1):
+        image_list = []
+        heatmap_list = []
         variable_list = []
-        samples = np.random.randint(1, max_samples + 1)
-        for _ in range(samples):
+        if self.random_n_instances:
+            n_instances = np.random.randint(1, n_instances + 1)
+
+        for _ in range(n_instances):
+            # cimg: (H,W,C) ; heatmap: (H,w), variables: dict
             _, cimg, heatmap, variables = self.draw_one_sample_no_background(y0)
-            images.append(cimg)
-            heatmaps.append(heatmap)
+            image_list.append(cimg)
+            heatmap_list.append(heatmap)
             variable_list.append(variables)
 
-        # compute bounding boxes
-        # take into account that multiple instances are layerd
-        # e.g. instance 1 on top of instance 2 -> bounding box instanc2 may be clipped by instance 1
-        # e.g. instance 1 on top of instancde 2, 2 on 3, 3 on 4 -> bbox 4 clipped by bbox 1,2,3
-
-        # merge images
-        ep = 1e-2
-        cimg = images[0]
-        for img in images[1:]:
-            mask = img > ep
-            cimg[mask] = img[mask]
-
-        # merge heatmaps
-        heatmap = heatmaps[0]
-        for hmap in heatmaps[1:]:
-            mask = hmap > ep
-            heatmap[mask] = hmap[mask]
-        variables = variable_list[0]
-
-        # merge background
+        # generate background image
         self.background_setting['type'] = bg_rand
+        # bg: (H, W, 3)
         bg = self.generate_background()
-        if bg is not None:
-            ep = 1e-2
-            pos = np.stack(((cimg[:,:,0]<ep),(cimg[:,:,1]<ep),(cimg[:,:,2]<ep))).transpose((1,2,0))
-            cimg =  cimg + pos * bg
-        cimg = np.clip(cimg, a_min=0., a_max=1.)
 
+        # stack instances as layers
+        image_list.append(bg)
+        # cimg: (n_intances + 1, H, W, 3)
+        cimg = np.stack(image_list, axis=0)
+        # heatmap: (n_instances, H, W)
+        heatmap = np.stack(heatmap_list, axis=0)
+
+        variables = variable_list[0]
         variables['y0'] = y0
         variables['bg_rand'] = bg_rand
 
@@ -124,8 +111,9 @@ class TenClassesRandomFetcher(SimpleRandomFetcher):
 
 
 class TenClassesPyIO(data.Dataset, TenClassesRandomFetcher):
-    def __init__(self, max_instances=1, type_noise=False):
-        super(TenClassesPyIO, self).__init__(max_instances=max_instances, type_noise=type_noise)
+    def __init__(self, n_instances=1, random_n_instances=False, type_noise=False):
+        super(TenClassesPyIO, self).__init__(n_instances=n_instances, random_n_instances=random_n_instances,
+                                             type_noise=type_noise)
         self.x, self.y = [], []
 
     def __getitem__(self, index):
@@ -160,7 +148,7 @@ class TenClassesPyIO(data.Dataset, TenClassesRandomFetcher):
                 update_text = 'TenClassesPyIO.setup_xai_evaluation_0001() progress %s/%s'%(str(i+1),str(data_size))
                 print('%-64s'%(update_text),end='\r')
             _, cimg, heatmap, variables = self.uniform_random_draw()
-            self.x.append(cimg.transpose((2,0,1)))
+            self.x.append(cimg) #.transpose((2,0,1)))
             self.y.append(variables['y0'])
             self.h.append(heatmap)
             self.v.append(variables)

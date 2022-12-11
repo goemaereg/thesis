@@ -180,7 +180,8 @@ class SimpleRandomFetcher(RandomFetcher):
         elif bg_type == 2:
             bg = self.background0002(x, y, d)
         else:
-            bg = None
+            full_shape = self.s + (3,)
+            bg = np.zeros(full_shape) #bg = None
 
         if bg is not None:
             bg = np.clip(bg, a_max=1.0, a_min=0.)
