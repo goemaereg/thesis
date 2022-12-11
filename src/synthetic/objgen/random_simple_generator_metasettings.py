@@ -4,13 +4,13 @@ ccell_meta_color_border = ('array',('uniform',0.8-0.3,0.8+0.1),
 ccell_meta_color_inner = ('array',('uniform',0.2-0.1,0.2+0.1),
                         ('uniform',0.2-0.1,0.2+0.1),
                         ('uniform',0.4-0.1,0.4+0.1))
-ccell_meta_radius = ('uniform',100.-10.,100.+10.)
+ccell_meta_radius = ('uniform',60.-10.,60.+10.) #('uniform',100.-10.,100.+10.)
 ccell_meta_thickness = ('uniform',20-10,20+10)
 ccell_meta_vertical_stretch = ('uniform',1-0.5,1+0.5)
 
-rcell_meta_dim = ('uniform',100.,200.)
+rcell_meta_dim = ('uniform', 100.-10.,100.+10.) # ('uniform',100.,200.)
 
-rotate_angle_range = [-60,60]
+rotate_angle_range = [-60, 60]
 d_noise = ('uniform',6, 12)
 noise_roughness = ('uniform',32.-1,64)
 

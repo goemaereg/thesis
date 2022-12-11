@@ -18,6 +18,7 @@ if __name__ == '__main__':
         parser.add_argument('--n_samples', default=200, type=int, help=None)
         parser.add_argument('--data_mode', default='train', type=str, help=None)
         parser.add_argument('--max_instances', default=1, type=int, help=None)
+        parser.add_argument('--type_noise', action=argparse.BooleanOptionalAction, default=False, help=None)
         args, unknown = parser.parse_known_args()
         dargs = vars(args)  # is a dictionary
 

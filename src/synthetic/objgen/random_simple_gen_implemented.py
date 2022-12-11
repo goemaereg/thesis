@@ -10,15 +10,17 @@ import torch.utils.data as data
 #######################################################################
 
 class TenClassesRandomFetcher(SimpleRandomFetcher):
-    def __init__(self, max_instances=1):
+    def __init__(self, max_instances=1, type_noise=False):
         super(TenClassesRandomFetcher, self).__init__()
         self.max_instances=max_instances
+        self.type_noise = type_noise
 
     # def setup0001(self, general_meta_setting, explanation_setting, s=None):
     #     self.s = s if s is not None else (512,512) # image shape
 
     def uniform_random_draw(self):
-        y0 = np.random.randint(10)
+        types = 10 if self.type_noise else 9
+        y0 = np.random.randint(types)
         bg_rand = np.random.randint(3)
         if self.max_instances > 1:
             return self.draw_n_samples(y0, bg_rand, self.max_instances)
@@ -87,6 +89,11 @@ class TenClassesRandomFetcher(SimpleRandomFetcher):
             heatmaps.append(heatmap)
             variable_list.append(variables)
 
+        # compute bounding boxes
+        # take into account that multiple instances are layerd
+        # e.g. instance 1 on top of instance 2 -> bounding box instanc2 may be clipped by instance 1
+        # e.g. instance 1 on top of instancde 2, 2 on 3, 3 on 4 -> bbox 4 clipped by bbox 1,2,3
+
         # merge images
         ep = 1e-2
         cimg = images[0]
@@ -117,8 +124,8 @@ class TenClassesRandomFetcher(SimpleRandomFetcher):
 
 
 class TenClassesPyIO(data.Dataset, TenClassesRandomFetcher):
-    def __init__(self, max_instances=1):
-        super(TenClassesPyIO, self).__init__(max_instances=max_instances)
+    def __init__(self, max_instances=1, type_noise=False):
+        super(TenClassesPyIO, self).__init__(max_instances=max_instances, type_noise=type_noise)
         self.x, self.y = [], []
 
     def __getitem__(self, index):

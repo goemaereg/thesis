@@ -35,7 +35,8 @@ def prepare_data(dargs):
         print(f'preparing data to save')
         save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
                        dargs['n_classes'], dargs['n_samples'], dargs['data_mode'],
-                       dargs['max_instances'], realtime_update=False)
+                       dargs['max_instances'], dargs['type_noise'],
+                       realtime_update=False)
     else:
         print(f"Data ALREADY exists at {DATA_FOLDER_DIR}")
         # SHARD_NAME = f'data-{str(dargs["n_classes"])}'
@@ -44,10 +45,11 @@ def prepare_data(dargs):
 
 
 def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
-                   n_classes, n_samples, data_mode='train', max_instances=1, realtime_update=False):
+                   n_classes, n_samples, data_mode='train', max_instances=1,
+                   type_noise=False, realtime_update=False):
     if n_classes==10:
         from objgen.random_simple_gen_implemented import TenClassesPyIO
-        dataset = TenClassesPyIO(max_instances=max_instances)
+        dataset = TenClassesPyIO(max_instances=max_instances, type_noise=type_noise)
     elif n_classes==3:
         from objgen.random_simple_gen_implemented2 import ThreeClassesPyIO
         dataset = ThreeClassesPyIO()

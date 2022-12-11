@@ -23,7 +23,7 @@ class SimpleRandomFetcher(RandomFetcher):
             #   pipeline.objgen.random_generator_baseclass.SettingBuilder
             # see the metasettings initiated in pipeline.objgen.random_simple_generator_metasettings
             self.general_meta_setting = {
-                'random position':'one_third_of_max',
+                'random position':'quarter_of_max', #'one_third_of_max',
                 'rotation range':rotate_angle_range,
                 'CCellX': CCellX_metasetting,
                 'CCellMX': CCellMX_metasetting,
@@ -65,7 +65,7 @@ class SimpleRandomFetcher(RandomFetcher):
         color_setting = self.sb.generate_setting(meta_setting=color_meta_setting)
         return shape_setting, color_setting
 
-    def collect_setting_in_variables_dictionary(self, name_type, x0,y0,theta,shape_setting, color_setting):
+    def collect_setting_in_variables_dictionary(self, name_type, x0, y0, theta,shape_setting, color_setting):
         variables = {
             'type': name_type,
             'center': (x0,y0),
@@ -121,7 +121,7 @@ class SimpleRandomFetcher(RandomFetcher):
         x0, y0, theta = self.get_simple_affine_transformation(center_mode=self.general_meta_setting['random position'])
         cobj = RCellX(fast_init=True, array_shape=self.s, color_setting=color_setting, shape_setting=shape_setting, explanation_setting=self.explanation_setting)
         cimg, heatmap = cobj.make_basic_rect(centerpos=(x0,y0),rotate_angle=theta)
-        variables = self.collect_setting_in_variables_dictionary(name_type, x0,y0,theta,shape_setting, color_setting)
+        variables = self.collect_setting_in_variables_dictionary(name_type, x0, y0, theta,shape_setting, color_setting)
         return cobj, cimg, heatmap, variables
 
     # 5.
