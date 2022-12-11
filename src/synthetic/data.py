@@ -1,9 +1,6 @@
 import os
-import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import numpy as np
-import joblib
-from skimage.transform import resize
 from utils import manage_dir
 from PIL import Image
 
@@ -39,9 +36,6 @@ def prepare_data(dargs):
                        realtime_update=False)
     else:
         print(f"Data ALREADY exists at {DATA_FOLDER_DIR}")
-        # SHARD_NAME = f'data-{str(dargs["n_classes"])}'
-        # DATA_DIR = os.path.join(DATA_FOLDER_DIR, str(SHARD_NAME))
-        # display_some_shard_samples(DATA_DIR, DATA_FOLDER_DIR, name=f'samples')
 
 
 def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
@@ -62,15 +56,11 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
         data_size=n_samples, realtime_update=realtime_update)
     image_ids = []
     class_labels = []
-    localizations = []
+    segment_masks = []
+    locations = []
     for i in range(dataset.__len__()):
         x, y0 = dataset.__getitem__(i)
         h = dataset.h[i]  # heatmap
-
-        # compute bounding boxes
-        # take into account that multiple instances are layerd
-        # e.g. instance 1 on top of instance 2 -> bounding box instanc2 may be clipped by instance 1
-        # e.g. instance 1 on top of instance 2, 2 on 3, 3 on 4 -> bbox 4 clipped by bbox 1,2,3
 
         # merge image instance layers
         ep = 1e-2
@@ -93,82 +83,65 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
             mask = _h > ep
             heatmap[mask] = _h[mask]
 
-        # save image
+        # metadata: store image path
         image_id = f'SYNTHETIC_{data_mode}_{i + 1}.png'
         image_ids.append(f'{data_mode}/{image_id}')
+
+        # metadata: store image class label
         class_labels.append(f'{data_mode}/{image_id},{str(y0)}')
         image_path = os.path.join(DATA_FOLDER_DIR, image_id)
+
+        # dataset: save RGB image
         # matplotlib.image.imsave requires RGB image shape as (H,W,C)
-        mpimg.imsave(image_path, cimg) #x.transpose((1,2,0)))
-        # TODO multiple segmentation masks support
-        # save segmentation mask
+        mpimg.imsave(image_path, cimg)
+
+        # metadata: store segmentation mask path
         mask_id = image_id
-        localization = f'{data_mode}/{image_id},{data_mode}/{mask_id}'
-        localizations.append(localization)
+        segment_masks.append(f'{data_mode}/{image_id},{data_mode}/{mask_id}')
+
+        # maskdata: save B/W segmentation mask
+        heatmap = (heatmap > 0.0).astype('uint8') * 255
         mask_path = os.path.join(MASKDATA_FOLDER_DIR, mask_id)
-        # binarize heatmap
-        heatmap = (heatmap > 0.0).astype('uint8')*255
         img = Image.fromarray(heatmap)
         img.save(mask_path)
 
-    # write metadata
+        # metadata: bounding boxes
+        # take into account that multiple instances are layerd
+        # e.g. instance 1 on top of instance 2 -> bounding box instance may be clipped by instance 1
+        # e.g. instance 1 on top of instance 2, 2 on 3, 3 on 4 -> bbox 4 clipped by bbox 1,2,3
+        shape = heatmap.shape
+        ignore_mask = np.ma.ones(shape) # used to wipe out hidden parts of lower-layer heatmaps
+        for _h in h:
+            _h *= ignore_mask.astype('uint8')
+            _x, _y = np.ma.where(_h > 0)
+            xmin, xmax = min(_x), max(_x)
+            ymin, ymax = min(_y), max(_y)
+            # bbox_mask
+            bbox_neg_mask = np.ma.ones(shape)
+            bbox_neg_mask[xmin:xmax+1,ymin:ymax+1] = False
+            # negation mask
+            ignore_mask = np.logical_and(ignore_mask, bbox_neg_mask)
+            # store location
+            locations.append(f'{data_mode}/{image_id},{xmin},{ymin},{xmax},{ymax}')
+
+    # metadata: write image paths
     image_ids_path = os.path.join(METADATA_FOLDER_DIR, 'image_ids.txt')
     with open(image_ids_path, 'w') as f:
         f.writelines('\n'.join(image_ids))
+
+    # metadata: write class labels
     class_labels_path = os.path.join(METADATA_FOLDER_DIR, 'class_labels.txt')
     with open(class_labels_path, 'w') as f:
         f.writelines('\n'.join(class_labels))
-    localization_path = os.path.join(METADATA_FOLDER_DIR, 'localization.txt')
+
+    # metadata: write segmentation mask paths
+    segment_masks_path = os.path.join(METADATA_FOLDER_DIR, 'segment_masks.txt')
     # TODO support for missing ignore mask in dataloaders.py
-    with open(localization_path, 'w') as f:
-        f.writelines('\n'.join(localizations))
+    with open(segment_masks_path, 'w') as f:
+        f.writelines('\n'.join(segment_masks))
 
-def display_some_shard_samples(SHARD_DIR, SHARD_FOLDER_DIR, name):
-    SAMPLES_DIR = os.path.join(SHARD_FOLDER_DIR, 'samples_display')
-    if not os.path.exists(SAMPLES_DIR):
-        os.makedirs(SAMPLES_DIR, exist_ok=True)
-
-    print('\nsource:', SHARD_DIR)
-    dataset = load_dataset_from_a_shard(SHARD_DIR, reshape_size=None)
-    nshow = np.min([4, dataset.__len__()])
-
-    plt.figure(figsize=(8, 4))
-    for i in range(nshow):
-        x, y0 = dataset.__getitem__(i)
-        h = dataset.h[i]  # heatmap
-        print(f'x.shape: {x.shape} | y0:{y0} | h.shape: {h.shape} | v["type"]: {dataset.v[i]["type"]} ')
-        if i == 0: print('  v:', dataset.v[i].keys())
-
-        plt.gcf().add_subplot(2, nshow, i + 1)
-        plt.gca().imshow(x.transpose(1, 2, 0), vmin=0, vmax=1)
-        plt.gca().set_title(f'y0:{y0}')
-        plt.gcf().add_subplot(2, nshow, i + 1 + nshow)
-        plt.gca().imshow(h, vmin=-1., vmax=1, cmap='bwr')
-    plt.tight_layout()
-    plt.savefig(os.path.join(SAMPLES_DIR, name + '.png'))
-
-
-def load_dataset_from_a_shard(SHARD_DIR, reshape_size=None):
-    # reshape_size : (C, H, W) tuple
-    this_dataset = joblib.load(SHARD_DIR)
-    this_dataset.x = np.array(this_dataset.x)  # original shape (N, C, H, W)
-    if reshape_size is not None:
-        s, N = reshape_size, len(this_dataset.x)
-        temp_x = []
-
-        size_HW = reshape_size[1:]
-        temp_h = []
-
-        for i in range(N):
-            temp = this_dataset.x[i].transpose(1, 2, 0)
-            temp = resize(temp, (s[1], s[2], s[0]))
-            temp = temp.transpose(2, 0, 1)
-            temp_x.append(temp)
-
-            h_resize = resize(this_dataset.h[i], size_HW)
-            temp_h.append(h_resize)
-
-        this_dataset.x = np.array(temp_x)
-        this_dataset.h = np.array(temp_h)
-
-    return this_dataset
+   # metadata: write locations
+    locations_path = os.path.join(METADATA_FOLDER_DIR, 'localization.txt')
+    # TODO support for missing ignore mask in dataloaders.py
+    with open(locations_path, 'w') as f:
+        f.writelines('\n'.join(locations))

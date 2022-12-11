@@ -181,7 +181,7 @@ class SimpleRandomFetcher(RandomFetcher):
             bg = self.background0002(x, y, d)
         else:
             full_shape = self.s + (3,)
-            bg = np.zeros(full_shape) #bg = None
+            bg = np.zeros(full_shape)
 
         if bg is not None:
             bg = np.clip(bg, a_max=1.0, a_min=0.)

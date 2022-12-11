@@ -148,7 +148,7 @@ class TenClassesPyIO(data.Dataset, TenClassesRandomFetcher):
                 update_text = 'TenClassesPyIO.setup_xai_evaluation_0001() progress %s/%s'%(str(i+1),str(data_size))
                 print('%-64s'%(update_text),end='\r')
             _, cimg, heatmap, variables = self.uniform_random_draw()
-            self.x.append(cimg) #.transpose((2,0,1)))
+            self.x.append(cimg)
             self.y.append(variables['y0'])
             self.h.append(heatmap)
             self.v.append(variables)
