@@ -110,19 +110,37 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
         # e.g. instance 1 on top of instance 2 -> bounding box instance may be clipped by instance 1
         # e.g. instance 1 on top of instance 2, 2 on 3, 3 on 4 -> bbox 4 clipped by bbox 1,2,3
         shape = heatmap.shape
-        ignore_mask = np.ma.ones(shape) # used to wipe out hidden parts of lower-layer heatmaps
+        ignore_mask = np.ones(shape) > 0 # used to wipe out hidden parts of lower-layer heatmaps
+        bbox_list = []
         for _h in h:
             _h *= ignore_mask.astype('uint8')
             _x, _y = np.ma.where(_h > 0)
-            xmin, xmax = min(_x), max(_x)
+            try:
+                xmin, xmax = min(_x), max(_x)
+            except Exception:
+                pass
             ymin, ymax = min(_y), max(_y)
             # bbox_mask
-            bbox_neg_mask = np.ma.ones(shape)
+            bbox_neg_mask = np.ones(shape) > 0
             bbox_neg_mask[xmin:xmax+1,ymin:ymax+1] = False
             # negation mask
             ignore_mask = np.logical_and(ignore_mask, bbox_neg_mask)
             # store location
             locations.append(f'{data_mode}/{image_id},{xmin},{ymin},{xmax},{ymax}')
+            bbox_list.append((xmin, ymin, xmax, ymax))
+
+        # bboxdata: save image with bounding box
+        bbox_id = f'SYNTHETIC_{data_mode}_{i + 1}_bbox.png'
+        bbox_path = os.path.join(MASKDATA_FOLDER_DIR, bbox_id)
+        bbox_img = cimg.copy()
+        d = 3
+        for bbox in bbox_list:
+            xmin, ymin, xmax, ymax = bbox
+            bbox_mask = np.zeros(shape) > 0
+            bbox_mask[xmin:xmax + 1, ymin:ymax + 1] = True
+            bbox_mask[xmin+d:xmax-d, ymin+d:ymax-d] = False
+            bbox_img[bbox_mask] = 1.0
+        mpimg.imsave(bbox_path, bbox_img)
 
     # metadata: write image paths
     image_ids_path = os.path.join(METADATA_FOLDER_DIR, 'image_ids.txt')
