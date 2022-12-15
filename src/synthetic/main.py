@@ -20,6 +20,7 @@ if __name__ == '__main__':
         parser.add_argument('--n_instances', default=1, type=int, help=None)
         parser.add_argument('--random_n_instances', action=argparse.BooleanOptionalAction, default=False, help=None)
         parser.add_argument('--type_noise', action=argparse.BooleanOptionalAction, default=False, help=None)
+        parser.add_argument('--overlapping', action=argparse.BooleanOptionalAction, default=False, help=None)
         args, unknown = parser.parse_known_args()
         dargs = vars(args)  # is a dictionary
 
