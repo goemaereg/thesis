@@ -47,7 +47,7 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
         from objgen.random_simple_gen_implemented import TenClassesPyIO
         dataset = TenClassesPyIO(n_instances=n_instances,
                                  random_n_instances=random_n_instances,
-                                 type_noise=type_noise)
+                                 type_noise=type_noise, overlapping=overlapping)
     elif n_classes==3:
         from objgen.random_simple_gen_implemented2 import ThreeClassesPyIO
         dataset = ThreeClassesPyIO()
@@ -79,30 +79,31 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
                 mask = img > ep
                 cimg[mask] = img[mask]
 
+                # merge segment layers
+                heatmap = np.zeros(h[0].shape)
+                for _h in h[::-1]:
+                    mask = _h > ep
+                    heatmap[mask] = _h[mask]
+
             # metadata: bounding boxes
             # take into account that multiple instances are layerd
             # e.g. instance 1 on top of instance 2 -> bounding box instance may be clipped by instance 1
-            # e.g. instance 1 on top of instance 2, 2 on 3, 3 on 4 -> bbox 4 clipped by bbox 1,2,3
-            ignore_mask = np.ones(h[0].shape) > 0  # used to wipe out hidden parts of lower-layer heatmaps
+            # e.g. instance 1 on top of instance 2, 2 on 3, 3 on 4 -> bbox 4 clipped by instances 1,2,3
+            ignore_mask = np.ones(h[0].shape) > 0  # used to mask upper-layer overlapping segments
             for _h in h.copy():
                 _h *= ignore_mask.astype('uint8')
                 _x, _y = np.ma.where(_h > 0)
-                xmin, xmax = min(_x), max(_x)
-                ymin, ymax = min(_y), max(_y)
-                # bbox_mask
-                bbox_neg_mask = np.ones(_h.shape) > 0
-                bbox_neg_mask[xmin:xmax + 1, ymin:ymax + 1] = False
-                # negation mask
-                ignore_mask = np.logical_and(ignore_mask, bbox_neg_mask)
-                # store location
-                locations.append(f'{data_mode}/{image_id},{xmin},{ymin},{xmax},{ymax}')
-                bbox_list.append((xmin, ymin, xmax, ymax))
+                if len(_x) > 0:
+                    xmin, xmax = min(_x), max(_x)
+                    ymin, ymax = min(_y), max(_y)
+                    # store location
+                    locations.append(f'{data_mode}/{image_id},{xmin},{ymin},{xmax},{ymax}')
+                    bbox_list.append((xmin, ymin, xmax, ymax))
+                # segment ignore mask of current layer
+                _h_ignore_mask = np.logical_not(_h > 0)
+                # merge with upper layers ignore mask
+                ignore_mask = np.logical_and(ignore_mask, _h_ignore_mask)
 
-            # merge heatmap layers
-            heatmap = np.zeros(h[0].shape)
-            for _h in h[::-1]:
-               mask = _h > ep
-               heatmap[mask] = _h[mask]
         else:
             # Generate a square number of tiles that can contain all instances.
             # The size of 1 tile equals the final image size.
@@ -124,6 +125,7 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
             resize = bg.shape[:2]
             cimg = cv2.resize(img, resize, interpolation=cv2.INTER_LINEAR)
 
+            # merge semgent tiles
             # allocate n_tiles number of segment locations
             h_tiles = np.zeros((n_tiles,) + h[0].shape)
             # distribute semgents over selected tiles

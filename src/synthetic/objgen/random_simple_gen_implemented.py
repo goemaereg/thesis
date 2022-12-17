@@ -10,7 +10,7 @@ import torch.utils.data as data
 #######################################################################
 
 class TenClassesRandomFetcher(SimpleRandomFetcher):
-    def __init__(self, n_instances=1, random_n_instances=False, type_noise=False):
+    def __init__(self, n_instances=1, random_n_instances=False, type_noise=False, overlapping=False):
         super(TenClassesRandomFetcher, self).__init__()
         self.n_instances=n_instances
         self.random_n_instances = random_n_instances
@@ -111,9 +111,9 @@ class TenClassesRandomFetcher(SimpleRandomFetcher):
 
 
 class TenClassesPyIO(data.Dataset, TenClassesRandomFetcher):
-    def __init__(self, n_instances=1, random_n_instances=False, type_noise=False):
+    def __init__(self, n_instances=1, random_n_instances=False, type_noise=False, overlapping=False):
         super(TenClassesPyIO, self).__init__(n_instances=n_instances, random_n_instances=random_n_instances,
-                                             type_noise=type_noise)
+                                             type_noise=type_noise, overlapping=overlapping)
         self.x, self.y = [], []
 
     def __getitem__(self, index):

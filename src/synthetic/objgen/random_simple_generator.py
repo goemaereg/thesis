@@ -6,9 +6,10 @@ from .random_simple_generator_metasettings import *
 from skimage.transform import resize
 
 class SimpleRandomFetcher(RandomFetcher):
-    def __init__(self):
+    def __init__(self, overlapping=False):
         super(SimpleRandomFetcher, self).__init__()
         self.obj2d = ObjetOutline2D()
+        self.overlapping = overlapping
         
         # inherited
         # self.sb = SettingBuilder()
@@ -22,8 +23,9 @@ class SimpleRandomFetcher(RandomFetcher):
             # the following are metasettings for the arguments of 
             #   pipeline.objgen.random_generator_baseclass.SettingBuilder
             # see the metasettings initiated in pipeline.objgen.random_simple_generator_metasettings
+            random_position = 'one_third_of_max' if self.overlapping else 'quarter_of_max'
             self.general_meta_setting = {
-                'random position':'quarter_of_max', #'one_third_of_max',
+                'random position':random_position,
                 'rotation range':rotate_angle_range,
                 'CCellX': CCellX_metasetting,
                 'CCellMX': CCellMX_metasetting,
@@ -31,6 +33,11 @@ class SimpleRandomFetcher(RandomFetcher):
                 'RCellX': RCellX_metasetting,
                 'CCellTX': CCellTX_metasetting,
             }
+            if not self.overlapping:
+                for cell_type in ['CCellX', 'CCellMX', 'CCellPX', 'CCellTX']:
+                    self.general_meta_setting[cell_type]['shape_meta_setting']['radius'] = ccell_meta_radius_small
+                self.general_meta_setting['RCellX']['shape_meta_setting']['h'] = rcell_meta_dim_small
+                self.general_meta_setting['RCellX']['shape_meta_setting']['w'] = rcell_meta_dim_small
         if explanation_setting is None:
             # this setting is peculiar to the implementation of explanations in objgen.cellsX
             self.explanation_setting = { 
