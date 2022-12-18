@@ -134,6 +134,7 @@ def get_mask_paths(metadata):
                 assert (len(ignore_path) == 0)
             else:
                 mask_paths[image_id] = [mask_path]
+                # ignore mask is optional (empty string)
                 ignore_paths[image_id] = ignore_path
     return mask_paths, ignore_paths
 

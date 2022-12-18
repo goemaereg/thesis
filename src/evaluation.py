@@ -359,20 +359,22 @@ def get_mask(mask_root, mask_paths, ignore_path):
         mask = load_mask_image(mask_file, (_RESIZE_LENGTH, _RESIZE_LENGTH))
         mask_all_instances.append(mask > 0.5)
     mask_all_instances = np.stack(mask_all_instances, axis=0).any(axis=0)
+    has_ignore_mask = len(ignore_path) > 0
+    if has_ignore_mask:
+        ignore_file = os.path.join(mask_root, ignore_path)
+        ignore_box_mask = load_mask_image(ignore_file,
+                                          (_RESIZE_LENGTH, _RESIZE_LENGTH))
+        ignore_box_mask = ignore_box_mask > 0.5
 
-    ignore_file = os.path.join(mask_root, ignore_path)
-    ignore_box_mask = load_mask_image(ignore_file,
-                                      (_RESIZE_LENGTH, _RESIZE_LENGTH))
-    ignore_box_mask = ignore_box_mask > 0.5
+        ignore_mask = np.logical_and(ignore_box_mask,
+                                     np.logical_not(mask_all_instances))
 
-    ignore_mask = np.logical_and(ignore_box_mask,
-                                 np.logical_not(mask_all_instances))
-
-    if np.logical_and(ignore_mask, mask_all_instances).any():
-        raise RuntimeError("Ignore and foreground masks intersect.")
-
-    return (mask_all_instances.astype(np.uint8) +
-            255 * ignore_mask.astype(np.uint8))
+        if np.logical_and(ignore_mask, mask_all_instances).any():
+            raise RuntimeError("Ignore and foreground masks intersect.")
+        mask_all_instances = mask_all_instances.astype(np.uint8) + 255 * ignore_mask.astype(np.uint8)
+    else:
+        mask_all_instances = mask_all_instances.astype(np.uint8)
+    return mask_all_instances
 
 
 class MaskEvaluator(LocalizationEvaluator):

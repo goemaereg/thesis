@@ -79,11 +79,11 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
                 mask = img > ep
                 cimg[mask] = img[mask]
 
-                # merge segment layers
-                heatmap = np.zeros(h[0].shape)
-                for _h in h[::-1]:
-                    mask = _h > ep
-                    heatmap[mask] = _h[mask]
+            # merge segment layers
+            heatmap = np.zeros(h[0].shape)
+            for _h in h[::-1]:
+                mask = _h > ep
+                heatmap[mask] = _h[mask]
 
             # metadata: bounding boxes
             # take into account that multiple instances are layerd
@@ -179,7 +179,7 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
 
         # metadata: store segmentation mask path
         mask_id = image_id
-        segment_masks.append(f'{data_mode}/{image_id},{data_mode}/{mask_id}')
+        segment_masks.append(f'{data_mode}/{image_id},{data_mode}/{mask_id},')
 
         # maskdata: save B/W segmentation mask
         heatmap = (heatmap > 0.0).astype('uint8') * 255
@@ -211,7 +211,7 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
         f.writelines('\n'.join(class_labels))
 
     # metadata: write segmentation mask paths
-    segment_masks_path = os.path.join(METADATA_FOLDER_DIR, 'segment_masks.txt')
+    segment_masks_path = os.path.join(METADATA_FOLDER_DIR, 'segments.txt')
     # TODO support for missing ignore mask in dataloaders.py
     with open(segment_masks_path, 'w') as f:
         f.writelines('\n'.join(segment_masks))
