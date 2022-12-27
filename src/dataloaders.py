@@ -46,6 +46,7 @@ def configure_metadata(metadata_root):
     metadata.class_labels = os.path.join(metadata_root, 'class_labels.txt')
     metadata.image_sizes = os.path.join(metadata_root, 'image_sizes.txt')
     metadata.localization = os.path.join(metadata_root, 'localization.txt')
+    metadata.segments = os.path.join(metadata_root, 'segments.txt')
     return metadata
 
 
@@ -112,7 +113,7 @@ def get_bounding_boxes(metadata):
 
 def get_mask_paths(metadata):
     """
-    localization.txt (for masks) has the structure
+    segments.txt (for masks) has the structure
 
     <path>,<link_to_mask_file>,<link_to_ignore_mask_file>
     path/to/image1.jpg,path/to/mask1a.png,path/to/ignore1.png
@@ -126,7 +127,7 @@ def get_mask_paths(metadata):
     """
     mask_paths = {}
     ignore_paths = {}
-    with open(metadata.localization) as f:
+    with open(metadata.segments) as f:
         for line in f.readlines():
             image_id, mask_path, ignore_path = line.strip('\n').split(',')
             if image_id in mask_paths:
@@ -167,7 +168,6 @@ class WSOLImageLabelDataset(Dataset):
         self.image_ids = get_image_ids(self.metadata, proxy=proxy)
         self.image_labels = get_class_labels(self.metadata)
         self.num_sample_per_class = num_sample_per_class
-
         self._adjust_samples_per_class()
 
     def _adjust_samples_per_class(self):
@@ -235,7 +235,9 @@ class MiniBatchSampler(Sampler[int]):
 def get_data_loader(data_roots, metadata_root, batch_size, workers,
                     resize_size, crop_size, proxy_training_set,
                     num_val_sample_per_class=0, batch_set_size=None,
-                    class_set_size=None):
+                    class_set_size=None, tags=None):
+    if tags is not None:
+        metadata_root = os.path.join(metadata_root, *tags)
     dataset_transforms = dict(
         train=transforms.Compose([
             transforms.Resize((resize_size, resize_size)),

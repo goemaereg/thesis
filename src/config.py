@@ -68,7 +68,7 @@ def configure_data_paths(args):
 
 
 def configure_mask_root(args):
-    mask_root = ospj(args.mask_root, 'OpenImages')
+    mask_root = ospj(args.mask_root, args.dataset_name) #'OpenImages')
     return mask_root
 
 
@@ -141,7 +141,7 @@ def get_configs():
                         help='path to dataset images')
     parser.add_argument('--metadata_root', type=str, default='metadata/')
     parser.add_argument('--mask_root', metavar='/PATH/TO/MASKS',
-                        default='dataset/',
+                        default='maskdata/',
                         help='path to masks')
     parser.add_argument('--proxy_training_set', type=str2bool, nargs='?',
                         const=True, default=False,
@@ -241,7 +241,11 @@ def get_configs():
     # see minmaxcam paper
     parser.add_argument('--minmaxcam_crr_weight', type=int, default=1,
                         help='MinMaxCam Common Region Regularization Weight'),
-
+    # tags
+    parser.add_argument('--tag', action='append', type=str, default=None,
+                        help='tags used to partition SYNTHETHIC dataset. '
+                             'tag1 = <choice o (overlapping) | d (disjunct)'
+                             'tag2 = <n_instances: 0..4>'),
     args = parser.parse_args()
 
     check_dependency(args)

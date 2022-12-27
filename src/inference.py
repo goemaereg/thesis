@@ -6,6 +6,7 @@ from os.path import dirname as ospd
 
 from evaluation import BoxEvaluator
 from evaluation import MaskEvaluator
+from evaluation import MultiEvaluator
 from evaluation import configure_metadata
 from util import t2n
 import tqdm
@@ -48,7 +49,8 @@ class CAMComputer(object):
 
         self.evaluator = {"OpenImages": MaskEvaluator,
                           "CUB": BoxEvaluator,
-                          "ILSVRC": BoxEvaluator
+                          "ILSVRC": BoxEvaluator,
+                          "SYNTHETIC": MultiEvaluator
                           }[dataset_name](metadata=metadata,
                                           dataset_name=dataset_name,
                                           split=split,

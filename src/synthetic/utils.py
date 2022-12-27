@@ -9,7 +9,7 @@ def makedirifnot(THIS_DIR):
         os.makedirs(THIS_DIR, exist_ok=True)
 
 
-def manage_dir(dargs):
+def manage_dir(dargs, tags=None):
     CKPT_FOLDER_DIR = dargs['checkpoint_dir']
     makedirifnot(CKPT_FOLDER_DIR)
     PROJECT_FOLDER_DIR = os.path.join(CKPT_FOLDER_DIR, dargs['project'])
@@ -22,7 +22,10 @@ def manage_dir(dargs):
     LOSS_INFO_DIR = os.path.join(PROJECT_FOLDER_DIR, f'{model_name}_loss_info.json')
     HEATMAP_SAMPLE_DIR = os.path.join(PROJECT_FOLDER_DIR, f'{model_name}_heatmaps.png')
 
-    DATA_FOLDER_DIR = os.path.join(PROJECT_FOLDER_DIR, 'dataset')
+    DATA_STORE_DIR = os.path.join(PROJECT_FOLDER_DIR, 'SYNTHETIC')
+    if tags:
+        DATA_STORE_DIR = os.path.join(DATA_STORE_DIR, *tags)
+    DATA_FOLDER_DIR = os.path.join(DATA_STORE_DIR, 'dataset')
 
     DATA_TRAIN_FOLDER_DIR = os.path.join(DATA_FOLDER_DIR, 'train')
     DATA_VAL_FOLDER_DIR = os.path.join(DATA_FOLDER_DIR, 'val')
@@ -31,7 +34,7 @@ def manage_dir(dargs):
     makedirifnot(DATA_VAL_FOLDER_DIR)
     makedirifnot(DATA_TEST_FOLDER_DIR)
 
-    METADATA_FOLDER_DIR = os.path.join(PROJECT_FOLDER_DIR, 'metadata')
+    METADATA_FOLDER_DIR = os.path.join(DATA_STORE_DIR, 'metadata')
 
     METADATA_TRAIN_FOLDER_DIR = os.path.join(METADATA_FOLDER_DIR, 'train')
     METADATA_VAL_FOLDER_DIR = os.path.join(METADATA_FOLDER_DIR, 'val')
@@ -40,7 +43,7 @@ def manage_dir(dargs):
     makedirifnot(METADATA_VAL_FOLDER_DIR)
     makedirifnot(METADATA_TEST_FOLDER_DIR)
 
-    MASKDATA_FOLDER_DIR = os.path.join(PROJECT_FOLDER_DIR, 'maskdata')
+    MASKDATA_FOLDER_DIR = os.path.join(DATA_STORE_DIR, 'maskdata')
 
     MASKDATA_TRAIN_FOLDER_DIR = os.path.join(MASKDATA_FOLDER_DIR, 'train')
     MASKDATA_VAL_FOLDER_DIR = os.path.join(MASKDATA_FOLDER_DIR, 'val')

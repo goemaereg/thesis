@@ -29,7 +29,7 @@ def calculate_multiple_iou(box_a, box_b):
         box_b: numpy.ndarray(dtype=np.int, shape=(num_b, 4))
             x0y0x1y1 convention.
     Returns:
-        ious: numpy.ndarray(dtype=np.int, shape(num_a, num_b))
+        ious: numpy.ndarray(dtype=np.float, shape(num_a, num_b))
     """
     num_a = box_a.shape[0]
     num_b = box_b.shape[0]
@@ -225,7 +225,7 @@ class BoxEvaluator(LocalizationEvaluator):
 
         Args:
             multiple_iou: numpy.ndarray(dtype=np.float,
-                          shape=(num estimated boxes over all scoremap thresholds, num GT-boxes, 4))
+                          shape=(num estimated boxes over all scoremap thresholds, num GT-boxes))
         """
         idx = 0
         sliced_multiple_iou = []
@@ -247,7 +247,7 @@ class BoxEvaluator(LocalizationEvaluator):
 
         Args:
             multiple_iou: numpy.ndarray(dtype=np.float,
-                                        shape=(num estimated boxes in all thresholded scoremaps, num GT-boxes, 4)
+                                        shape=(num estimated boxes in all thresholded scoremaps, num GT-boxes)
                                        )
         """
         idx = 0
@@ -261,7 +261,7 @@ class BoxEvaluator(LocalizationEvaluator):
             for _ in range(num_gt_boxes):
                 max_iou_index = np.unravel_index(np.argmax(slice_multi_iou), shape=slice_multi_iou.shape)
                 gt_iou_max.append(slice_multi_iou[max_iou_index[0], max_iou_index[1]])
-                # mark max IOU as unavalable ('0') to other (est, gt) combinations in this slice
+                # mark max IOU as unavailable ('0') to other (est, gt) combinations in this slice
                 slice_multi_iou[max_iou_index[0], :] = 0
                 slice_multi_iou[:, max_iou_index[1]] = 0
             sliced_multiple_iou.append(np.asarray(gt_iou_max))
@@ -273,7 +273,7 @@ class BoxEvaluator(LocalizationEvaluator):
             num_correct_multi = np.zeros(shape=(num_thresholds, num_gt_boxes))
             correct_threshold_indices = np.where(multi_iou_per_threshold >= (_THRESHOLD / 100))
             num_correct_multi[correct_threshold_indices] = 1
-            # reduce to a single score per threshold = true positives per threshold
+            # reduce to a single score per threshold = true positives (matching GT boxes) per threshold
             self.num_correct[_THRESHOLD] += np.sum(num_correct_multi, axis=1)
         self.cnt += num_gt_boxes
 
@@ -381,8 +381,8 @@ class MaskEvaluator(LocalizationEvaluator):
     def __init__(self, **kwargs):
         super(MaskEvaluator, self).__init__(**kwargs)
 
-        if self.dataset_name != "OpenImages":
-            raise ValueError("Mask evaluation must be performed on OpenImages.")
+        # if self.dataset_name != "OpenImages":
+        #     raise ValueError("Mask evaluation must be performed on OpenImages.")
 
         self.mask_paths, self.ignore_paths = get_mask_paths(self.metadata)
 
@@ -456,6 +456,18 @@ class MaskEvaluator(LocalizationEvaluator):
         print("Mask AUC on split {}: {}".format(self.split, auc))
         return auc
 
+
+class MultiEvaluator():
+    def __init__(self, **kwargs):
+        self.box_evaluator = BoxEvaluator(**kwargs)
+        self.mask_evaluator = MaskEvaluator(**kwargs)
+
+    def accumulate(self, scoremap, image_id):
+        self.box_evaluator.accumulate(scoremap, image_id)
+        self.mask_evaluator.accumulate(scoremap, image_id)
+
+    def compute(self):
+        return (self.box_evaluator.compute(), self.mask_evaluator.compute())
 
 def _get_cam_loader(image_ids, scoremap_path):
     return torchdata.DataLoader(

@@ -10,6 +10,9 @@ import torch.nn.functional as F
 from config import get_configs
 from dataloaders import get_data_loader
 from inference import CAMComputer
+from evaluation import BoxEvaluator
+from evaluation import MaskEvaluator
+from evaluation import MultiEvaluator
 from util import string_contains_any #, t2n
 import wsol
 # import wsol.method
@@ -55,7 +58,7 @@ def accelerator_get():
 
 class Trainer(object):
     _DEVICE = accelerator_get()
-    _CHECKPOINT_NAME_TEMPLATE = '{}_checkpoint.pth.tar'
+    _CHECKPOINT_NAME_TEMPLATE = '{}_checkpoint.pt' #'{}_checkpoint.pth.tar'
     _SPLITS = ('train', 'val', 'test')
     _EVAL_METRICS = ['loss', 'classification', 'localization']
     _BEST_CRITERION_METRIC = 'localization'
@@ -63,6 +66,7 @@ class Trainer(object):
         "CUB": 200,
         "ILSVRC": 1000,
         "OpenImages": 100,
+        "SYN": 9
     }
     _FEATURE_PARAM_LAYER_PATTERNS = {
         'vgg': ['features.', 'conv6.'],
@@ -97,10 +101,14 @@ class Trainer(object):
             proxy_training_set=self.args.proxy_training_set,
             num_val_sample_per_class=self.args.num_val_sample_per_class,
             class_set_size=class_set_size,
-            batch_set_size=batch_set_size
+            batch_set_size=batch_set_size,
+            tags=self.args.tag
         )
 
     def _set_performance_meters(self):
+        # localization2 is used for SYNTHETIC dataset to store MaxBoxAccV2/3 (localization holds PxAP)
+        if self.args.dataset_name == 'SYNTHETIC':
+            self._EVAL_METRICS += ['localization2']
         self._EVAL_METRICS += ['localization_IOU_{}'.format(threshold)
                                for threshold in self.args.iou_threshold_list]
 
@@ -380,20 +388,30 @@ class Trainer(object):
             log_folder=self.args.log_folder,
             device = self._DEVICE
         )
-        cam_performance = cam_computer.compute_and_evaluate_cams()
-
-        if self.args.multi_iou_eval or self.args.dataset_name == 'OpenImages':
-            loc_score = np.average(cam_performance)
+        cam_performance = None
+        metric = 'localization'
+        if isinstance(cam_computer.evaluator, MultiEvaluator):
+            cam_performance, loc_score = cam_computer.compute_and_evaluate_cams()
+            self.performance_meters[split][metric].update(loc_score)
+            metric = 'localization2'
+        elif isinstance(cam_computer.evaluator, BoxEvaluator):
+            cam_performance = cam_computer.compute_and_evaluate_cams()
+        elif isinstance(cam_computer.evaluator, MaskEvaluator):
+            loc_score = cam_computer.compute_and_evaluate_cams()
+            self.performance_meters[split][metric].update(loc_score)
         else:
-            loc_score = cam_performance[self.args.iou_threshold_list.index(50)]
-
-        self.performance_meters[split]['localization'].update(loc_score)
-
-        if self.args.dataset_name in ('CUB', 'ILSVRC'):
+            raise NotImplementedError()
+        if cam_performance is not None:
+            if self.args.multi_iou_eval:
+                loc_score = np.average(cam_performance)
+            else:
+                loc_score = cam_performance[self.args.iou_threshold_list.index(50)]
+            self.performance_meters[split][metric].update(loc_score)
             for idx, IOU_THRESHOLD in enumerate(self.args.iou_threshold_list):
                 self.performance_meters[split][
                     'localization_IOU_{}'.format(IOU_THRESHOLD)].update(
                     cam_performance[idx])
+
 
     def _torch_save_model(self, filename, epoch):
         torch.save({'architecture': self.args.architecture,

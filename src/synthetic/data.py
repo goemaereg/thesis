@@ -5,12 +5,14 @@ from utils import manage_dir
 from PIL import Image
 import math
 import cv2
-
+import tqdm
 
 def prepare_data(dargs):
     print('prepare_data...')
-
-    DIRS = manage_dir(dargs)
+    tag1 = 'o' if dargs['overlapping'] else 'd'
+    tag2 = '0' if dargs['random_n_instances'] else str(dargs['n_instances'])
+    tags = [tag1, tag2]
+    DIRS = manage_dir(dargs, tags)
     DATA_MODES = {
         'train': 'DATA_TRAIN_FOLDER_DIR',
         'val': 'DATA_VAL_FOLDER_DIR',
@@ -35,14 +37,14 @@ def prepare_data(dargs):
         save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
                        dargs['n_classes'], dargs['n_samples'], dargs['data_mode'],
                        dargs['n_instances'], dargs['random_n_instances'], dargs['type_noise'],
-                       dargs['overlapping'], realtime_update=False)
+                       dargs['overlapping'], realtime_update=False, tags=tags)
     else:
         print(f"Data ALREADY exists at {DATA_FOLDER_DIR}")
 
 
 def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
                    n_classes, n_samples, data_mode='train', n_instances=1, random_n_instances=False,
-                   type_noise=False, overlapping=False, realtime_update=False):
+                   type_noise=False, overlapping=False, realtime_update=False, tags=[]):
     if n_classes==10:
         from objgen.random_simple_gen_implemented import TenClassesPyIO
         dataset = TenClassesPyIO(n_instances=n_instances,
@@ -60,11 +62,13 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
     class_labels = []
     segment_masks = []
     locations = []
-    for i in range(dataset.__len__()):
+    tq0 = tqdm.tqdm(range(dataset.__len__()), total=dataset.__len__(), desc='Generate meta data')
+    for i in tq0:
         x, y0 = dataset.__getitem__(i)
         h = dataset.h[i]  # heatmap
         bbox_list = []
-        image_id = f'SYNTHETIC_{data_mode}_{i + 1}.png'
+        image_basename = '_'.join(['SYNTHETIC'] + tags + [data_mode, str(i + 1)])
+        image_id = f'{image_basename}.png'
         # merge image instance layers
         ep = 1e-2
         images = x
@@ -188,7 +192,7 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
         img.save(mask_path)
 
         # bboxdata: save image with bounding box
-        bbox_id = f'SYNTHETIC_{data_mode}_{i + 1}_bbox.png'
+        bbox_id = f'{image_basename}_bbox.png'
         bbox_path = os.path.join(MASKDATA_FOLDER_DIR, bbox_id)
         bbox_img = cimg.copy()
         d = 3

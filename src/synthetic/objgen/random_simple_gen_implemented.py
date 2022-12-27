@@ -1,6 +1,7 @@
 from .random_simple_generator import SimpleRandomFetcher
 import numpy as np
 import torch.utils.data as data
+import tqdm
 
 
 #######################################################################
@@ -143,7 +144,8 @@ class TenClassesPyIO(data.Dataset, TenClassesRandomFetcher):
         self.data_size = data_size
 
         self.setup0001(general_meta_setting, explanation_setting, s=None)
-        for i in range(data_size):
+        tq0 = tqdm.tqdm(range(data_size), total=data_size, desc='Generate images')
+        for i in tq0:
             if realtime_update:
                 update_text = 'TenClassesPyIO.setup_xai_evaluation_0001() progress %s/%s'%(str(i+1),str(data_size))
                 print('%-64s'%(update_text),end='\r')
