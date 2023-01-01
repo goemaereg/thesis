@@ -235,9 +235,7 @@ class MiniBatchSampler(Sampler[int]):
 def get_data_loader(data_roots, metadata_root, batch_size, workers,
                     resize_size, crop_size, proxy_training_set,
                     num_val_sample_per_class=0, batch_set_size=None,
-                    class_set_size=None, tags=None):
-    if tags is not None:
-        metadata_root = os.path.join(metadata_root, *tags)
+                    class_set_size=None, train_augment=True):
     dataset_transforms = dict(
         train=transforms.Compose([
             transforms.Resize((resize_size, resize_size)),
@@ -256,7 +254,12 @@ def get_data_loader(data_roots, metadata_root, batch_size, workers,
             transforms.ToTensor(),
             transforms.Normalize(_IMAGE_MEAN_VALUE, _IMAGE_STD_VALUE)
         ]))
-
+    if not train_augment:
+        dataset_transforms['train'] = transforms.Compose([
+            transforms.Resize((crop_size, crop_size)),
+            transforms.ToTensor(),
+            transforms.Normalize(_IMAGE_MEAN_VALUE, _IMAGE_STD_VALUE)
+        ])
     loaders = {}
     for split in _SPLITS:
         dataset = WSOLImageLabelDataset(

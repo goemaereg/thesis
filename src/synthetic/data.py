@@ -11,7 +11,8 @@ def prepare_data(dargs):
     print('prepare_data...')
     tag1 = 'o' if dargs['overlapping'] else 'd'
     tag2 = '0' if dargs['random_n_instances'] else str(dargs['n_instances'])
-    tags = [tag1, tag2]
+    tag3 = 'b' if dargs['background'] else 't'
+    tags = [tag1, tag2, tag3]
     DIRS = manage_dir(dargs, tags)
     DATA_MODES = {
         'train': 'DATA_TRAIN_FOLDER_DIR',
@@ -37,14 +38,14 @@ def prepare_data(dargs):
         save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
                        dargs['n_classes'], dargs['n_samples'], dargs['data_mode'],
                        dargs['n_instances'], dargs['random_n_instances'], dargs['type_noise'],
-                       dargs['overlapping'], realtime_update=False, tags=tags)
+                       dargs['overlapping'], dargs['background'], realtime_update=False, tags=tags)
     else:
         print(f"Data ALREADY exists at {DATA_FOLDER_DIR}")
 
 
 def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
                    n_classes, n_samples, data_mode='train', n_instances=1, random_n_instances=False,
-                   type_noise=False, overlapping=False, realtime_update=False, tags=[]):
+                   type_noise=False, overlapping=False, background=True, realtime_update=False, tags=[]):
     if n_classes==10:
         from objgen.random_simple_gen_implemented import TenClassesPyIO
         dataset = TenClassesPyIO(n_instances=n_instances,
@@ -62,6 +63,7 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
     class_labels = []
     segment_masks = []
     locations = []
+    image_sizes = []
     tq0 = tqdm.tqdm(range(dataset.__len__()), total=dataset.__len__(), desc='Generate meta data')
     for i in tq0:
         x, y0 = dataset.__getitem__(i)
@@ -72,7 +74,7 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
         # merge image instance layers
         ep = 1e-2
         images = x
-        bg = images[-1]
+        bg = images[-1] if background else np.zeros(images[-1].shape)
         cimg = np.zeros(bg.shape)
         n_generated_instances = images.shape[0]
         if overlapping:
@@ -90,7 +92,7 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
                 heatmap[mask] = _h[mask]
 
             # metadata: bounding boxes
-            # take into account that multiple instances are layerd
+            # take into account that multiple instances are layered
             # e.g. instance 1 on top of instance 2 -> bounding box instance may be clipped by instance 1
             # e.g. instance 1 on top of instance 2, 2 on 3, 3 on 4 -> bbox 4 clipped by instances 1,2,3
             ignore_mask = np.ones(h[0].shape) > 0  # used to mask upper-layer overlapping segments
@@ -113,7 +115,7 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
             # The size of 1 tile equals the final image size.
             tile_dim = math.ceil(math.sqrt(n_generated_instances))
             n_tiles =  tile_dim ** 2
-            # randomly select tiles for object instances
+            # randomly select tiles where to place object instances
             image_tile_idx = np.random.permutation(n_tiles)[:n_generated_instances]
             # allocate n_tiles number of image locations
             tiles = np.zeros((n_tiles,) + bg.shape)
@@ -129,10 +131,10 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
             resize = bg.shape[:2]
             cimg = cv2.resize(img, resize, interpolation=cv2.INTER_LINEAR)
 
-            # merge semgent tiles
+            # merge segment tiles
             # allocate n_tiles number of segment locations
             h_tiles = np.zeros((n_tiles,) + h[0].shape)
-            # distribute semgents over selected tiles
+            # distribute segments over selected tiles
             for idx, _h in enumerate(h):
                 h_tiles[image_tile_idx[idx]] = _h
             # reshape in tile_dim x tile_dim x H x W
@@ -167,11 +169,14 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
 
         # merge background into image
         pos = np.stack(((cimg[:,:,0]<ep),(cimg[:,:,1]<ep),(cimg[:,:,2]<ep))).transpose((1,2,0))
-        cimg =  cimg + pos * bg
+        cimg = cimg + pos * bg
         cimg = np.clip(cimg, a_min=0., a_max=1.)
 
         # metadata: store image path
         image_ids.append(f'{data_mode}/{image_id}')
+
+        # metadata: store image size
+        image_sizes.append(f'{data_mode}/{image_id},{cimg.shape[0]},{cimg.shape[1]}')
 
         # metadata: store image class label
         class_labels.append(f'{data_mode}/{image_id},{str(y0)}')
@@ -209,6 +214,11 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
     with open(image_ids_path, 'w') as f:
         f.writelines('\n'.join(image_ids))
 
+    # metadata: write image sizes
+    image_sizes_path = os.path.join(METADATA_FOLDER_DIR, 'image_sizes.txt')
+    with open(image_sizes_path, 'w') as f:
+        f.writelines('\n'.join(image_sizes))
+
     # metadata: write class labels
     class_labels_path = os.path.join(METADATA_FOLDER_DIR, 'class_labels.txt')
     with open(class_labels_path, 'w') as f:
@@ -216,12 +226,10 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
 
     # metadata: write segmentation mask paths
     segment_masks_path = os.path.join(METADATA_FOLDER_DIR, 'segments.txt')
-    # TODO support for missing ignore mask in dataloaders.py
     with open(segment_masks_path, 'w') as f:
         f.writelines('\n'.join(segment_masks))
 
    # metadata: write bounding box locations
     locations_path = os.path.join(METADATA_FOLDER_DIR, 'localization.txt')
-    # TODO support for missing ignore mask in dataloaders.py
     with open(locations_path, 'w') as f:
         f.writelines('\n'.join(locations))

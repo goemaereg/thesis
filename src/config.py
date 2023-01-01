@@ -8,41 +8,34 @@ import warnings
 
 from util import Logger
 
-_DATASET_NAMES = ('CUB', 'ILSVRC', 'OpenImages')
+_DATASET_NAMES = ('CUB', 'ILSVRC', 'OpenImages', 'SYNTHETIC')
 _ARCHITECTURE_NAMES = ('vgg16', 'resnet50', 'inception_v3')
 _METHOD_NAMES = ('cam', 'adl', 'acol', 'spg', 'has', 'cutmix', 'minmaxcam')
 _SPLITS = ('train', 'val', 'test')
+_BBOX_METRIC_NAMES = ('MaxBoxAcc', 'MaxBoxAccV2', 'MaxBoxAccV3')
+_BBOX_METRIC_DEFAULT = 'MaxBoxAccV2'
 
 
 def mch(**kwargs):
     return munch.Munch(dict(**kwargs))
 
 
-def box_v2_metric(args):
-    if args.box_v2_metric:
-        if args.box_v23metric:
-            raise Exception('Incompatible values for box_v2_metric and box_v3_error')
-        args.multi_contour_eval = True
-        args.multi_iou_eval = True
-    else:
+def configure_bbox_metric(args):
+    if args.bbox_metric == 'MaxBoxAcc':
         args.multi_contour_eval = False
         args.multi_iou_eval = False
-        warnings.warn("MaxBoxAcc metric is deprecated.")
-        warnings.warn("Use MaxBoxAccV2 by setting args.box_v2_metric to True.")
-
-def box_v3_metric(args):
-    if args.box_v3_metric:
-        if args.box_v2_metric:
-            raise Exception('Incompatible values for box_v2_metric and box_v3_error')
-        args.multi_gt_eval = True
-        args.multi_contour_eval = True
-        args.multi_iou_eval = True
-    else:
         args.multi_gt_eval = False
-        args.multi_contour_eval = False
-        args.multi_iou_eval = False
-        warnings.warn("MaxBoxAcc metric is deprecated.")
-        warnings.warn("Use MaxBoxAccV2 by setting args.box_v2_metric to True.")
+        warnings.warn("Bbox metric MaxBoxAcc is deprecated. Use MaxBoxAccV2 or MaxBoxAccV3")
+    elif args.bbox_metric == 'MaxBoxAccV2':
+        args.multi_contour_eval = True
+        args.multi_iou_eval = True
+        args.multi_gt_eval = False
+    elif args.bbox_metric == 'MaxBoxAccV3':
+        args.multi_contour_eval = True
+        args.multi_iou_eval = True
+        args.multi_gt_eval = True
+    else:
+        raise ValueError
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -61,14 +54,18 @@ def get_architecture_type(wsol_method):
     return architecture_type
 
 
-def configure_data_paths(args):
-    train = val = test = ospj(args.data_root, args.dataset_name)
+def configure_data_paths(args, tags=None):
+    if tags is None:
+        tags = list()
+    train = val = test = ospj(args.data_root, args.dataset_name, *tags)
     data_paths = mch(train=train, val=val, test=test)
     return data_paths
 
 
-def configure_mask_root(args):
-    mask_root = ospj(args.mask_root, args.dataset_name) #'OpenImages')
+def configure_mask_root(args, tags=None):
+    if tags is None:
+        tags = list()
+    mask_root = ospj(args.mask_root, args.dataset_name, *tags) #'OpenImages')
     return mask_root
 
 
@@ -134,7 +131,7 @@ def get_configs():
                         help='number of data loading workers (default: 0)')
 
     # Data
-    parser.add_argument('--dataset_name', type=str, default='CUB',
+    parser.add_argument('--dataset_name', type=str, default='SYNTHETIC',
                         choices=_DATASET_NAMES)
     parser.add_argument('--data_root', metavar='/PATH/TO/DATASET',
                         default='dataset/',
@@ -168,8 +165,6 @@ def get_configs():
                         help='input resize size')
     parser.add_argument('--crop_size', type=int, default=224,
                         help='input crop size')
-    parser.add_argument('--multi_gt_box_eval', type=str2bool, nargs='?',
-                        const=True, default=False)
     parser.add_argument('--multi_contour_eval', type=str2bool, nargs='?',
                         const=True, default=True)
     parser.add_argument('--multi_iou_eval', type=str2bool, nargs='?',
@@ -178,11 +173,8 @@ def get_configs():
                         type=int, default=[30, 50, 70])
     parser.add_argument('--eval_checkpoint_type', type=str, default='last',
                         choices=('best', 'last'))
-    parser.add_argument('--box_v2_metric', type=str2bool, nargs='?',
-                        const=True, default=True)
-    parser.add_argument('--box_v3_metric', type=str2bool, nargs='?',
-                        const=True, default=False)
-
+    parser.add_argument('--bbox_metric', type=str, default=_BBOX_METRIC_DEFAULT,
+                        choices=_BBOX_METRIC_NAMES)
     # Common hyperparameters
     parser.add_argument('--batch_size', default=64, type=int,
                         help='Mini-batch size (default: 64), this is the total'
@@ -242,22 +234,27 @@ def get_configs():
     parser.add_argument('--minmaxcam_crr_weight', type=int, default=1,
                         help='MinMaxCam Common Region Regularization Weight'),
     # tags
-    parser.add_argument('--tag', action='append', type=str, default=None,
+    parser.add_argument('--tag', action='append', type=str, default=[],
                         help='tags used to partition SYNTHETHIC dataset. '
                              'tag1 = <choice o (overlapping) | d (disjunct)'
-                             'tag2 = <n_instances: 0..4>'),
-    args = parser.parse_args()
+                             'tag2 = <n_instances: 0..4>'
+                             'tag3 = <choice b (background) | t (transparent'),
+    parser.add_argument('--train', action=argparse.BooleanOptionalAction, default=True, help=None)
+    parser.add_argument('--train_augment', action=argparse.BooleanOptionalAction, default=True, help=None)
 
+    args = parser.parse_args()
     check_dependency(args)
+    tags_encoded = []
+    if args.tag:
+        tags_encoded.append('_'.join(args.tag))
     args.log_folder = configure_log_folder(args)
     configure_log(args)
-    box_v2_metric(args)
-    box_v3_metric(args)
+    configure_bbox_metric(args)
 
     args.architecture_type = get_architecture_type(args.wsol_method)
-    args.data_paths = configure_data_paths(args)
-    args.metadata_root = ospj(args.metadata_root, args.dataset_name)
-    args.mask_root = configure_mask_root(args)
+    args.data_paths = configure_data_paths(args, tags=tags_encoded)
+    args.metadata_root = ospj(args.metadata_root, args.dataset_name, *tags_encoded)
+    args.mask_root = configure_mask_root(args, tags=tags_encoded)
     args.scoremap_paths = configure_scoremap_output_paths(args)
     args.reporter, args.reporter_log_root = configure_reporter(args)
     args.pretrained_path = configure_pretrained_path(args)

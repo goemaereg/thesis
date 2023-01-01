@@ -66,7 +66,7 @@ class Trainer(object):
         "CUB": 200,
         "ILSVRC": 1000,
         "OpenImages": 100,
-        "SYN": 9
+        "SYNTHETIC": 9
     }
     _FEATURE_PARAM_LAYER_PATTERNS = {
         'vgg': ['features.', 'conv6.'],
@@ -102,7 +102,7 @@ class Trainer(object):
             num_val_sample_per_class=self.args.num_val_sample_per_class,
             class_set_size=class_set_size,
             batch_set_size=batch_set_size,
-            tags=self.args.tag
+            train_augment=self.args.train_augment
         )
 
     def _set_performance_meters(self):
@@ -242,13 +242,20 @@ class Trainer(object):
         # compute losses
         loss_crr = 0.0
         loss_frr = 0.0
-        ss = self.args.minmaxcam_class_set_size
-        bs = self.args.minmaxcam_batch_set_size
-        for b in range(bs):
+        # compute ss and bs per target
+        # ss and bs can be less than minmaxcam_class_set_size and minmaxcam_batch_set_size
+        # for small datasets
+        # ss = self.args.minmaxcam_class_set_size
+        # bs = self.args.minmaxcam_batch_set_size
+        bs = np.unique(labels).shape[0]
+        starts = np.nonzero(np.r_[1, np.diff(labels)])[0]
+        stops = np.nonzero(np.r_[0, np.diff(labels), 1])[0]
+        for start, stop in zip(starts, stops):
             loss_crr_ss = 0.0
             f_i_pair_num = 0
-            features_i_ss = features_i[b*ss:(b+1)*ss]
-            features_o_ss = features_o[b*ss:(b+1)*ss]
+            features_i_ss = features_i[start:stop]
+            features_o_ss = features_o[start:stop]
+            ss = stop - start
             for j, k in itertools.combinations(range(ss), 2):
                 f_i_pair_num += 1
                 feature_i_ss_j = features_i_ss[j].unsqueeze(0)
@@ -268,10 +275,10 @@ class Trainer(object):
         num_correct = 0
         num_images = 0
 
-        tq0 = tqdm.tqdm(loader, total=len(loader), desc='loader')
-        for batch_idx, (images, target, _) in enumerate(tq0):
+        tq0 = tqdm.tqdm(loader, total=len(loader), desc='train batches')
+        for batch_idx, (images, targets, _) in enumerate(tq0):
             images = images.to(self._DEVICE) # images.cuda()
-            target = target.to(self._DEVICE) #.cuda()
+            targets = targets.to(self._DEVICE) #.cuda()
 
             if int(batch_idx % max(len(loader) // 10, 1)) == 0:
                 print(" iteration ({} / {})".format(batch_idx + 1, len(loader)))
@@ -286,11 +293,11 @@ class Trainer(object):
                     param.requires_grad = True
 
             self.model.train()
-            logits, loss = self._wsol_training(images, target)
+            logits, loss = self._wsol_training(images, targets)
             pred = logits.argmax(dim=1)
 
             total_loss += loss.item() * images.size(0)
-            num_correct += (pred == target).sum().item()
+            num_correct += (pred == targets).sum().item()
             num_images += images.size(0)
 
             self.optimizer.zero_grad()
@@ -310,16 +317,22 @@ class Trainer(object):
                 self.model.eval()
 
                 loss_crr, loss_frr = \
-                    self.vgg16_minmaxcam_regularization_loss(images, target)
+                    self.vgg16_minmaxcam_regularization_loss(images, targets)
 
                 self.model.train()
                 loss_all_p2 = self.args.minmaxcam_crr_weight * loss_crr + \
                               self.args.minmaxcam_frr_weight * loss_frr
-                loss_all_p2.backward()
+                try:
+                    loss_all_p2.backward()
+                except RuntimeError as e:
+                    print(e)
+                    print(loss_all_p2)
                 self.optimizer.step()
 
         loss_average = total_loss / float(num_images)
-        classification_acc = num_correct / float(num_images) * 100
+        if loss_average > 1000:
+            print(loss_average)
+        classification_acc = num_correct / float(num_images) # * 100
 
         self.performance_meters[split]['classification'].update(
             classification_acc)
@@ -354,7 +367,7 @@ class Trainer(object):
         num_correct = 0
         num_images = 0
 
-        tq0 = tqdm.tqdm(loader, total=len(loader), desc='loader')
+        tq0 = tqdm.tqdm(loader, total=len(loader), desc='compute_accuracy')
         for _, (images, targets, image_ids) in enumerate(tq0):
             images = images.to(self._DEVICE) #.cuda()
             targets = targets.to(self._DEVICE) #.cuda()
@@ -364,10 +377,10 @@ class Trainer(object):
             num_correct += (pred == targets).sum().item()
             num_images += images.size(0)
 
-        classification_acc = num_correct / float(num_images) * 100
+        classification_acc = num_correct / float(num_images) # * 100
         return classification_acc
 
-    def evaluate(self, epoch, split):
+    def evaluate(self, epoch, split, save_cams=False):
         print("Evaluate epoch {}, split {}".format(epoch, split))
         self.model.eval()
 
@@ -391,13 +404,13 @@ class Trainer(object):
         cam_performance = None
         metric = 'localization'
         if isinstance(cam_computer.evaluator, MultiEvaluator):
-            cam_performance, loc_score = cam_computer.compute_and_evaluate_cams()
+            cam_performance, loc_score = cam_computer.compute_and_evaluate_cams(save_cams=save_cams)
             self.performance_meters[split][metric].update(loc_score)
             metric = 'localization2'
         elif isinstance(cam_computer.evaluator, BoxEvaluator):
-            cam_performance = cam_computer.compute_and_evaluate_cams()
+            cam_performance = cam_computer.compute_and_evaluate_cams(save_cams=save_cams)
         elif isinstance(cam_computer.evaluator, MaskEvaluator):
-            loc_score = cam_computer.compute_and_evaluate_cams()
+            loc_score = cam_computer.compute_and_evaluate_cams(save_cams=save_cams)
             self.performance_meters[split][metric].update(loc_score)
         else:
             raise NotImplementedError()
@@ -478,35 +491,32 @@ class Trainer(object):
 
 
 def main():
-
     trainer = Trainer()
-
     print("===========================================================")
     print(f"Accelerator: {accelerator_get()}")
-    print("Evaluate epoch 0 ...")
-    trainer.evaluate(epoch=0, split='val')
-    trainer.print_performances()
-    trainer.report(epoch=0, split='val')
-    trainer.save_checkpoint(epoch=0, split='val')
-    print("Epoch 0 done.")
-    tq0 = tqdm.tqdm(range(trainer.args.epochs), total=trainer.args.epochs, desc='training epochs')
-    for epoch in tq0:
-        print("===========================================================")
-        print("Start epoch {} ...".format(epoch + 1))
-        trainer.adjust_learning_rate(epoch + 1)
-        train_performance = trainer.train(split='train')
-        trainer.report_train(train_performance, epoch + 1, split='train')
-        trainer.evaluate(epoch + 1, split='val')
+    if trainer.args.train:
+        print("Evaluate epoch 0 ...")
+        trainer.evaluate(epoch=0, split='val')
         trainer.print_performances()
-        trainer.report(epoch + 1, split='val')
-        trainer.save_checkpoint(epoch + 1, split='val')
-        print("Epoch {} done.".format(epoch + 1))
-
+        trainer.report(epoch=0, split='val')
+        trainer.save_checkpoint(epoch=0, split='val')
+        print("Epoch 0 done.")
+        tq0 = tqdm.tqdm(range(trainer.args.epochs), total=trainer.args.epochs, desc='training epochs')
+        for epoch in tq0:
+            print("===========================================================")
+            print("Start training epoch {} ...".format(epoch + 1))
+            trainer.adjust_learning_rate(epoch + 1)
+            train_performance = trainer.train(split='train')
+            trainer.report_train(train_performance, epoch + 1, split='train')
+            trainer.evaluate(epoch + 1, split='val')
+            trainer.print_performances()
+            trainer.report(epoch + 1, split='val')
+            trainer.save_checkpoint(epoch + 1, split='val')
+            print("Epoch {} done.".format(epoch + 1))
     print("===========================================================")
     print("Final epoch evaluation on test set ...")
-
     trainer.load_checkpoint(checkpoint_type=trainer.args.eval_checkpoint_type)
-    trainer.evaluate(trainer.args.epochs, split='test')
+    trainer.evaluate(trainer.args.epochs, split='test', save_cams=True)
     trainer.print_performances()
     trainer.report(trainer.args.epochs, split='test')
     trainer.save_performances()

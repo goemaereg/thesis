@@ -320,7 +320,7 @@ class BoxEvaluator(LocalizationEvaluator):
         max_box_acc = []
 
         for _THRESHOLD in self.iou_threshold_list:
-            localization_accuracies = self.num_correct[_THRESHOLD] * 100. / \
+            localization_accuracies = self.num_correct[_THRESHOLD] * 1. / \
                                       float(self.cnt)
             max_box_acc.append(localization_accuracies.max())
 
@@ -445,13 +445,17 @@ class MaskEvaluator(LocalizationEvaluator):
         if ((tp + fp) <= 0).all():
             raise RuntimeError("No positive prediction in the eval set.")
 
+        precision_denominator = tp + fp
+        precision_denominator[(tp + fp) == 0] = 1
+        precision = tp / precision_denominator
+
+        recall_denominator = tp + fn
+        recall_denominator[(tp + fn) == 0] = 1
+        recall = tp / recall_denominator
+
         non_zero_indices = (tp + fp) != 0
-
-        precision = tp / (tp + fp)
-        recall = tp / (tp + fn)
-
         auc = (precision[1:] * np.diff(recall))[non_zero_indices[1:]].sum()
-        auc *= 100
+        # auc *= 100
 
         print("Mask AUC on split {}: {}".format(self.split, auc))
         return auc
