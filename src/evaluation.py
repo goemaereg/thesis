@@ -19,6 +19,8 @@ _IMAGENET_MEAN = [0.485, .456, .406]
 _IMAGENET_STDDEV = [.229, .224, .225]
 _RESIZE_LENGTH = 224
 _CONTOUR_INDEX = 1 if cv2.__version__.split('.')[0] == '3' else 0
+_BBOX_METRIC_NAMES = ('MaxBoxAcc', 'MaxBoxAccV2', 'MaxBoxAccV3')
+_BBOX_METRIC_DEFAULT = 'MaxBoxAccV2'
 
 
 def calculate_multiple_iou(box_a, box_b):
@@ -176,8 +178,9 @@ class LocalizationEvaluator(object):
     localization performance.
     """
 
-    def __init__(self, metadata, dataset_name, split, cam_threshold_list,
+    def __init__(self, metric, metadata, dataset_name, split, cam_threshold_list,
                  iou_threshold_list, mask_root, multi_contour_eval, multi_gt_eval=False):
+        self.metric = metric
         self.metadata = metadata
         self.cam_threshold_list = cam_threshold_list
         self.iou_threshold_list = iou_threshold_list
@@ -195,9 +198,8 @@ class LocalizationEvaluator(object):
 
 
 class BoxEvaluator(LocalizationEvaluator):
-    def __init__(self, **kwargs):
-        super(BoxEvaluator, self).__init__(**kwargs)
-
+    def __init__(self, metric='MaxBoxAccV2', **kwargs):
+        super(BoxEvaluator, self).__init__(metric=metric, **kwargs)
         self.image_ids = get_image_ids(metadata=self.metadata)
         self.resize_length = _RESIZE_LENGTH
         self.cnt = 0
@@ -317,14 +319,21 @@ class BoxEvaluator(LocalizationEvaluator):
                box prediction is correct. The best scoremap threshold is taken
                for the final performance.
         """
+        metrics = {}
         max_box_acc = []
-
         for _THRESHOLD in self.iou_threshold_list:
             localization_accuracies = self.num_correct[_THRESHOLD] * 1. / \
                                       float(self.cnt)
             max_box_acc.append(localization_accuracies.max())
 
-        return max_box_acc
+        if self.metric == 'MaxBoxAcc':
+            metrics |= {self.metric: max_box_acc[self.iou_threshold_list.index(50)]}
+        else:
+            metrics |= {self.metric: np.average(max_box_acc)}
+        for index, threshold in enumerate(self.iou_threshold_list):
+            metrics |= {f'{self.metric}_IOU_{threshold}': max_box_acc[index]}
+
+        return metrics
 
 
 def load_mask_image(file_path, resize_size):
@@ -379,7 +388,7 @@ def get_mask(mask_root, mask_paths, ignore_path):
 
 class MaskEvaluator(LocalizationEvaluator):
     def __init__(self, **kwargs):
-        super(MaskEvaluator, self).__init__(**kwargs)
+        super(MaskEvaluator, self).__init__(metric='PxAP', **kwargs)
 
         # if self.dataset_name != "OpenImages":
         #     raise ValueError("Mask evaluation must be performed on OpenImages.")
@@ -455,15 +464,13 @@ class MaskEvaluator(LocalizationEvaluator):
 
         non_zero_indices = (tp + fp) != 0
         auc = (precision[1:] * np.diff(recall))[non_zero_indices[1:]].sum()
-        # auc *= 100
 
-        print("Mask AUC on split {}: {}".format(self.split, auc))
-        return auc
+        return {self.metric: auc}
 
 
 class MultiEvaluator():
-    def __init__(self, **kwargs):
-        self.box_evaluator = BoxEvaluator(**kwargs)
+    def __init__(self, metric='MaxBoxAccV2', **kwargs):
+        self.box_evaluator = BoxEvaluator(metric=metric, **kwargs)
         self.mask_evaluator = MaskEvaluator(**kwargs)
 
     def accumulate(self, scoremap, image_id):
@@ -471,7 +478,7 @@ class MultiEvaluator():
         self.mask_evaluator.accumulate(scoremap, image_id)
 
     def compute(self):
-        return (self.box_evaluator.compute(), self.mask_evaluator.compute())
+        return self.box_evaluator.compute() | self.mask_evaluator.compute()
 
 def _get_cam_loader(image_ids, scoremap_path):
     return torchdata.DataLoader(
@@ -484,7 +491,7 @@ def _get_cam_loader(image_ids, scoremap_path):
 
 def evaluate_wsol(scoremap_root, metadata_root, mask_root, dataset_name, split,
                   multi_contour_eval, multi_iou_eval, iou_threshold_list,
-                  cam_curve_interval=.001):
+                  cam_curve_interval=.001, tags=[]):
     """
     Compute WSOL performances of predicted heatmaps against ground truth
     boxes (CUB, ILSVRC) or masks (OpenImages). For boxes, we compute the
@@ -514,12 +521,13 @@ def evaluate_wsol(scoremap_root, metadata_root, mask_root, dataset_name, split,
         cam_curve_interval: float. Default 0.001. At which threshold intervals
             will the heatmaps be evaluated?
     Returns:
-        performance: float. For CUB and ILSVRC, maxboxacc is returned.
+        performance: dict. For CUB and ILSVRC, maxboxacc is returned.
             For OpenImages, area-under-curve of the precision-recall curve
             is returned.
     """
     print("Loading and evaluating cams.")
-    meta_path = os.path.join(metadata_root, dataset_name, split)
+    meta_path = os.path.join(metadata_root, dataset_name, *tags)
+    meta_path = os.path.join(meta_path, split)
     metadata = configure_metadata(meta_path)
     image_ids = get_image_ids(metadata)
     #cam_threshold_list = list(np.arange(0, 1, cam_curve_interval))
@@ -543,14 +551,10 @@ def evaluate_wsol(scoremap_root, metadata_root, mask_root, dataset_name, split,
     for cams, image_ids in cam_loader:
         for cam, image_id in zip(cams, image_ids):
             evaluator.accumulate(t2n(cam), image_id)
-    performance = evaluator.compute()
-    if multi_iou_eval or dataset_name == 'OpenImages':
-        performance = np.average(performance)
-    else:
-        performance = performance[iou_threshold_list.index(50)]
-
-    print('localization: {}'.format(performance))
-    return performance
+    metrics = evaluator.compute()
+    for metric, value in metrics.items():
+        print(f'{metric}: {value}')
+    return metrics
 
 
 def main():
@@ -576,9 +580,23 @@ def main():
                         const=True, default=False)
     parser.add_argument('--iou_threshold_list', nargs='+',
                         type=int, default=[30, 50, 70])
+    parser.add_argument('--bbox_metric', type=str, default=_BBOX_METRIC_DEFAULT,
+                        choices=_BBOX_METRIC_NAMES)
+    # tags
+    parser.add_argument('--tag', action='append', type=str, default=[],
+                        help='tags used to partition SYNTHETHIC dataset. '
+                             'tag1 = <choice o (overlapping) | d (disjunct)'
+                             'tag2 = <n_instances: 0..4>'
+                             'tag3 = <choice b (background) | t (transparent'),
+
 
     args = parser.parse_args()
-    evaluate_wsol(scoremap_root=args.scoremap_root,
+    tags_encoded = []
+    if args.tag:
+        tags_encoded.append('_'.join(args.tag))
+    scoremap_root = os.path.join(args.scoremap_root, *tags_encoded)
+
+    evaluate_wsol(scoremap_root=scoremap_root,
                   metadata_root=args.metadata_root,
                   mask_root=args.mask_root,
                   dataset_name=args.dataset_name,
@@ -586,7 +604,8 @@ def main():
                   cam_curve_interval=args.cam_curve_interval,
                   multi_contour_eval=args.multi_contour_eval,
                   multi_iou_eval=args.multi_iou_eval,
-                  iou_threshold_list=args.iou_threshold_list,)
+                  iou_threshold_list=args.iou_threshold_list,
+                  tags=tags_encoded)
 
 
 if __name__ == "__main__":

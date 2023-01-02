@@ -5,8 +5,7 @@ import os
 from os.path import join as ospj
 import shutil
 import warnings
-
-from util import Logger
+from util import Logger, Reporter
 
 _DATASET_NAMES = ('CUB', 'ILSVRC', 'OpenImages', 'SYNTHETIC')
 _ARCHITECTURE_NAMES = ('vgg16', 'resnet50', 'inception_v3')
@@ -98,7 +97,7 @@ def configure_log(args):
 
 
 def configure_reporter(args):
-    reporter = importlib.import_module('util').Reporter
+    reporter = Reporter # importlib.import_module('util').Reporter
     reporter_log_root = ospj(args.log_folder, 'reports')
     if not os.path.isdir(reporter_log_root):
         os.makedirs(reporter_log_root)
@@ -180,7 +179,7 @@ def get_configs():
                         help='Mini-batch size (default: 64), this is the total'
                              'batch size of all GPUs on the current node when'
                              'using Data Parallel or Distributed Data Parallel')
-    parser.add_argument('--lr', default=0.01, type=float,
+    parser.add_argument('--lr', default=0.001, type=float, #default=0.01, type=float,
                         help='initial learning rate', dest='lr')
     parser.add_argument('--lr_decay_frequency', type=int, default=30,
                         help='How frequently do we decay the learning rate?')

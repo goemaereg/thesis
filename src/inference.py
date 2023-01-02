@@ -37,7 +37,8 @@ def normalize_scoremap(cam):
 class CAMComputer(object):
     def __init__(self, model, loader, metadata_root, mask_root,
                  iou_threshold_list, dataset_name, split,
-                 multi_contour_eval, multi_gt_eval=False, cam_curve_interval=.001, log_folder=None,
+                 multi_contour_eval, multi_gt_eval=False, cam_curve_interval=.001,
+                 bbox_metric='MaxBoxAccV2', log_folder=None,
                  device='cpu'):
         self.model = model
         self.model.eval()
@@ -58,7 +59,8 @@ class CAMComputer(object):
                                           iou_threshold_list=iou_threshold_list,
                                           mask_root=mask_root,
                                           multi_contour_eval=multi_contour_eval,
-                                          multi_gt_eval=multi_gt_eval)
+                                          multi_gt_eval=multi_gt_eval,
+                                          metric=bbox_metric)
         self.image_sizes = get_image_sizes(metadata)
 
 
