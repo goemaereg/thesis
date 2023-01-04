@@ -1,9 +1,5 @@
 import cv2
 import numpy as np
-import os
-from os.path import join as ospj
-from os.path import dirname as ospd
-
 from evaluation import BoxEvaluator
 from evaluation import MaskEvaluator
 from evaluation import MultiEvaluator
@@ -64,7 +60,7 @@ class CAMComputer(object):
         self.image_sizes = get_image_sizes(metadata)
 
 
-    def compute_and_evaluate_cams(self, save_cams=False):
+    def compute_and_evaluate_cams(self):
         print("Computing and evaluating cams.")
         tq0 = tqdm.tqdm(self.loader, total=len(self.loader), desc='evaluate_cam_batches')
         for images, targets, image_ids in tq0:
@@ -76,23 +72,6 @@ class CAMComputer(object):
             cams_it = zip(cams, image_ids)
             tq1 = tqdm.tqdm(cams_it, total=len(cams), desc='evaluate_cams')
             for cam, image_id in tq1:
-                if save_cams and self.split in ('val', 'test'):
-                    # render the CAM heatmap
-                    data_root = self.loader.dataset.data_root
-                    path_img = os.path.join(data_root, image_id)
-                    img = cv2.imread(path_img)
-                    orig_img_shape = self.image_sizes[image_id]
-                    _cam = cv2.resize(cam, orig_img_shape, interpolation=cv2.INTER_CUBIC)
-                    _cam_norm = normalize_scoremap(_cam)
-                    _cam_grey = (_cam_norm * 255).astype('uint8')
-                    heatmap = cv2.applyColorMap(_cam_grey, cv2.COLORMAP_JET)
-                    result = heatmap * 0.3 + img * 0.5
-                    cam_path = ospj(self.log_folder, 'scoremaps', self.split, image_id)
-                    if not os.path.exists(ospd(cam_path)):
-                        os.makedirs(ospd(cam_path))
-                    cv2.imwrite(cam_path, result)
-                    # np.save(ospj(cam_path), cam_normalized)
-
                 cam_resized = cv2.resize(cam, image_size,
                                          interpolation=cv2.INTER_CUBIC)
                 cam_normalized = normalize_scoremap(cam_resized)

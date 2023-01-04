@@ -136,8 +136,8 @@ def compute_bboxes_from_scoremaps(scoremap, scoremap_threshold_list,
             x1 = min(x1, width - 1)
             y1 = min(y1, height - 1)
             estimated_boxes.append([x0, y0, x1, y1])
-
         return np.asarray(estimated_boxes), len(contours)
+
 
     estimated_boxes_at_each_thr = []
     number_of_box_list = []
@@ -196,6 +196,9 @@ class LocalizationEvaluator(object):
     def compute(self):
         raise NotImplementedError
 
+    def compute_optimal_cam_threshold(self, iou_threshold):
+        raise NotImplementedError
+
 
 class BoxEvaluator(LocalizationEvaluator):
     def __init__(self, metric='MaxBoxAccV2', **kwargs):
@@ -218,12 +221,12 @@ class BoxEvaluator(LocalizationEvaluator):
             for image_id in self.image_ids}
         return resized_bbox
 
-    def accumulate_maxboxacc_v2(self, multiple_iou, number_of_box_list):
+    def accumulate_maxboxacc_v1_2(self, multiple_iou, number_of_box_list):
         # Computes best match (1 box) over sets of estimated and GT-boxes per threshold
         # Result is 1 IOU value per threshold
         """
         Computes best match (1 box) over sets of estimated_boxes and GT-boxes per threshold
-        Result per IOU threshold is 1 IOU value per GT-box per scoremap threshold
+        Result per IOU threshold is 1 IOU value per scoremap threshold
 
         Args:
             multiple_iou: numpy.ndarray(dtype=np.float,
@@ -245,7 +248,7 @@ class BoxEvaluator(LocalizationEvaluator):
     def accumulate_maxboxacc_v3(self, multiple_iou, number_of_box_list):
         """
         Computes best match per threshold per gt-box over sets of estimated_boxes[threshold]
-        Result per IOU threshold is 1 IOU value per GT-box per scoremap threshold
+        Result per IOU threshold is 1 IOU value per scoremap threshold
 
         Args:
             multiple_iou: numpy.ndarray(dtype=np.float,
@@ -256,10 +259,9 @@ class BoxEvaluator(LocalizationEvaluator):
         sliced_multiple_iou = []
         num_thresholds = len(self.cam_threshold_list)
         num_gt_boxes = multiple_iou.shape[1]
-        multi_iou_copy = multiple_iou.copy()
         for nr_box in number_of_box_list:
             gt_iou_max = []
-            slice_multi_iou = multi_iou_copy[idx : idx + nr_box]
+            slice_multi_iou = multiple_iou[idx : idx + nr_box].copy()
             for _ in range(num_gt_boxes):
                 max_iou_index = np.unravel_index(np.argmax(slice_multi_iou), shape=slice_multi_iou.shape)
                 gt_iou_max.append(slice_multi_iou[max_iou_index[0], max_iou_index[1]])
@@ -310,7 +312,7 @@ class BoxEvaluator(LocalizationEvaluator):
         if self.multi_gt_eval:
             self.accumulate_maxboxacc_v3(multiple_iou, number_of_box_list)
         else:
-            self.accumulate_maxboxacc_v2(multiple_iou, number_of_box_list)
+            self.accumulate_maxboxacc_v1_2(multiple_iou, number_of_box_list)
 
     def compute(self):
         """
@@ -334,6 +336,17 @@ class BoxEvaluator(LocalizationEvaluator):
             metrics |= {f'{self.metric}_IOU_{threshold}': max_box_acc[index]}
 
         return metrics
+
+    def compute_optimal_cam_threshold(self, iou_threshold):
+        """
+        Returns:
+            optimal cam threshold t = max<t> BoxAcc(t, iou_threshold)
+            index of optimal threshold in list of cam thresholds
+        """
+        box_acc_list = self.num_correct[iou_threshold] * 1. / float(self.cnt)
+        optimal_threshold_index = np.argmax(box_acc_list)
+        optimal_threshold = self.cam_threshold_list[optimal_threshold_index]
+        return optimal_threshold, optimal_threshold_index
 
 
 def load_mask_image(file_path, resize_size):
@@ -479,6 +492,10 @@ class MultiEvaluator():
 
     def compute(self):
         return self.box_evaluator.compute() | self.mask_evaluator.compute()
+
+    def compute_optimal_cam_threshold(self, iou_threshold):
+        return self.box_evaluator.compute_optimal_cam_threshold(iou_threshold)
+
 
 def _get_cam_loader(image_ids, scoremap_path):
     return torchdata.DataLoader(

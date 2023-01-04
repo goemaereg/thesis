@@ -98,10 +98,11 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
             ignore_mask = np.ones(h[0].shape) > 0  # used to mask upper-layer overlapping segments
             for _h in h.copy():
                 _h *= ignore_mask.astype('uint8')
-                _x, _y = np.ma.where(_h > 0)
-                if len(_x) > 0:
-                    xmin, xmax = min(_x), max(_x)
-                    ymin, ymax = min(_y), max(_y)
+                _rows, _cols = np.ma.where(_h > 0)
+                if len(_cols) > 0:
+                    # locations are stored in (x,y) notation: x:colum, y:row
+                    xmin, xmax = min(_cols), max(_cols)
+                    ymin, ymax = min(_rows), max(_rows)
                     # store location
                     locations.append(f'{data_mode}/{image_id},{xmin},{ymin},{xmax},{ymax}')
                     bbox_list.append((xmin, ymin, xmax, ymax))
@@ -147,17 +148,19 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
             # metadata: bounding boxes
             for idx, _h in enumerate(h):
                 # get bounding box of segments before resizing
-                _x, _y = np.ma.where(_h > 0)
-                xmin, xmax = min(_x), max(_x)
-                ymin, ymax = min(_y), max(_y)
+                _rows, _cols = np.ma.where(_h > 0)
+                # locations are stored in (x,y) notation: x:colum, y:row
+                xmin, xmax = min(_cols), max(_cols)
+                ymin, ymax = min(_rows), max(_rows)
                 # transform bounding box
                 # add tile offsets
                 tile_x = image_tile_idx[idx] // tile_dim
                 tile_y = image_tile_idx[idx] % tile_dim
-                xmin += tile_x * _h.shape[0]
-                xmax += tile_x * _h.shape[0]
-                ymin += tile_y * _h.shape[1]
-                ymax += tile_y * _h.shape[1]
+                tile_height, tile_width = _h.shape
+                xmin += tile_x * tile_width
+                xmax += tile_x * tile_width
+                ymin += tile_y * tile_height
+                ymax += tile_y * tile_height
                 # resize boxes
                 xmin //= tile_dim
                 xmax //= tile_dim

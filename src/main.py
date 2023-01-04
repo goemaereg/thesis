@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 import os
 import pickle
@@ -8,9 +9,10 @@ import torch.optim
 import torch.nn.functional as F
 
 from config import get_configs
-from dataloaders import get_data_loader
-from inference import CAMComputer
-from util import string_contains_any #, t2n
+from dataloaders import get_data_loader, configure_metadata, get_image_sizes, get_bounding_boxes
+from inference import CAMComputer, normalize_scoremap
+from src.evaluation import MaskEvaluator, compute_bboxes_from_scoremaps
+from util import string_contains_any, t2n  # , t2n
 import wsol
 # import wsol.method
 import itertools
@@ -381,10 +383,67 @@ class Trainer(object):
         classification_acc = num_correct / float(num_images) # * 100
         return classification_acc
 
+    def save_cams(self, loader, split, evaluator):
+        has_opt_cam_thresh = not isinstance(evaluator, MaskEvaluator)
+        # dummy init to get rid of pycharm warning that this variable can be accessed before assignment
+        opt_cam_thresh = 0
+        if has_opt_cam_thresh:
+            opt_cam_thresh, opt_cam_thresh_index = evaluator.compute_optimal_cam_threshold(50)
+        metadata_root = os.path.join(self.args.metadata_root, split)
+        metadata = configure_metadata(metadata_root)
+        image_sizes = get_image_sizes(metadata)
+        gt_bbox_dict = get_bounding_boxes(metadata)
+        tq0 = tqdm.tqdm(loader, total=len(loader), desc='evaluate_save_cam_batches')
+        for images, targets, image_ids in tq0:
+            images = images.to(self._DEVICE)  # .cuda()
+            result = self.model(images, targets, return_cam=True)
+            cams = result['cams'].detach().clone()
+            cams = t2n(cams)
+            cams_it = zip(cams, image_ids)
+            tq1 = tqdm.tqdm(cams_it, total=len(cams), desc='evaluate_save_cams')
+            for cam, image_id in tq1:
+                # render the CAM heatmap
+                data_root = loader.dataset.data_root
+                path_img = os.path.join(data_root, image_id)
+                img = cv2.imread(path_img) # color channels in BGR format
+                orig_img_shape = image_sizes[image_id]
+                _cam = cv2.resize(cam, orig_img_shape, interpolation=cv2.INTER_CUBIC)
+                _cam_norm = normalize_scoremap(_cam)
+                _cam_grey = (_cam_norm * 255).astype('uint8')
+                heatmap = cv2.applyColorMap(_cam_grey, cv2.COLORMAP_JET)
+                cam_annotated = heatmap * 0.3 + img * 0.5
+                cam_path = ospj(self.args.log_folder, 'scoremaps', split, image_id)
+                if not os.path.exists(os.path.dirname(cam_path)):
+                    os.makedirs(os.path.dirname(cam_path))
+                cv2.imwrite(cam_path, cam_annotated)
+
+                # render mask and bbox CAM heatmap
+                image = None
+                if has_opt_cam_thresh:
+                    gt_bbox_list = gt_bbox_dict[image_id]
+                    est_bbox_per_thresh, _ = compute_bboxes_from_scoremaps(
+                        _cam_norm, [opt_cam_thresh],
+                        multi_contour_eval=self.args.multi_contour_eval)
+                    est_bbox_list = est_bbox_per_thresh[0]
+                    if (len(gt_bbox_list) + len(est_bbox_list)) > 0:
+                        image = img
+                        thickness = 2  # Pixels
+                        for bbox in gt_bbox_list:
+                            start, end = bbox[:2], bbox[2:]
+                            color = (0, 255, 0) # Green color in BGR
+                            image = cv2.rectangle(image, start, end, color, thickness)
+                        for bbox in est_bbox_list:
+                            start, end = bbox[:2], bbox[2:]
+                            color = (0, 0, 255) # Red color in BGR
+                            image = cv2.rectangle(image, start, end, color, thickness)
+                if image is not None:
+                    img_ann_id = f'{image_id.split(".")[0]}_ann.png'
+                    img_ann_path = ospj(self.args.log_folder, 'scoremaps', split, img_ann_id)
+                    cv2.imwrite(img_ann_path, image)
+
     def evaluate(self, epoch, split, save_cams=False):
         print("Evaluate epoch {}, split {}".format(epoch, split))
         self.model.eval()
-
         accuracy = self._compute_accuracy(loader=self.loaders[split])
         self.performance_meters[split]['classification'].update(accuracy)
 
@@ -403,9 +462,12 @@ class Trainer(object):
             device = self._DEVICE,
             bbox_metric=self.args.bbox_metric
         )
-        metrics = cam_computer.compute_and_evaluate_cams(save_cams=save_cams)
+        metrics = cam_computer.compute_and_evaluate_cams()
         for metric, value in metrics.items():
             self.performance_meters[split][metric].update(value)
+        if save_cams and split in ('val', 'test'):
+            self.save_cams(self.loaders[split], split, cam_computer.evaluator)
+
 
     def _torch_save_model(self, filename, epoch):
         torch.save({'architecture': self.args.architecture,
