@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from config import get_configs
 from dataloaders import get_data_loader, configure_metadata, get_image_sizes, get_bounding_boxes
 from inference import CAMComputer, normalize_scoremap
-from src.evaluation import MaskEvaluator, compute_bboxes_from_scoremaps
+from evaluation import MaskEvaluator, compute_bboxes_from_scoremaps
 from util import string_contains_any, t2n  # , t2n
 import wsol
 # import wsol.method
