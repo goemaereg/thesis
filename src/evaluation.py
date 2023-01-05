@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import os
 import torch.utils.data as torchdata
-
+import tqdm
 from config import str2bool, configure_bbox_metric, configure_mask_root
 from dataloaders import configure_metadata
 from dataloaders import get_image_ids
@@ -505,11 +505,79 @@ def _get_cam_loader(image_ids, scoremap_path):
         num_workers=0,
         pin_memory=True)
 
+def cam_normalize(cam):
+    if np.isnan(cam).any():
+        return np.zeros_like(cam)
+    if cam.min() == cam.max():
+        return np.zeros_like(cam)
+    cam -= cam.min()
+    cam /= cam.max()
+    return cam
 
-def evaluate_wsol(scoremap_root, metadata_root, mask_root,
+def xai_save_cams(xai_root, metadata, data_root, scoremap_root, evaluator, multi_contour_eval):
+    has_opt_cam_thresh = not isinstance(evaluator, MaskEvaluator)
+    # dummy init to get rid of pycharm warning that this variable can be accessed before assignment
+    opt_cam_thresh = 0
+    if has_opt_cam_thresh:
+        opt_cam_thresh, opt_cam_thresh_index = evaluator.compute_optimal_cam_threshold(50)
+    image_ids = get_image_ids(metadata)
+    image_sizes = get_image_sizes(metadata)
+    gt_bbox_dict = get_bounding_boxes(metadata)
+    cam_loader = _get_cam_loader(image_ids, scoremap_root)
+    tq0 = tqdm.tqdm(cam_loader, total=len(cam_loader), desc='xai_cam_batches')
+    for cams, image_ids in tq0:
+        cams = t2n(cams)
+        cams_it = zip(cams, image_ids)
+        for cam, image_id in cams_it:
+            # render image overlayed with CAM heatmap
+            path_img = os.path.join(data_root, image_id)
+            img = cv2.imread(path_img) # color channels in BGR format
+            orig_img_shape = image_sizes[image_id]
+            _cam = cv2.resize(cam, orig_img_shape, interpolation=cv2.INTER_CUBIC)
+            _cam_norm = cam_normalize(_cam)
+            _cam_grey = (_cam_norm * 255).astype('uint8')
+            heatmap = cv2.applyColorMap(_cam_grey, cv2.COLORMAP_JET)
+            cam_annotated = heatmap * 0.3 + img * 0.5
+            cam_path = os.path.join(xai_root, image_id)
+            if not os.path.exists(os.path.dirname(cam_path)):
+                os.makedirs(os.path.dirname(cam_path))
+            cv2.imwrite(cam_path, cam_annotated)
+
+            # render image with annotations and CAM overlay
+            # CAM overlay
+            _cam_mask = _cam_norm > 0
+            segment = np.zeros(shape=img.shape)
+            segment[_cam_mask] = (0, 0, 255)  # BGR
+            img_ann = segment * 0.3 + img * 0.5
+            # estimated and GT bboxes overlay
+            if has_opt_cam_thresh:
+                gt_bbox_list = gt_bbox_dict[image_id]
+                est_bbox_per_thresh, _ = compute_bboxes_from_scoremaps(
+                    _cam_norm, [opt_cam_thresh],
+                    multi_contour_eval=multi_contour_eval)
+                est_bbox_list = est_bbox_per_thresh[0]
+                if (len(gt_bbox_list) + len(est_bbox_list)) > 0:
+                    thickness = 2  # Pixels
+                    for bbox in gt_bbox_list:
+                        start, end = bbox[:2], bbox[2:]
+                        color = (0, 255, 0) # Green color in BGR
+                        img_ann = cv2.rectangle(img_ann, start, end, color, thickness)
+                    for bbox in est_bbox_list:
+                        start, end = bbox[:2], bbox[2:]
+                        color = (0, 0, 255) # Red color in BGR
+                        img_ann = cv2.rectangle(img_ann, start, end, color, thickness)
+
+            img_ann_id = f'{image_id.split(".")[0]}_ann.png'
+            img_ann_path = os.path.join(xai_root, img_ann_id)
+            if not os.path.exists(os.path.dirname(img_ann_path)):
+                os.makedirs(os.path.dirname(img_ann_path))
+            cv2.imwrite(img_ann_path, img_ann)
+
+
+def evaluate_wsol(xai_root, scoremap_root, data_root, metadata_root, mask_root,
                   iou_threshold_list, dataset_name, split,
                   multi_contour_eval, multi_gt_eval, cam_curve_interval=.01,
-                  bbox_metric='MaxBoxAccV2', log_folder=None, tags=None):
+                  bbox_metric='MaxBoxAccV2', tags=None, xai=False):
     """
     Compute WSOL performances of predicted heatmaps against ground truth
     boxes (CUB, ILSVRC) or masks (OpenImages). For boxes, we compute the
@@ -575,7 +643,11 @@ def evaluate_wsol(scoremap_root, metadata_root, mask_root,
     metrics = evaluator.compute()
     for metric, value in metrics.items():
         print(f'{metric}: {value}')
-    return metrics
+    if xai is False:
+        return
+    # XAI
+    xai_save_cams(xai_root=xai_root, metadata=metadata, data_root=data_root,
+                  scoremap_root=scoremap_root, evaluator=evaluator, multi_contour_eval=multi_contour_eval)
 
 
 def main():
@@ -585,6 +657,9 @@ def main():
     parser.add_argument('--scoremap_folder', type=str,
                         default='scoremaps',
                         help="The root folder for score maps to be evaluated.")
+    parser.add_argument('--xai_folder', type=str, default='xai', help='xai folder')
+    parser.add_argument('--data_root', type=str, default='dataset/',
+                        help='path to dataset images')
     parser.add_argument('--metadata_root', type=str, default='metadata/',
                         help="Root folder of metadata.")
     parser.add_argument('--mask_root', type=str, default='maskdata/',
@@ -605,6 +680,8 @@ def main():
                         type=int, default=[30, 50, 70])
     parser.add_argument('--bbox_metric', type=str, default=_BBOX_METRIC_DEFAULT,
                         choices=_BBOX_METRIC_NAMES)
+    parser.add_argument('--train', action=argparse.BooleanOptionalAction, default=False, help=None)
+    parser.add_argument('--xai', action=argparse.BooleanOptionalAction, default=False, help=None)
     # tags
     parser.add_argument('--tag', action='append', type=str, default=[],
                         help='tags used to partition SYNTHETHIC dataset. '
@@ -617,14 +694,18 @@ def main():
     tags = []
     if args.tag:
         tags.append('_'.join(args.tag))
+    data_root = os.path.join(args.data_root, args.dataset_name, *tags)
     metadata_root = os.path.join(args.metadata_root, args.dataset_name, *tags)
     metadata_root = os.path.join(metadata_root, args.split)
     mask_root = configure_mask_root(args, tags=tags)
     log_folder = os.path.join(args.log_folder, args.experiment_name)
     scoremap_root = os.path.join(log_folder, args.scoremap_folder)
+    xai_root = os.path.join(log_folder, args.xai_folder)
     configure_bbox_metric(args)
 
-    evaluate_wsol(scoremap_root=scoremap_root,
+    evaluate_wsol(xai_root=xai_root,
+                  scoremap_root=scoremap_root,
+                  data_root=data_root,
                   metadata_root=metadata_root,
                   mask_root=mask_root,
                   dataset_name=args.dataset_name,
@@ -633,7 +714,8 @@ def main():
                   multi_contour_eval=args.multi_contour_eval,
                   multi_gt_eval=args.multi_gt_eval,
                   iou_threshold_list=args.iou_threshold_list,
-                  tags=tags)
+                  tags=tags,
+                  xai=args.xai)
 
 
 if __name__ == "__main__":

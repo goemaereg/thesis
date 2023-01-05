@@ -69,8 +69,7 @@ class CAMComputer(object):
             cams = result['cams'].detach().clone()
             cams = t2n(cams)
             cams_it = zip(cams, image_ids)
-            tq1 = tqdm.tqdm(cams_it, total=len(cams), desc='evaluate_cams')
-            for cam, image_id in tq1:
+            for cam, image_id in cams_it:
                 cam_resized = cv2.resize(cam, image_size,
                                          interpolation=cv2.INTER_CUBIC)
                 cam_normalized = normalize_scoremap(cam_resized)

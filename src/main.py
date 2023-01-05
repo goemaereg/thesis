@@ -245,8 +245,7 @@ class Trainer(object):
         loss_crr = 0.0
         loss_frr = 0.0
         # compute ss and bs per target
-        # ss and bs can be less than minmaxcam_class_set_size and minmaxcam_batch_set_size
-        # for small datasets
+        # ss and bs can be less than minmaxcam_class_set_size and minmaxcam_batch_set_size for small datasets
         # ss = self.args.minmaxcam_class_set_size
         # bs = self.args.minmaxcam_batch_set_size
         bs = np.unique(labels).shape[0]
@@ -364,6 +363,21 @@ class Trainer(object):
         with open(log_path, 'wb') as f:
             pickle.dump(self.performance_meters, f)
 
+    def _compute_loss(self, loader):
+        total_loss = 0.0
+        num_images = 0
+        tq0 = tqdm.tqdm(loader, total=len(loader), desc='compute_loss')
+        for images, targets, image_ids in tq0:
+            images = images.to(self._DEVICE) #.cuda()
+            targets = targets.to(self._DEVICE) #.cuda()
+            output_dict = self.model(images)
+            logits = output_dict['logits']
+            loss = self.cross_entropy_loss(logits, targets)
+            total_loss += loss.item() * images.size(0)
+            num_images += images.size(0)
+        loss_average = total_loss / float(num_images)
+        return loss_average
+
     def _compute_accuracy(self, loader):
         num_correct = 0
         num_images = 0
@@ -400,7 +414,7 @@ class Trainer(object):
             cams_it = zip(cams, image_ids)
             tq1 = tqdm.tqdm(cams_it, total=len(cams), desc='evaluate_save_cams')
             for cam, image_id in tq1:
-                # render the CAM heatmap
+                # render image with CAM heatmap overlay
                 data_root = loader.dataset.data_root
                 path_img = os.path.join(data_root, image_id)
                 img = cv2.imread(path_img) # color channels in BGR format
@@ -415,8 +429,13 @@ class Trainer(object):
                     os.makedirs(os.path.dirname(cam_path))
                 cv2.imwrite(cam_path, cam_annotated)
 
-                # render mask and bbox CAM heatmap
-                image = None
+                # render image with annotations and CAM overlay
+                # CAM mask overlay
+                _cam_mask = _cam_norm > 0
+                segment = np.zeros(shape=img.shape)
+                segment[_cam_mask] = (0, 0, 255)  # BGR
+                img_ann = segment * 0.3 + img * 0.5
+                # estimated and GT bboxes overlay
                 if has_opt_cam_thresh:
                     gt_bbox_list = gt_bbox_dict[image_id]
                     est_bbox_per_thresh, _ = compute_bboxes_from_scoremaps(
@@ -429,44 +448,46 @@ class Trainer(object):
                         for bbox in gt_bbox_list:
                             start, end = bbox[:2], bbox[2:]
                             color = (0, 255, 0) # Green color in BGR
-                            image = cv2.rectangle(image, start, end, color, thickness)
+                            img_ann = cv2.rectangle(img_ann, start, end, color, thickness)
                         for bbox in est_bbox_list:
                             start, end = bbox[:2], bbox[2:]
                             color = (0, 0, 255) # Red color in BGR
-                            image = cv2.rectangle(image, start, end, color, thickness)
-                if image is not None:
-                    img_ann_id = f'{image_id.split(".")[0]}_ann.png'
-                    img_ann_path = os.path.join(self.args.log_folder, 'scoremaps', img_ann_id)
-                    if not os.path.exists(os.path.dirname(img_ann_path)):
-                        os.makedirs(os.path.dirname(img_ann_path))
-                    cv2.imwrite(img_ann_path, image)
+                            img_ann = cv2.rectangle(img_ann, start, end, color, thickness)
+                img_ann_id = f'{image_id.split(".")[0]}_ann.png'
+                img_ann_path = os.path.join(self.args.log_folder, 'scoremaps', img_ann_id)
+                if not os.path.exists(os.path.dirname(img_ann_path)):
+                    os.makedirs(os.path.dirname(img_ann_path))
+                cv2.imwrite(img_ann_path, img_ann)
 
     def evaluate(self, epoch, split, save_cams=False):
         print("Evaluate epoch {}, split {}".format(epoch, split))
         self.model.eval()
-        accuracy = self._compute_accuracy(loader=self.loaders[split])
-        self.performance_meters[split]['classification'].update(accuracy)
+        with torch.no_grad():
+            loss = self._compute_loss(loader=self.loaders[split])
+            self.performance_meters[split]['loss'].update(loss)
+            accuracy = self._compute_accuracy(loader=self.loaders[split])
+            self.performance_meters[split]['classification'].update(accuracy)
 
-        cam_computer = CAMComputer(
-            model=self.model,
-            loader=self.loaders[split],
-            metadata_root=os.path.join(self.args.metadata_root, split),
-            mask_root=self.args.mask_root,
-            iou_threshold_list=self.args.iou_threshold_list,
-            dataset_name=self.args.dataset_name,
-            split=split,
-            cam_curve_interval=self.args.cam_curve_interval,
-            multi_contour_eval=self.args.multi_contour_eval,
-            multi_gt_eval=self.args.multi_gt_eval,
-            log_folder=self.args.log_folder,
-            device = self._DEVICE,
-            bbox_metric=self.args.bbox_metric
-        )
-        metrics = cam_computer.compute_and_evaluate_cams()
-        for metric, value in metrics.items():
-            self.performance_meters[split][metric].update(value)
-        if save_cams and split in ('val', 'test'):
-            self.xai_save_cams(self.loaders[split], split, cam_computer.evaluator)
+            cam_computer = CAMComputer(
+                model=self.model,
+                loader=self.loaders[split],
+                metadata_root=os.path.join(self.args.metadata_root, split),
+                mask_root=self.args.mask_root,
+                iou_threshold_list=self.args.iou_threshold_list,
+                dataset_name=self.args.dataset_name,
+                split=split,
+                cam_curve_interval=self.args.cam_curve_interval,
+                multi_contour_eval=self.args.multi_contour_eval,
+                multi_gt_eval=self.args.multi_gt_eval,
+                log_folder=self.args.log_folder,
+                device = self._DEVICE,
+                bbox_metric=self.args.bbox_metric
+            )
+            metrics = cam_computer.compute_and_evaluate_cams()
+            for metric, value in metrics.items():
+                self.performance_meters[split][metric].update(value)
+            if save_cams and split in ('val', 'test'):
+                self.xai_save_cams(self.loaders[split], split, cam_computer.evaluator)
 
 
     def _torch_save_model(self, filename, epoch):
