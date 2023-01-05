@@ -2,10 +2,9 @@ import argparse
 import cv2
 import numpy as np
 import os
-from os.path import join as ospj
 import torch.utils.data as torchdata
 
-from config import str2bool
+from config import str2bool, configure_bbox_metric, configure_mask_root
 from dataloaders import configure_metadata
 from dataloaders import get_image_ids
 from dataloaders import get_bounding_boxes
@@ -21,7 +20,8 @@ _RESIZE_LENGTH = 224
 _CONTOUR_INDEX = 1 if cv2.__version__.split('.')[0] == '3' else 0
 _BBOX_METRIC_NAMES = ('MaxBoxAcc', 'MaxBoxAccV2', 'MaxBoxAccV3')
 _BBOX_METRIC_DEFAULT = 'MaxBoxAccV2'
-
+_DATASET_NAMES = ('CUB', 'ILSVRC', 'OpenImages', 'SYNTHETIC')
+_DATASET_DEFAULT = 'SYNTHETHIC'
 
 def calculate_multiple_iou(box_a, box_b):
     """
@@ -413,8 +413,8 @@ class MaskEvaluator(LocalizationEvaluator):
         self.num_bins = len(self.cam_threshold_list) + 2
         self.threshold_list_right_edge = np.append(self.cam_threshold_list,
                                                    [1.0, 2.0, 3.0])
-        self.gt_true_score_hist = np.zeros(self.num_bins, dtype=np.float)
-        self.gt_false_score_hist = np.zeros(self.num_bins, dtype=np.float)
+        self.gt_true_score_hist = np.zeros(self.num_bins, dtype=float)
+        self.gt_false_score_hist = np.zeros(self.num_bins, dtype=float)
 
     def accumulate(self, scoremap, image_id):
         """
@@ -436,11 +436,11 @@ class MaskEvaluator(LocalizationEvaluator):
         # histograms in ascending order
         gt_true_hist, _ = np.histogram(gt_true_scores,
                                        bins=self.threshold_list_right_edge)
-        self.gt_true_score_hist += gt_true_hist.astype(np.float)
+        self.gt_true_score_hist += gt_true_hist.astype(float)
 
         gt_false_hist, _ = np.histogram(gt_false_scores,
                                         bins=self.threshold_list_right_edge)
-        self.gt_false_score_hist += gt_false_hist.astype(np.float)
+        self.gt_false_score_hist += gt_false_hist.astype(float)
 
     def compute(self):
         """
@@ -502,13 +502,14 @@ def _get_cam_loader(image_ids, scoremap_path):
         CamDataset(scoremap_path, image_ids),
         batch_size=128,
         shuffle=False,
-        num_workers=4,
+        num_workers=0,
         pin_memory=True)
 
 
-def evaluate_wsol(scoremap_root, metadata_root, mask_root, dataset_name, split,
-                  multi_contour_eval, multi_iou_eval, iou_threshold_list,
-                  cam_curve_interval=.001, tags=[]):
+def evaluate_wsol(scoremap_root, metadata_root, mask_root,
+                  iou_threshold_list, dataset_name, split,
+                  multi_contour_eval, multi_gt_eval, cam_curve_interval=.01,
+                  bbox_metric='MaxBoxAccV2', log_folder=None, tags=None):
     """
     Compute WSOL performances of predicted heatmaps against ground truth
     boxes (CUB, ILSVRC) or masks (OpenImages). For boxes, we compute the
@@ -535,17 +536,17 @@ def evaluate_wsol(scoremap_root, metadata_root, mask_root, dataset_name, split,
         multi_iou_eval: averaging the performance across various level of iou
             thresholds.
         iou_threshold_list: list. default: [30, 50, 70]
-        cam_curve_interval: float. Default 0.001. At which threshold intervals
+        cam_curve_interval: float. Default 0.01. At which threshold intervals
             will the heatmaps be evaluated?
     Returns:
         performance: dict. For CUB and ILSVRC, maxboxacc is returned.
             For OpenImages, area-under-curve of the precision-recall curve
             is returned.
     """
+    if tags is None:
+        tags = []
     print("Loading and evaluating cams.")
-    meta_path = os.path.join(metadata_root, dataset_name, *tags)
-    meta_path = os.path.join(meta_path, split)
-    metadata = configure_metadata(meta_path)
+    metadata = configure_metadata(metadata_root)
     image_ids = get_image_ids(metadata)
     #cam_threshold_list = list(np.arange(0, 1, cam_curve_interval))
     # The length of the output of np.arange might not be numerically stable.
@@ -555,14 +556,17 @@ def evaluate_wsol(scoremap_root, metadata_root, mask_root, dataset_name, split,
 
     evaluator = {"OpenImages": MaskEvaluator,
                  "CUB": BoxEvaluator,
-                 "ILSVRC": BoxEvaluator
+                 "ILSVRC": BoxEvaluator,
+                 "SYNTHETIC": MultiEvaluator
                  }[dataset_name](metadata=metadata,
                                  dataset_name=dataset_name,
                                  split=split,
                                  cam_threshold_list=cam_threshold_list,
-                                 mask_root=ospj(mask_root, 'OpenImages'),
+                                 iou_threshold_list=iou_threshold_list,
+                                 mask_root=mask_root,
                                  multi_contour_eval=multi_contour_eval,
-                                 iou_threshold_list=iou_threshold_list)
+                                 multi_gt_eval=multi_gt_eval,
+                                 metric=bbox_metric)
 
     cam_loader = _get_cam_loader(image_ids, scoremap_root)
     for cams, image_ids in cam_loader:
@@ -576,15 +580,17 @@ def evaluate_wsol(scoremap_root, metadata_root, mask_root, dataset_name, split,
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--scoremap_root', type=str,
-                        default='train_log/scoremaps/',
+    parser.add_argument('--experiment_name', type=str, default='test_case')
+    parser.add_argument('--log_folder', type=str, default='train_log', help='log folder')
+    parser.add_argument('--scoremap_folder', type=str,
+                        default='scoremaps',
                         help="The root folder for score maps to be evaluated.")
     parser.add_argument('--metadata_root', type=str, default='metadata/',
                         help="Root folder of metadata.")
-    parser.add_argument('--mask_root', type=str, default='dataset/',
-                        help="Root folder of masks (OpenImages).")
-    parser.add_argument('--dataset_name', type=str,
-                        help="One of [CUB, ImageNet, OpenImages].")
+    parser.add_argument('--mask_root', type=str, default='maskdata/',
+                        help="Root folder of masks.")
+    parser.add_argument('--dataset_name', type=str, default=_DATASET_DEFAULT,
+                        choices=_DATASET_NAMES)
     parser.add_argument('--split', type=str,
                         help="One of [val, test]. They correspond to "
                              "train-fullsup and test, respectively.")
@@ -608,21 +614,26 @@ def main():
 
 
     args = parser.parse_args()
-    tags_encoded = []
+    tags = []
     if args.tag:
-        tags_encoded.append('_'.join(args.tag))
-    scoremap_root = os.path.join(args.scoremap_root, *tags_encoded)
+        tags.append('_'.join(args.tag))
+    metadata_root = os.path.join(args.metadata_root, args.dataset_name, *tags)
+    metadata_root = os.path.join(metadata_root, args.split)
+    mask_root = configure_mask_root(args, tags=tags)
+    log_folder = os.path.join(args.log_folder, args.experiment_name)
+    scoremap_root = os.path.join(log_folder, args.scoremap_folder)
+    configure_bbox_metric(args)
 
     evaluate_wsol(scoremap_root=scoremap_root,
-                  metadata_root=args.metadata_root,
-                  mask_root=args.mask_root,
+                  metadata_root=metadata_root,
+                  mask_root=mask_root,
                   dataset_name=args.dataset_name,
                   split=args.split,
                   cam_curve_interval=args.cam_curve_interval,
                   multi_contour_eval=args.multi_contour_eval,
-                  multi_iou_eval=args.multi_iou_eval,
+                  multi_gt_eval=args.multi_gt_eval,
                   iou_threshold_list=args.iou_threshold_list,
-                  tags=tags_encoded)
+                  tags=tags)
 
 
 if __name__ == "__main__":

@@ -17,7 +17,6 @@ import wsol
 # import wsol.method
 import itertools
 import tqdm
-from os.path import join as ospj
 
 
 def set_random_seed(seed):
@@ -353,13 +352,12 @@ class Trainer(object):
                 if current_performance is not None:
                     print("Split {}, metric {}, current value: {}".format(
                         split, metric, current_performance))
-                    if split != 'test':
-                        print("Split {}, metric {}, best value: {}".format(
-                            split, metric,
-                            self.performance_meters[split][metric].best_value))
-                        print("Split {}, metric {}, best epoch: {}".format(
-                            split, metric,
-                            self.performance_meters[split][metric].best_epoch))
+                    print("Split {}, metric {}, best value: {}".format(
+                        split, metric,
+                        self.performance_meters[split][metric].best_value))
+                    print("Split {}, metric {}, best epoch: {}".format(
+                        split, metric,
+                        self.performance_meters[split][metric].best_epoch))
 
     def save_performances(self):
         log_path = os.path.join(self.args.log_folder, 'performance_log.pickle')
@@ -383,7 +381,7 @@ class Trainer(object):
         classification_acc = num_correct / float(num_images) # * 100
         return classification_acc
 
-    def save_cams(self, loader, split, evaluator):
+    def xai_save_cams(self, loader, split, evaluator):
         has_opt_cam_thresh = not isinstance(evaluator, MaskEvaluator)
         # dummy init to get rid of pycharm warning that this variable can be accessed before assignment
         opt_cam_thresh = 0
@@ -412,7 +410,7 @@ class Trainer(object):
                 _cam_grey = (_cam_norm * 255).astype('uint8')
                 heatmap = cv2.applyColorMap(_cam_grey, cv2.COLORMAP_JET)
                 cam_annotated = heatmap * 0.3 + img * 0.5
-                cam_path = ospj(self.args.log_folder, 'scoremaps', split, image_id)
+                cam_path = os.path.join(self.args.log_folder, 'scoremaps', image_id)
                 if not os.path.exists(os.path.dirname(cam_path)):
                     os.makedirs(os.path.dirname(cam_path))
                 cv2.imwrite(cam_path, cam_annotated)
@@ -438,7 +436,9 @@ class Trainer(object):
                             image = cv2.rectangle(image, start, end, color, thickness)
                 if image is not None:
                     img_ann_id = f'{image_id.split(".")[0]}_ann.png'
-                    img_ann_path = ospj(self.args.log_folder, 'scoremaps', split, img_ann_id)
+                    img_ann_path = os.path.join(self.args.log_folder, 'scoremaps', img_ann_id)
+                    if not os.path.exists(os.path.dirname(img_ann_path)):
+                        os.makedirs(os.path.dirname(img_ann_path))
                     cv2.imwrite(img_ann_path, image)
 
     def evaluate(self, epoch, split, save_cams=False):
@@ -466,7 +466,7 @@ class Trainer(object):
         for metric, value in metrics.items():
             self.performance_meters[split][metric].update(value)
         if save_cams and split in ('val', 'test'):
-            self.save_cams(self.loaders[split], split, cam_computer.evaluator)
+            self.xai_save_cams(self.loaders[split], split, cam_computer.evaluator)
 
 
     def _torch_save_model(self, filename, epoch):
@@ -486,7 +486,7 @@ class Trainer(object):
                 self._CHECKPOINT_NAME_TEMPLATE.format('last'), epoch)
 
     def report_train(self, train_performance, epoch, split='train'):
-        reporter_log_root = ospj(self.args.reporter_log_root, split)
+        reporter_log_root = os.path.join(self.args.reporter_log_root, split)
         if not os.path.isdir(reporter_log_root):
             os.makedirs(reporter_log_root)
         reporter_instance = self.reporter(reporter_log_root, epoch)
@@ -499,7 +499,7 @@ class Trainer(object):
         reporter_instance.write()
 
     def report(self, epoch, split):
-        reporter_log_root = ospj(self.args.reporter_log_root, split)
+        reporter_log_root = os.path.join(self.args.reporter_log_root, split)
         if not os.path.isdir(reporter_log_root):
             os.makedirs(reporter_log_root)
         reporter_instance = self.reporter(reporter_log_root, epoch)

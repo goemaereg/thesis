@@ -4,9 +4,9 @@ from evaluation import BoxEvaluator
 from evaluation import MaskEvaluator
 from evaluation import MultiEvaluator
 from evaluation import configure_metadata
-from dataloaders import get_image_sizes
 from util import t2n
 import tqdm
+import os
 
 _IMAGENET_MEAN = [0.485, .456, .406]
 _IMAGENET_STDDEV = [.229, .224, .225]
@@ -57,7 +57,6 @@ class CAMComputer(object):
                                           multi_contour_eval=multi_contour_eval,
                                           multi_gt_eval=multi_gt_eval,
                                           metric=bbox_metric)
-        self.image_sizes = get_image_sizes(metadata)
 
 
     def compute_and_evaluate_cams(self):
@@ -75,5 +74,10 @@ class CAMComputer(object):
                 cam_resized = cv2.resize(cam, image_size,
                                          interpolation=cv2.INTER_CUBIC)
                 cam_normalized = normalize_scoremap(cam_resized)
+                if self.split in ('val', 'test'):
+                    cam_path = os.path.join(self.log_folder, 'scoremaps', image_id)
+                    if not os.path.exists(os.path.dirname(cam_path)):
+                        os.makedirs(os.path.dirname(cam_path))
+                    np.save(cam_path, cam_normalized)
                 self.evaluator.accumulate(cam_normalized, image_id)
         return self.evaluator.compute()
