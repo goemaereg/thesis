@@ -154,7 +154,6 @@ class TenClassesPyIO(data.Dataset, TenClassesRandomFetcher):
             self.y.append(variables['y0'])
             self.h.append(heatmap)
             self.v.append(variables)
-        print('%-64s'%('  data prepared.'))
 
 
 class TenClassesPyIOwithHeatmap(TenClassesPyIO):
