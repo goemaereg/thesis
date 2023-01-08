@@ -1,3 +1,4 @@
+from typing import Mapping, Any, List
 import cv2
 import numpy as np
 import os
@@ -33,14 +34,49 @@ class PerformanceMeter(object):
         self.current_value = None
         self.best_value = None
         self.best_epoch = None
-        self.value_per_epoch = [] \
-            if split == 'val' else [-np.inf if higher_is_better else np.inf]
+        self.value_per_epoch = [] #if split == 'val' else [-np.inf if higher_is_better else np.inf]
 
     def update(self, new_value):
         self.value_per_epoch.append(new_value)
         self.current_value = self.value_per_epoch[-1]
         self.best_value = self.best_function(self.value_per_epoch)
         self.best_epoch = self.value_per_epoch.index(self.best_value)
+
+    def state_dict(self):
+        fetched_keys = ['value_per_epoch']
+        return { key: getattr(self, key) for key in fetched_keys }
+
+    def load_state_dict(self, state_dict: Mapping[str, Any], strict: bool = True):
+        if not isinstance(state_dict, Mapping):
+            raise TypeError("Expected state_dict to be dict-like, got {}.".format(type(state_dict)))
+        error_msgs: List[str] = []
+        if strict:
+            missing_keys = []
+            unexpected_keys = []
+            expected_keys = ['value_per_epoch']
+            for key in expected_keys:
+                if key not in state_dict:
+                    missing_keys.append(key)
+            for key in state_dict:
+                if key not in expected_keys:
+                    unexpected_keys.append(key)
+            if len(unexpected_keys) > 0:
+                error_msgs.insert(
+                    0, 'Unexpected key(s) in state_dict: {}. '.format(
+                        ', '.join('"{}"'.format(k) for k in unexpected_keys)))
+            if len(missing_keys) > 0:
+                error_msgs.insert(
+                    0, 'Missing key(s) in state_dict: {}. '.format(
+                        ', '.join('"{}"'.format(k) for k in missing_keys)))
+        if len(error_msgs) > 0:
+            raise RuntimeError('Error(s) in loading state_dict for {}:\n\t{}'.format(
+                               self.__class__.__name__, "\n\t".join(error_msgs)))
+        for key, val in state_dict.items():
+            setattr(self, key, val)
+        if len(self.value_per_epoch) > 0:
+            self.current_value = self.value_per_epoch[-1]
+            self.best_value = self.best_function(self.value_per_epoch)
+            self.best_epoch = self.value_per_epoch.index(self.best_value)
 
 
 def accelerator_get():
@@ -74,6 +110,7 @@ class Trainer(object):
     }
 
     def __init__(self):
+        self.epoch = 0
         self.args = get_configs()
         set_random_seed(self.args.seed)
         print(self.args)
@@ -351,12 +388,13 @@ class Trainer(object):
                 if current_performance is not None:
                     print("Split {}, metric {}, current value: {}".format(
                         split, metric, current_performance))
-                    print("Split {}, metric {}, best value: {}".format(
-                        split, metric,
-                        self.performance_meters[split][metric].best_value))
-                    print("Split {}, metric {}, best epoch: {}".format(
-                        split, metric,
-                        self.performance_meters[split][metric].best_epoch))
+                    if split != 'test':
+                        print("Split {}, metric {}, best value: {}".format(
+                            split, metric,
+                            self.performance_meters[split][metric].best_value))
+                        print("Split {}, metric {}, best epoch: {}".format(
+                            split, metric,
+                            self.performance_meters[split][metric].best_epoch))
 
     def save_performances(self):
         log_path = os.path.join(self.args.log_folder, 'performance_log.pickle')
@@ -366,8 +404,7 @@ class Trainer(object):
     def _compute_loss(self, loader):
         total_loss = 0.0
         num_images = 0
-        tq0 = tqdm.tqdm(loader, total=len(loader), desc='compute_loss')
-        for images, targets, image_ids in tq0:
+        for images, targets, image_ids in loader:
             images = images.to(self._DEVICE) #.cuda()
             targets = targets.to(self._DEVICE) #.cuda()
             output_dict = self.model(images)
@@ -381,17 +418,13 @@ class Trainer(object):
     def _compute_accuracy(self, loader):
         num_correct = 0
         num_images = 0
-
-        tq0 = tqdm.tqdm(loader, total=len(loader), desc='compute_accuracy')
-        for _, (images, targets, image_ids) in enumerate(tq0):
+        for images, targets, image_ids in loader:
             images = images.to(self._DEVICE) #.cuda()
             targets = targets.to(self._DEVICE) #.cuda()
             output_dict = self.model(images)
             pred = output_dict['logits'].argmax(dim=1)
-
             num_correct += (pred == targets).sum().item()
             num_images += images.size(0)
-
         classification_acc = num_correct / float(num_images) # * 100
         return classification_acc
 
@@ -412,8 +445,7 @@ class Trainer(object):
             cams = result['cams'].detach().clone()
             cams = t2n(cams)
             cams_it = zip(cams, image_ids)
-            tq1 = tqdm.tqdm(cams_it, total=len(cams), desc='evaluate_save_cams')
-            for cam, image_id in tq1:
+            for cam, image_id in cams_it:
                 # render image with CAM heatmap overlay
                 data_root = loader.dataset.data_root
                 path_img = os.path.join(data_root, image_id)
@@ -424,7 +456,7 @@ class Trainer(object):
                 _cam_grey = (_cam_norm * 255).astype('uint8')
                 heatmap = cv2.applyColorMap(_cam_grey, cv2.COLORMAP_JET)
                 cam_annotated = heatmap * 0.3 + img * 0.5
-                cam_path = os.path.join(self.args.log_folder, 'scoremaps', image_id)
+                cam_path = os.path.join(self.args.log_folder, 'xai', image_id)
                 if not os.path.exists(os.path.dirname(cam_path)):
                     os.makedirs(os.path.dirname(cam_path))
                 cv2.imwrite(cam_path, cam_annotated)
@@ -454,7 +486,7 @@ class Trainer(object):
                             color = (0, 0, 255) # Red color in BGR
                             img_ann = cv2.rectangle(img_ann, start, end, color, thickness)
                 img_ann_id = f'{image_id.split(".")[0]}_ann.png'
-                img_ann_path = os.path.join(self.args.log_folder, 'scoremaps', img_ann_id)
+                img_ann_path = os.path.join(self.args.log_folder, 'xai', img_ann_id)
                 if not os.path.exists(os.path.dirname(img_ann_path)):
                     os.makedirs(os.path.dirname(img_ann_path))
                 cv2.imwrite(img_ann_path, img_ann)
@@ -486,25 +518,55 @@ class Trainer(object):
             metrics = cam_computer.compute_and_evaluate_cams()
             for metric, value in metrics.items():
                 self.performance_meters[split][metric].update(value)
-            if save_cams and split in ('val', 'test'):
+            if save_cams:
                 self.xai_save_cams(self.loaders[split], split, cam_computer.evaluator)
 
 
-    def _torch_save_model(self, filename, epoch):
-        torch.save({'architecture': self.args.architecture,
-                    'epoch': epoch,
-                    'state_dict': self.model.state_dict(),
-                    'optimizer': self.optimizer.state_dict()},
+    def _torch_save_model(self, filename):
+        meters_state_dict = {
+            split: {
+                metric: self.performance_meters[split][metric].state_dict()
+                for metric in self._EVAL_METRICS
+            }
+            for split in self._SPLITS
+        }
+        torch.save({'epoch': self.epoch,
+                    'meters_state_dict': meters_state_dict,
+                    'model_state_dict': self.model.state_dict(),
+                    'optimizer_state_dict': self.optimizer.state_dict()},
                    os.path.join(self.args.log_folder, filename))
 
-    def save_checkpoint(self, epoch, split):
+    def save_checkpoint_best_criterion(self, epoch, split):
         if (self.performance_meters[split][self._BEST_CRITERION_METRIC]
                 .best_epoch) == epoch:
             self._torch_save_model(
-                self._CHECKPOINT_NAME_TEMPLATE.format('best'), epoch)
-        if self.args.epochs == epoch:
-            self._torch_save_model(
-                self._CHECKPOINT_NAME_TEMPLATE.format('last'), epoch)
+                self._CHECKPOINT_NAME_TEMPLATE.format('best'))
+
+    def save_checkpoint_current_epoch(self, epoch):
+        self._torch_save_model(
+            self._CHECKPOINT_NAME_TEMPLATE.format('last'))
+
+    def save_checkpoint(self, epoch, split):
+        self.save_checkpoint_best_criterion(epoch, split)
+        self.save_checkpoint_current_epoch(epoch)
+
+    def load_checkpoint(self, checkpoint_type):
+        if checkpoint_type not in ('best', 'last'):
+            raise ValueError("checkpoint_type must be either best or last.")
+        checkpoint_path = os.path.join(
+            self.args.log_folder,
+            self._CHECKPOINT_NAME_TEMPLATE.format(checkpoint_type))
+        if os.path.isfile(checkpoint_path):
+            checkpoint = torch.load(checkpoint_path)
+            self.epoch = checkpoint['epoch']
+            self.model.load_state_dict(checkpoint['model_state_dict'], strict=True)
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            for split, metrics in checkpoint['meters_state_dict'].items():
+                for metric, meters in metrics.items():
+                    self.performance_meters[split][metric].load_state_dict(meters)
+            print("Check {} loaded.".format(checkpoint_path))
+        # else:
+        #     raise IOError("No checkpoint {}.".format(checkpoint_path))
 
     def report_train(self, train_performance, epoch, split='train'):
         reporter_log_root = os.path.join(self.args.reporter_log_root, split)
@@ -540,46 +602,29 @@ class Trainer(object):
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] *= 0.1
 
-    def load_checkpoint(self, checkpoint_type):
-        if checkpoint_type not in ('best', 'last'):
-            raise ValueError("checkpoint_type must be either best or last.")
-        checkpoint_path = os.path.join(
-            self.args.log_folder,
-            self._CHECKPOINT_NAME_TEMPLATE.format(checkpoint_type))
-        if os.path.isfile(checkpoint_path):
-            checkpoint = torch.load(checkpoint_path)
-            self.model.load_state_dict(checkpoint['state_dict'], strict=True)
-            print("Check {} loaded.".format(checkpoint_path))
-        else:
-            raise IOError("No checkpoint {}.".format(checkpoint_path))
-
 
 def main():
     trainer = Trainer()
     print("===========================================================")
     print(f"Accelerator: {accelerator_get()}")
+    trainer.load_checkpoint(checkpoint_type=trainer.args.eval_checkpoint_type)
     if trainer.args.train:
-        print("Evaluate epoch 0 ...")
-        trainer.evaluate(epoch=0, split='val')
-        trainer.print_performances()
-        trainer.report(epoch=0, split='val')
-        trainer.save_checkpoint(epoch=0, split='val')
-        print("Epoch 0 done.")
-        tq0 = tqdm.tqdm(range(trainer.args.epochs), total=trainer.args.epochs, desc='training epochs')
+        epochs_range = range(trainer.epoch, trainer.args.epochs, 1)
+        tq0 = tqdm.tqdm(epochs_range, total=len(epochs_range), desc='training epochs')
         for epoch in tq0:
             print("===========================================================")
-            print("Start training epoch {} ...".format(epoch + 1))
-            trainer.adjust_learning_rate(epoch + 1)
+            print("Start training epoch {} ...".format(epoch))
+            trainer.adjust_learning_rate(epoch)
             train_performance = trainer.train(split='train')
-            trainer.report_train(train_performance, epoch + 1, split='train')
-            trainer.evaluate(epoch + 1, split='val')
+            trainer.report_train(train_performance, epoch, split='train')
+            trainer.evaluate(epoch, split='val')
             trainer.print_performances()
-            trainer.report(epoch + 1, split='val')
-            trainer.save_checkpoint(epoch + 1, split='val')
-            print("Epoch {} done.".format(epoch + 1))
+            trainer.report(epoch, split='val')
+            trainer.epoch += 1
+            trainer.save_checkpoint(epoch, split='val')
+            print("Epoch {} done.".format(epoch))
     print("===========================================================")
     print("Final epoch evaluation on test set ...")
-    trainer.load_checkpoint(checkpoint_type=trainer.args.eval_checkpoint_type)
     trainer.evaluate(trainer.args.epochs, split='test', save_cams=True)
     trainer.print_performances()
     trainer.report(trainer.args.epochs, split='test')

@@ -1,8 +1,6 @@
 import argparse
 import munch
-import importlib
 import os
-from os.path import join as ospj
 import shutil
 import warnings
 from util import Logger, Reporter
@@ -56,7 +54,7 @@ def get_architecture_type(wsol_method):
 def configure_data_paths(args, tags=None):
     if tags is None:
         tags = list()
-    train = val = test = ospj(args.data_root, args.dataset_name, *tags)
+    train = val = test = os.path.join(args.data_root, args.dataset_name, *tags)
     data_paths = mch(train=train, val=val, test=test)
     return data_paths
 
@@ -64,41 +62,41 @@ def configure_data_paths(args, tags=None):
 def configure_mask_root(args, tags=None):
     if tags is None:
         tags = list()
-    mask_root = ospj(args.mask_root, args.dataset_name, *tags) #'OpenImages')
+    mask_root = os.path.join(args.mask_root, args.dataset_name, *tags) #'OpenImages')
     return mask_root
 
 
 def configure_scoremap_output_paths(args):
-    scoremaps_root = ospj(args.log_folder, 'scoremaps')
+    scoremaps_root = os.path.join(args.log_folder, 'scoremaps')
     scoremaps = mch()
     for split in ('train', 'val', 'test'):
-        scoremaps[split] = ospj(scoremaps_root, split)
+        scoremaps[split] = os.path.join(scoremaps_root, split)
         if not os.path.isdir(scoremaps[split]):
             os.makedirs(scoremaps[split])
     return scoremaps
 
 
 def configure_log_folder(args):
-    log_folder = ospj('train_log', args.experiment_name)
+    log_folder = os.path.join('train_log', args.experiment_name)
 
     if os.path.isdir(log_folder):
         if args.override_cache:
             shutil.rmtree(log_folder, ignore_errors=True)
-        else:
-            raise RuntimeError("Experiment with the same name exists: {}"
-                               .format(log_folder))
-    os.makedirs(log_folder)
+        # else:
+        #     raise RuntimeError("Experiment with the same name exists: {}"
+        #                        .format(log_folder))
+    os.makedirs(log_folder, exist_ok=True)
     return log_folder
 
 
 def configure_log(args):
-    log_file_name = ospj(args.log_folder, 'log.log')
+    log_file_name = os.path.join(args.log_folder, 'log.log')
     Logger(log_file_name)
 
 
 def configure_reporter(args):
     reporter = Reporter # importlib.import_module('util').Reporter
-    reporter_log_root = ospj(args.log_folder, 'reports')
+    reporter_log_root = os.path.join(args.log_folder, 'reports')
     if not os.path.isdir(reporter_log_root):
         os.makedirs(reporter_log_root)
     return reporter, reporter_log_root
@@ -252,7 +250,7 @@ def get_configs():
 
     args.architecture_type = get_architecture_type(args.wsol_method)
     args.data_paths = configure_data_paths(args, tags=tags_encoded)
-    args.metadata_root = ospj(args.metadata_root, args.dataset_name, *tags_encoded)
+    args.metadata_root = os.path.join(args.metadata_root, args.dataset_name, *tags_encoded)
     args.mask_root = configure_mask_root(args, tags=tags_encoded)
     args.scoremap_paths = configure_scoremap_output_paths(args)
     args.reporter, args.reporter_log_root = configure_reporter(args)

@@ -1,1 +1,1 @@
-python main.py --seed 42 --experiment_name vgg16_cam_synthetic_o1b --architecture vgg16 --wsol_method cam --dataset_name SYNTHETIC --tag o --tag 1 --tag b --bbox_metric MaxBoxAccV3 --no-train_augment --epochs 1
+python main.py --seed 42 --experiment_name vgg16_cam_synthetic_o1b --architecture vgg16 --wsol_method cam --dataset_name SYNTHETIC --tag o --tag 1 --tag b --bbox_metric MaxBoxAccV3 --no-train_augment --epochs 20
