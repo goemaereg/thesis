@@ -453,8 +453,18 @@ class Trainer(object):
                 orig_img_shape = image_sizes[image_id]
                 _cam = cv2.resize(cam, orig_img_shape, interpolation=cv2.INTER_CUBIC)
                 _cam_norm = normalize_scoremap(_cam)
-                _cam_grey = (_cam_norm * 255).astype('uint8')
+                _cam_mask = _cam_norm >= opt_cam_thresh
+                # assign minimal value to area outside segment mask so normalization is constrained to segment values
+                _cam_heatmap = _cam_norm.copy()
+                _cam_heatmap[np.logical_not(_cam_mask)] = np.amin(_cam_norm[_cam_mask])
+                # normalize
+                _cam_heatmap = normalize_scoremap(_cam_heatmap)
+                # mask out area outside segment mask
+                _cam_heatmap[np.logical_not(_cam_mask)] = 0.0
+                _cam_grey = (_cam_heatmap * 255).astype('uint8')
                 heatmap = cv2.applyColorMap(_cam_grey, cv2.COLORMAP_JET)
+                # mask out area outside segment mask
+                heatmap[np.logical_not(_cam_mask)] = (0, 0, 0)
                 cam_annotated = heatmap * 0.3 + img * 0.5
                 cam_path = os.path.join(self.args.log_folder, 'xai', image_id)
                 if not os.path.exists(os.path.dirname(cam_path)):
@@ -463,7 +473,6 @@ class Trainer(object):
 
                 # render image with annotations and CAM overlay
                 # CAM mask overlay
-                _cam_mask = _cam_norm > 0
                 segment = np.zeros(shape=img.shape)
                 segment[_cam_mask] = (0, 0, 255)  # BGR
                 img_ann = segment * 0.3 + img * 0.5
@@ -518,7 +527,7 @@ class Trainer(object):
             metrics = cam_computer.compute_and_evaluate_cams()
             for metric, value in metrics.items():
                 self.performance_meters[split][metric].update(value)
-            if save_cams:
+            if self.args.xai and save_cams:
                 self.xai_save_cams(self.loaders[split], split, cam_computer.evaluator)
 
 
@@ -559,11 +568,14 @@ class Trainer(object):
         if os.path.isfile(checkpoint_path):
             checkpoint = torch.load(checkpoint_path)
             self.epoch = checkpoint['epoch']
-            self.model.load_state_dict(checkpoint['model_state_dict'], strict=True)
-            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            for split, metrics in checkpoint['meters_state_dict'].items():
-                for metric, meters in metrics.items():
-                    self.performance_meters[split][metric].load_state_dict(meters)
+            if 'model_state_dict' in checkpoint:
+                self.model.load_state_dict(checkpoint['model_state_dict'], strict=True)
+                self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                for split, metrics in checkpoint['meters_state_dict'].items():
+                    for metric, meters in metrics.items():
+                        self.performance_meters[split][metric].load_state_dict(meters)
+            else:
+                self.model.load_state_dict(checkpoint['state_dict'], strict=True)
             print("Check {} loaded.".format(checkpoint_path))
         # else:
         #     raise IOError("No checkpoint {}.".format(checkpoint_path))

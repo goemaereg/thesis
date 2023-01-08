@@ -238,6 +238,7 @@ def get_configs():
                              'tag3 = <choice b (background) | t (transparent'),
     parser.add_argument('--train', action=argparse.BooleanOptionalAction, default=True, help=None)
     parser.add_argument('--train_augment', action=argparse.BooleanOptionalAction, default=True, help=None)
+    parser.add_argument('--xai', action=argparse.BooleanOptionalAction, default=False, help=None)
 
     args = parser.parse_args()
     check_dependency(args)
