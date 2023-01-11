@@ -3,7 +3,9 @@ import munch
 import os
 import shutil
 import warnings
+import json
 from util import Logger, Reporter
+from typing import Dict
 
 _DATASET_NAMES = ('CUB', 'ILSVRC', 'OpenImages', 'SYNTHETIC')
 _ARCHITECTURE_NAMES = ('vgg16', 'resnet50', 'inception_v3')
@@ -115,12 +117,14 @@ def check_dependency(args):
         if args.num_val_sample_per_class >= 26:
             raise ValueError("num-val-sample must be <= 25 for OpenImages.")
 
-
-def get_configs():
+def configure_parse(load_config=True):
     parser = argparse.ArgumentParser()
 
+    # Config
+    parser.add_argument('--config', type=str, help='Configuration JSON file path with saved arguments')
+
     # Util
-    parser.add_argument('--seed', type=int)
+    parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--experiment_name', type=str, default='test_case')
     parser.add_argument('--override_cache', type=str2bool, nargs='?',
                         const=True, default=False)
@@ -231,8 +235,8 @@ def get_configs():
     parser.add_argument('--minmaxcam_crr_weight', type=int, default=1,
                         help='MinMaxCam Common Region Regularization Weight'),
     # tags
-    parser.add_argument('--tag', action='append', type=str, default=[],
-                        help='tags used to partition SYNTHETHIC dataset. '
+    parser.add_argument('--dataset_name_suffix', type=str, default='',
+                        help='Suffix = <tag1><tag2><tag3> used to partition SYNTHETHIC dataset. '
                              'tag1 = <choice o (overlapping) | d (disjunct)'
                              'tag2 = <n_instances: 0..4>'
                              'tag3 = <choice b (background) | t (transparent'),
@@ -241,10 +245,28 @@ def get_configs():
     parser.add_argument('--xai', action=argparse.BooleanOptionalAction, default=False, help=None)
 
     args = parser.parse_args()
+    if load_config and args.config is not None:
+        # Load stored arguments
+        args_loaded = configure_load(args.config)
+        # Update with provided arguments. Provided arguments take priority over shared arguments.
+        args_merged = args_loaded | vars(args)
+        args = argparse.Namespace(**args_merged)
+    return args
+
+def configure_save(filename: str, args: Dict):
+    with open(filename, "w") as fp:
+        json.dump(args, fp, sort_keys=True, indent=2)
+
+def configure_load(filename: str) -> Dict:
+    with open(filename, "r") as fp:
+        return json.load(fp)
+
+def get_configs():
+    args = configure_parse()
     check_dependency(args)
     tags_encoded = []
-    if args.tag:
-        tags_encoded.append('_'.join(args.tag))
+    if args.dataset_name_suffix:
+        tags_encoded.append('_'.join(list(args.dataset_name_suffix)))
     args.log_folder = configure_log_folder(args)
     configure_log(args)
     configure_bbox_metric(args)

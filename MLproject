@@ -1,0 +1,9 @@
+name: MultiInstanceWSOL
+
+# python_env: files/env/python_env.yaml
+
+entry_points:
+  main:
+    parameters:
+      config: string
+    command: "python src/main.py --config {config}"

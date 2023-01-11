@@ -616,6 +616,8 @@ class Trainer(object):
 
 
 def main():
+    print('Done!')
+    return
     trainer = Trainer()
     print("===========================================================")
     print(f"Accelerator: {accelerator_get()}")

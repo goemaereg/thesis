@@ -694,17 +694,16 @@ def main():
     parser.add_argument('--train', action=argparse.BooleanOptionalAction, default=False, help=None)
     parser.add_argument('--xai', action=argparse.BooleanOptionalAction, default=False, help=None)
     # tags
-    parser.add_argument('--tag', action='append', type=str, default=[],
-                        help='tags used to partition SYNTHETHIC dataset. '
+    parser.add_argument('--dataset_name_suffix', type=str, default='',
+                        help='Suffix = <tag1><tag2><tag3> used to partition SYNTHETHIC dataset. '
                              'tag1 = <choice o (overlapping) | d (disjunct)'
                              'tag2 = <n_instances: 0..4>'
                              'tag3 = <choice b (background) | t (transparent'),
 
-
     args = parser.parse_args()
     tags = []
-    if args.tag:
-        tags.append('_'.join(args.tag))
+    if args.dataset_name_suffix:
+        tags.append('_'.join(list(args.dataset_name_suffix)))
     data_root = os.path.join(args.data_root, args.dataset_name, *tags)
     metadata_root = os.path.join(args.metadata_root, args.dataset_name, *tags)
     metadata_root = os.path.join(metadata_root, args.split)
