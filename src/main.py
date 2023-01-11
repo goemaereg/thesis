@@ -162,16 +162,6 @@ class Trainer(object):
             batch_set_size=batch_set_size,
             train_augment=self.args.train_augment
         )
-
-        tags = dict(
-            dataset_name=self.args.dataset_name,
-            architecture_type=self.args.architecture_type,
-            pretrained=self.args.pretrained,
-            pretrained_path=self.args.pretrained_path,
-            large_feature_map=self.args.large_feature_map,
-            num_classes=self._NUM_CLASSES_MAPPING[self.args.dataset_name],
-        )
-
         # MLFlow logging
         # artifacts
         mlflow.log_artifact('requirements.txt')
@@ -193,18 +183,22 @@ class Trainer(object):
         params = model_params | optimizer_params
         params |= dict(
             epochs=self.args.epochs,
-            batch_size=self.args.batch_size,
+            batch_size=self.args.batch_size
         )
         mlflow.log_params(params)
         # tags
-        tags |= dict(
+        tags = dict(
             architecture=self.args.architecture,
+            architecture_type=self.args.architecture_type,
             experiment=self.args.experiment_name,
             dataset=self.args.dataset_name,
             dataset_spec=self.args.dataset_name_suffix,
             model=self.model.__class__.__name__,
             optimizer=self.optimizer.__class__.__name__,
             pretrained=self.args.pretrained,
+            pretrained_path=self.args.pretrained_path,
+            large_feature_map=self.args.large_feature_map,
+            num_classes=self._NUM_CLASSES_MAPPING[self.args.dataset_name]
         )
         mlflow.set_tags(tags)
 
