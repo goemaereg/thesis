@@ -6,7 +6,6 @@ import warnings
 import json
 from util import Logger, Reporter
 from typing import Dict
-import mlflow
 
 
 _DATASET_NAMES = ('CUB', 'ILSVRC', 'OpenImages', 'SYNTHETIC')
@@ -137,11 +136,11 @@ def configure_parse(load_config=True):
     parser.add_argument('--dataset_name', type=str, default='SYNTHETIC',
                         choices=_DATASET_NAMES)
     parser.add_argument('--data_root', metavar='/PATH/TO/DATASET',
-                        default='dataset/',
+                        default='data/dataset',
                         help='path to dataset images')
-    parser.add_argument('--metadata_root', type=str, default='metadata/')
+    parser.add_argument('--metadata_root', type=str, default='data/metadata')
     parser.add_argument('--mask_root', metavar='/PATH/TO/MASKS',
-                        default='maskdata/',
+                        default='data/maskdata',
                         help='path to masks')
     parser.add_argument('--proxy_training_set', type=str2bool, nargs='?',
                         const=True, default=False,
@@ -265,7 +264,6 @@ def configure_load(filename: str) -> Dict:
 def get_configs():
     args = configure_parse()
     check_dependency(args)
-    mlflow.log_artifact(args.config)
 
     tags_encoded = []
     if args.dataset_name_suffix:

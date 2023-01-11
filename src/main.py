@@ -19,6 +19,7 @@ import itertools
 import tqdm
 import mlflow
 from munch import Munch
+import sys
 
 
 def set_random_seed(seed):
@@ -114,20 +115,18 @@ class Trainer(object):
     def __init__(self):
         self.epoch = 0
         self.args = get_configs()
-        tags = dict(
-            dataset_name=self.args.dataset_name,
-            architecture_type=self.args.architecture_type,
-            pretrained=self.args.pretrained,
-            num_classes=self._NUM_CLASSES_MAPPING[self.args.dataset_name],
-            large_feature_map=self.args.large_feature_map,
-            pretrained_path=self.args.pretrained_path,
-        )
-        params = dict(
+        model_params = dict(
             adl_drop_rate=self.args.adl_drop_rate,
             adl_drop_threshold=self.args.adl_threshold,
-            acol_drop_threshold=self.args.acol_threshold
+            acol_drop_threshold=self.args.acol_threshold,
+       )
+        model_kwargs = model_params | dict(
+            architecture_type=self.args.architecture_type,
+            pretrained=self.args.pretrained,
+            pretrained_path=self.args.pretrained_path,
+            large_feature_map=self.args.large_feature_map,
+            num_classes=self._NUM_CLASSES_MAPPING[self.args.dataset_name],
         )
-        model_params = tags | params
         optimizer_params = dict(
             learning_rate=self.args.lr,
             learning_rate_features=self.args.lr,
@@ -140,7 +139,7 @@ class Trainer(object):
         # print(self.args)
         self.performance_meters = self._set_performance_meters()
         self.reporter = self.args.reporter
-        self.model = self._set_model(**model_params)
+        self.model = self._set_model(**model_kwargs)
         self.cross_entropy_loss = nn.CrossEntropyLoss().to(self._DEVICE)#.cuda()
         self.mse_loss = nn.MSELoss(reduction='mean').to(self._DEVICE)#.cuda()
         batch_set_size = None
@@ -163,20 +162,38 @@ class Trainer(object):
             batch_set_size=batch_set_size,
             train_augment=self.args.train_augment
         )
+
+        tags = dict(
+            dataset_name=self.args.dataset_name,
+            architecture_type=self.args.architecture_type,
+            pretrained=self.args.pretrained,
+            pretrained_path=self.args.pretrained_path,
+            large_feature_map=self.args.large_feature_map,
+            num_classes=self._NUM_CLASSES_MAPPING[self.args.dataset_name],
+        )
+
         # MLFlow logging
         # artifacts
-        mlflow.log_artifact('../requirements.txt')
+        mlflow.log_artifact('requirements.txt')
         mlflow.log_artifact(self.args.config, 'config')
-        mlflow.log_dict(vars(self.args), 'state/config.json')
+        state = vars(self.args)
+        state['data_paths'] = vars(self.args.data_paths)
+        state['scoremap_paths'] = vars(self.args.scoremap_paths)
+        del state['reporter']
+        if self.args.pretrained_path is None:
+            del state['pretrained_path']
+        mlflow.log_dict(state, 'state/config.json')
         info = dict(
-            loss_fn_class=self.cross_entropy_loss.__class__,
-            loss_fn_minmax=self.mse_loss.__class__
+            loss_fn_class=self.cross_entropy_loss.__class__.__name__,
+            loss_fn_minmax=self.mse_loss.__class__.__name__
         )
+        mlflow.log_text(' '.join(sys.argv), 'state/command.txt')
         mlflow.log_dict(info, 'state/info.json')
         # hyper parameters
+        params = model_params | optimizer_params
         params |= dict(
             epochs=self.args.epochs,
-            batch_size=self.args.batch_size
+            batch_size=self.args.batch_size,
         )
         mlflow.log_params(params)
         # tags
@@ -185,8 +202,8 @@ class Trainer(object):
             experiment=self.args.experiment_name,
             dataset=self.args.dataset_name,
             dataset_spec=self.args.dataset_name_suffix,
-            model=self.model.__class__,
-            optimizer=self.optimizer.__class__,
+            model=self.model.__class__.__name__,
+            optimizer=self.optimizer.__class__.__name__,
             pretrained=self.args.pretrained,
         )
         mlflow.set_tags(tags)
@@ -254,7 +271,6 @@ class Trainer(object):
             momentum=opt.momentum,
             weight_decay=opt.weight_decay,
             nesterov=opt.nesterov)
-        mlflow.log_params(opt)
         return optimizer
 
     def _wsol_training(self, images, target):
@@ -356,13 +372,10 @@ class Trainer(object):
         num_correct = 0
         num_images = 0
 
-        tq0 = tqdm.tqdm(loader, total=len(loader), desc='train batches')
+        tq0 = tqdm.tqdm(loader, total=len(loader), desc='training batches')
         for batch_idx, (images, targets, _) in enumerate(tq0):
             images = images.to(self._DEVICE) # images.cuda()
             targets = targets.to(self._DEVICE) #.cuda()
-
-            if int(batch_idx % max(len(loader) // 10, 1)) == 0:
-                print(" iteration ({} / {})".format(batch_idx + 1, len(loader)))
 
             # minmaxcam stage I
             if self.args.wsol_method == 'minmaxcam':
@@ -484,7 +497,7 @@ class Trainer(object):
         metadata = configure_metadata(metadata_root)
         image_sizes = get_image_sizes(metadata)
         gt_bbox_dict = get_bounding_boxes(metadata)
-        tq0 = tqdm.tqdm(loader, total=len(loader), desc='evaluate_save_cam_batches')
+        tq0 = tqdm.tqdm(loader, total=len(loader), desc='xai_cam_batches')
         for images, targets, image_ids in tq0:
             images = images.to(self._DEVICE)  # .cuda()
             result = self.model(images, targets, return_cam=True)
@@ -516,6 +529,7 @@ class Trainer(object):
                 if not os.path.exists(os.path.dirname(cam_path)):
                     os.makedirs(os.path.dirname(cam_path))
                 cv2.imwrite(cam_path, cam_annotated)
+                mlflow.log_artifact(cam_path, 'xai')
 
                 # render image with annotations and CAM overlay
                 # CAM mask overlay
@@ -544,9 +558,10 @@ class Trainer(object):
                 if not os.path.exists(os.path.dirname(img_ann_path)):
                     os.makedirs(os.path.dirname(img_ann_path))
                 cv2.imwrite(img_ann_path, img_ann)
+                mlflow.log_artifact(img_ann_path, 'xai')
 
     def evaluate(self, epoch, split, save_cams=False):
-        print("Evaluate epoch {}, split {}".format(epoch, split))
+        # print("Evaluate epoch {}, split {}".format(epoch, split))
         self.model.eval()
         with torch.no_grad():
             loss = self._compute_loss(loader=self.loaders[split])
@@ -670,16 +685,16 @@ def main():
     print(f"Accelerator: {accelerator_get()}")
     trainer.load_checkpoint(checkpoint_type=trainer.args.eval_checkpoint_type)
     if trainer.args.train:
+        print("===========================================================")
+        print("Start training {} epochs ...".format(trainer.args.epochs))
         epochs_range = range(trainer.epoch, trainer.args.epochs, 1)
         tq0 = tqdm.tqdm(epochs_range, total=len(epochs_range), desc='training epochs')
         for epoch in tq0:
-            print("===========================================================")
-            print("Start training epoch {} ...".format(epoch))
             trainer.adjust_learning_rate(epoch)
             train_performance = trainer.train(epoch, split='train')
             trainer.report_train(train_performance, epoch, split='train')
             trainer.evaluate(epoch, split='val')
-            trainer.print_performances()
+            # trainer.print_performances()
             trainer.report(epoch, split='val')
             trainer.epoch += 1
             trainer.save_checkpoint(epoch, split='val')
@@ -691,7 +706,7 @@ def main():
     trainer.report(trainer.args.epochs, split='test')
     trainer.save_performances()
     # MLFlow logging
-    mlflow.pytorch.log_model(trainer.model, 'model', pip_requirements='../requirements.txt')
+    mlflow.pytorch.log_model(trainer.model, 'model', pip_requirements='requirements.txt')
 
 
 if __name__ == '__main__':

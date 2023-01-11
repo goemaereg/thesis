@@ -60,7 +60,7 @@ class CAMComputer(object):
 
 
     def compute_and_evaluate_cams(self):
-        print("Computing and evaluating cams.")
+        # print("Computing and evaluating cams.")
         tq0 = tqdm.tqdm(self.loader, total=len(self.loader), desc='evaluate_cam_batches')
         for images, targets, image_ids in tq0:
             image_size = images.shape[2:]
