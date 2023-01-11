@@ -1,6 +1,6 @@
 name: MultiInstanceWSOL
 
-# python_env: files/env/python_env.yaml
+# python_env: files/environment/python_env.yaml
 
 entry_points:
   main:
