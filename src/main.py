@@ -8,7 +8,6 @@ import torch
 import torch.nn as nn
 import torch.optim
 import torch.nn.functional as F
-
 from config import get_configs
 from dataloaders import get_data_loader, configure_metadata, get_image_sizes, get_bounding_boxes
 from inference import CAMComputer, normalize_scoremap
@@ -18,6 +17,8 @@ import wsol
 # import wsol.method
 import itertools
 import tqdm
+import mlflow
+from munch import Munch
 
 
 def set_random_seed(seed):
@@ -29,7 +30,8 @@ def set_random_seed(seed):
 
 
 class PerformanceMeter(object):
-    def __init__(self, split, higher_is_better=True):
+    def __init__(self, name, higher_is_better=True):
+        self.name = name
         self.best_function = max if higher_is_better else min
         self.current_value = None
         self.best_value = None
@@ -44,7 +46,7 @@ class PerformanceMeter(object):
 
     def state_dict(self):
         fetched_keys = ['value_per_epoch']
-        return { key: getattr(self, key) for key in fetched_keys }
+        return {key: getattr(self, key) for key in fetched_keys}
 
     def load_state_dict(self, state_dict: Mapping[str, Any], strict: bool = True):
         if not isinstance(state_dict, Mapping):
@@ -112,11 +114,33 @@ class Trainer(object):
     def __init__(self):
         self.epoch = 0
         self.args = get_configs()
+        tags = dict(
+            dataset_name=self.args.dataset_name,
+            architecture_type=self.args.architecture_type,
+            pretrained=self.args.pretrained,
+            num_classes=self._NUM_CLASSES_MAPPING[self.args.dataset_name],
+            large_feature_map=self.args.large_feature_map,
+            pretrained_path=self.args.pretrained_path,
+        )
+        params = dict(
+            adl_drop_rate=self.args.adl_drop_rate,
+            adl_drop_threshold=self.args.adl_threshold,
+            acol_drop_threshold=self.args.acol_threshold
+        )
+        model_params = tags | params
+        optimizer_params = dict(
+            learning_rate=self.args.lr,
+            learning_rate_features=self.args.lr,
+            learning_rate_classifier=self.args.lr * self.args.lr_classifier_ratio,
+            momentum=self.args.momentum,
+            weight_decay=self.args.weight_decay,
+            nesterov=True
+        )
         set_random_seed(self.args.seed)
-        print(self.args)
+        # print(self.args)
         self.performance_meters = self._set_performance_meters()
         self.reporter = self.args.reporter
-        self.model = self._set_model()
+        self.model = self._set_model(**model_params)
         self.cross_entropy_loss = nn.CrossEntropyLoss().to(self._DEVICE)#.cuda()
         self.mse_loss = nn.MSELoss(reduction='mean').to(self._DEVICE)#.cuda()
         batch_set_size = None
@@ -125,7 +149,7 @@ class Trainer(object):
             batch_set_size = self.args.minmaxcam_batch_set_size
             class_set_size = self.args.minmaxcam_class_set_size
 
-        self.optimizer = self._set_optimizer()
+        self.optimizer = self._set_optimizer(**optimizer_params)
         self.loaders = get_data_loader(
             data_roots=self.args.data_paths,
             metadata_root=self.args.metadata_root,
@@ -139,6 +163,34 @@ class Trainer(object):
             batch_set_size=batch_set_size,
             train_augment=self.args.train_augment
         )
+        # MLFlow logging
+        # artifacts
+        mlflow.log_artifact('../requirements.txt')
+        mlflow.log_artifact(self.args.config, 'config')
+        mlflow.log_dict(vars(self.args), 'state/config.json')
+        info = dict(
+            loss_fn_class=self.cross_entropy_loss.__class__,
+            loss_fn_minmax=self.mse_loss.__class__
+        )
+        mlflow.log_dict(info, 'state/info.json')
+        # hyper parameters
+        params |= dict(
+            epochs=self.args.epochs,
+            batch_size=self.args.batch_size
+        )
+        mlflow.log_params(params)
+        # tags
+        tags |= dict(
+            architecture=self.args.architecture,
+            experiment=self.args.experiment_name,
+            dataset=self.args.dataset_name,
+            dataset_spec=self.args.dataset_name_suffix,
+            model=self.model.__class__,
+            optimizer=self.optimizer.__class__,
+            pretrained=self.args.pretrained,
+        )
+        mlflow.set_tags(tags)
+
 
     def _set_performance_meters(self):
         if self.args.dataset_name in ('SYNTHETIC', 'OpenImages'):
@@ -153,7 +205,7 @@ class Trainer(object):
 
         eval_dict = {
             split: {
-                metric: PerformanceMeter(split,
+                metric: PerformanceMeter(name=f'{split}_{metric}',
                                          higher_is_better=False
                                          if metric == 'loss' else True)
                 for metric in self._EVAL_METRICS
@@ -162,24 +214,14 @@ class Trainer(object):
         }
         return eval_dict
 
-    def _set_model(self):
-        num_classes = self._NUM_CLASSES_MAPPING[self.args.dataset_name]
+    def _set_model(self, **kwargs):
         print("Loading model {}".format(self.args.architecture))
-        model = wsol.__dict__[self.args.architecture](
-            dataset_name=self.args.dataset_name,
-            architecture_type=self.args.architecture_type,
-            pretrained=self.args.pretrained,
-            num_classes=num_classes,
-            large_feature_map=self.args.large_feature_map,
-            pretrained_path=self.args.pretrained_path,
-            adl_drop_rate=self.args.adl_drop_rate,
-            adl_drop_threshold=self.args.adl_threshold,
-            acol_drop_threshold=self.args.acol_threshold)
+        model = wsol.__dict__[self.args.architecture](**kwargs)
         model = model.to(self._DEVICE) # model.cuda()
-        print(model)
+        # print(model)
         return model
 
-    def _set_optimizer(self):
+    def _set_optimizer(self, **kwargs):
         param_features = []
         param_classifiers = []
 
@@ -203,14 +245,16 @@ class Trainer(object):
                     param_classifiers.append(parameter)
                 elif self.args.architecture == 'resnet50':
                     param_features.append(parameter)
-
+        opt = Munch(kwargs)
         optimizer = torch.optim.SGD([
-            {'params': param_features, 'lr': self.args.lr},
+            {'params': param_features, 'lr': opt.learning_rate_features},
             {'params': param_classifiers,
-             'lr': self.args.lr * self.args.lr_classifier_ratio}],
-            momentum=self.args.momentum,
-            weight_decay=self.args.weight_decay,
-            nesterov=True)
+             'lr': opt.learning_rate_classifier}],
+            lr=opt.learning_rate,
+            momentum=opt.momentum,
+            weight_decay=opt.weight_decay,
+            nesterov=opt.nesterov)
+        mlflow.log_params(opt)
         return optimizer
 
     def _wsol_training(self, images, target):
@@ -240,7 +284,6 @@ class Trainer(object):
 
         return logits, loss
 
-
     def vgg16_minmaxcam_regularization_loss(self, images, labels):
         for param in self.model.features.parameters():
             param.requires_grad = False
@@ -269,9 +312,9 @@ class Trainer(object):
 
         # Compute B(I * cams_normalized)
         result_mask = self.model(images * cams_normalized)
-        x = self.model.features(images *cams_normalized)
-        x = self.model.conv6(x)
-        out_extra_masked = self.model.relu(x)
+        # x = self.model.features(images * cams_normalized)
+        # x = self.model.conv6(x)
+        # out_extra_masked = self.model.relu(x)
 
         # compute features_i
         features_i = result_mask['avgpool_flat']
@@ -306,7 +349,7 @@ class Trainer(object):
         return loss_crr, loss_frr
 
 
-    def train(self, split):
+    def train(self, epoch, split):
         loader = self.loaders[split]
 
         total_loss = 0.0
@@ -375,6 +418,9 @@ class Trainer(object):
         self.performance_meters[split]['classification'].update(
             classification_acc)
         self.performance_meters[split]['loss'].update(loss_average)
+
+        mlflow_metrics = {f'{split}_loss': loss_average, f'{split}_accuracy': classification_acc}
+        mlflow.log_metrics(mlflow_metrics, step=epoch)
 
         return dict(classification_acc=classification_acc,
                     loss=loss_average)
@@ -484,7 +530,6 @@ class Trainer(object):
                         multi_contour_eval=self.args.multi_contour_eval)
                     est_bbox_list = est_bbox_per_thresh[0]
                     if (len(gt_bbox_list) + len(est_bbox_list)) > 0:
-                        image = img
                         thickness = 2  # Pixels
                         for bbox in gt_bbox_list:
                             start, end = bbox[:2], bbox[2:]
@@ -529,6 +574,10 @@ class Trainer(object):
                 self.performance_meters[split][metric].update(value)
             if self.args.xai and save_cams:
                 self.xai_save_cams(self.loaders[split], split, cam_computer.evaluator)
+
+            mlflow_metrics = { f'{split}_loss': loss, f'{split}_accuracy': accuracy}
+            mlflow_metrics |= { f'{split}_{metric}':value  for metric, value in metrics.items() }
+            mlflow.log_metrics(mlflow_metrics, step=epoch)
 
 
     def _torch_save_model(self, filename):
@@ -616,8 +665,6 @@ class Trainer(object):
 
 
 def main():
-    print('Done!')
-    return
     trainer = Trainer()
     print("===========================================================")
     print(f"Accelerator: {accelerator_get()}")
@@ -629,7 +676,7 @@ def main():
             print("===========================================================")
             print("Start training epoch {} ...".format(epoch))
             trainer.adjust_learning_rate(epoch)
-            train_performance = trainer.train(split='train')
+            train_performance = trainer.train(epoch, split='train')
             trainer.report_train(train_performance, epoch, split='train')
             trainer.evaluate(epoch, split='val')
             trainer.print_performances()
@@ -643,7 +690,12 @@ def main():
     trainer.print_performances()
     trainer.report(trainer.args.epochs, split='test')
     trainer.save_performances()
+    # MLFlow logging
+    mlflow.pytorch.log_model(trainer.model, 'model', pip_requirements='../requirements.txt')
 
 
 if __name__ == '__main__':
-    main()
+    with mlflow.start_run():
+        main()
+
+

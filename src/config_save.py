@@ -6,9 +6,7 @@ def main():
     check_dependency(args)
     if args.config is not None:
         file_path = args.config
-        args_dict = vars(args)
-        del args_dict['config']
-        configure_save(file_path, args_dict)
+        configure_save(file_path, vars(args))
 
 
 if __name__ == '__main__':

@@ -14,6 +14,11 @@ src/dataset/
 src/other/
 src/train_log
 src/synthetic/checkpoint/
+data/dataset/
+data/maskdata/
+mlruns/
+notebook/mlruns/
+
 
 .DS_Store
 .idea/

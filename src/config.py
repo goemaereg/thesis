@@ -6,6 +6,8 @@ import warnings
 import json
 from util import Logger, Reporter
 from typing import Dict
+import mlflow
+
 
 _DATASET_NAMES = ('CUB', 'ILSVRC', 'OpenImages', 'SYNTHETIC')
 _ARCHITECTURE_NAMES = ('vgg16', 'resnet50', 'inception_v3')
@@ -247,10 +249,9 @@ def configure_parse(load_config=True):
     args = parser.parse_args()
     if load_config and args.config is not None:
         # Load stored arguments
-        args_loaded = configure_load(args.config)
+        args_config = configure_load(args.config)
         # Update with provided arguments. Provided arguments take priority over shared arguments.
-        args_merged = args_loaded | vars(args)
-        args = argparse.Namespace(**args_merged)
+        args = parser.parse_args(namespace=argparse.Namespace(**args_config))
     return args
 
 def configure_save(filename: str, args: Dict):
@@ -264,6 +265,8 @@ def configure_load(filename: str) -> Dict:
 def get_configs():
     args = configure_parse()
     check_dependency(args)
+    mlflow.log_artifact(args.config)
+
     tags_encoded = []
     if args.dataset_name_suffix:
         tags_encoded.append('_'.join(list(args.dataset_name_suffix)))
