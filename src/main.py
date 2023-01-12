@@ -365,8 +365,7 @@ class Trainer(object):
         num_correct = 0
         num_images = 0
 
-        tq0 = tqdm.tqdm(loader, total=len(loader), desc='training batches')
-        for batch_idx, (images, targets, _) in enumerate(tq0):
+        for images, targets, _ in loader:
             images = images.to(self._DEVICE) # images.cuda()
             targets = targets.to(self._DEVICE) #.cuda()
 
@@ -417,8 +416,8 @@ class Trainer(object):
                 self.optimizer.step()
 
         loss_average = total_loss / float(num_images)
-        if loss_average > 1000:
-            print(loss_average)
+        # if loss_average > 1000:
+        #     print(loss_average)
         classification_acc = num_correct / float(num_images) # * 100
 
         self.performance_meters[split]['classification'].update(
