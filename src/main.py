@@ -692,7 +692,7 @@ def main():
             trainer.report(epoch, split='val')
             trainer.epoch += 1
             trainer.save_checkpoint(epoch, split='val')
-            print("Epoch {} done.".format(epoch))
+            # print("Epoch {} done.".format(epoch))
     print("===========================================================")
     print("Final epoch evaluation on test set ...")
     trainer.evaluate(trainer.args.epochs, split='test', save_cams=True, log=True)
