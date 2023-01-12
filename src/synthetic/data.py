@@ -154,13 +154,15 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
                 ymin, ymax = min(_rows), max(_rows)
                 # transform bounding box
                 # add tile offsets
-                tile_x = image_tile_idx[idx] // tile_dim
-                tile_y = image_tile_idx[idx] % tile_dim
+                tile_row = image_tile_idx[idx] // tile_dim
+                tile_col = image_tile_idx[idx] % tile_dim
                 tile_height, tile_width = _h.shape
-                xmin += tile_x * tile_width
-                xmax += tile_x * tile_width
-                ymin += tile_y * tile_height
-                ymax += tile_y * tile_height
+                tile_x = tile_col * tile_width
+                tile_y = tile_row * tile_height
+                xmin += tile_x
+                xmax += tile_x
+                ymin += tile_y
+                ymax += tile_y
                 # resize boxes
                 xmin //= tile_dim
                 xmax //= tile_dim

@@ -18,6 +18,7 @@ data/dataset/
 data/maskdata/
 mlruns/
 notebook/mlruns/
+train_log
 
 
 .DS_Store
