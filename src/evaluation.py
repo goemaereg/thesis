@@ -4,6 +4,8 @@ import numpy as np
 import os
 import torch.utils.data as torchdata
 import tqdm
+import mlflow
+import matplotlib.pyplot as plt
 from config import str2bool, configure_bbox_metric, configure_mask_root
 from dataloaders import configure_metadata
 from dataloaders import get_image_ids
@@ -193,7 +195,7 @@ class LocalizationEvaluator(object):
     def accumulate(self, scoremap, image_id):
         raise NotImplementedError
 
-    def compute(self):
+    def compute(self, log=False):
         raise NotImplementedError
 
     def compute_optimal_cam_threshold(self, iou_threshold):
@@ -314,7 +316,7 @@ class BoxEvaluator(LocalizationEvaluator):
         else:
             self.accumulate_maxboxacc_v1_2(multiple_iou, number_of_box_list)
 
-    def compute(self):
+    def compute(self, log=False):
         """
         Returns:
             max_localization_accuracy: float. The ratio of images where the
@@ -322,18 +324,32 @@ class BoxEvaluator(LocalizationEvaluator):
                for the final performance.
         """
         metrics = {}
-        max_box_acc = []
+        box_acc_iou = {}
+        max_box_acc_iou = []
         for _THRESHOLD in self.iou_threshold_list:
-            localization_accuracies = self.num_correct[_THRESHOLD] * 1. / \
-                                      float(self.cnt)
-            max_box_acc.append(localization_accuracies.max())
+            box_acc_iou[_THRESHOLD] = self.num_correct[_THRESHOLD] * 1. / float(self.cnt)
+            max_box_acc_iou.append(box_acc_iou[_THRESHOLD].max())
+            if log:
+                box_acc = {
+                    'iou_treshold': _THRESHOLD,
+                    'cam_threshold': self.cam_threshold_list,
+                    'box_accuracy': box_acc_iou[_THRESHOLD].tolist()
+                }
+                mlflow.log_dict(box_acc, f'data/{self.split}_box_acc_iou_{_THRESHOLD}.json')
+                fig, ax = plt.subplots()
+                ax.plot(self.cam_threshold_list, box_acc_iou[_THRESHOLD])
+                plt.title(f'{self.dataset_name} BoxAcc IOU={_THRESHOLD}')
+                plt.xlabel('CAM threshold')
+                plt.ylabel('BoxAcc')
+                plt.axis('tight')
+                mlflow.log_figure(fig, f'plots/{self.split}_box_acc_iou_{_THRESHOLD}.png')
 
         if self.metric == 'MaxBoxAcc':
-            metrics |= {self.metric: max_box_acc[self.iou_threshold_list.index(50)]}
+            metrics |= {self.metric: max_box_acc_iou[self.iou_threshold_list.index(50)]}
         else:
-            metrics |= {self.metric: np.average(max_box_acc)}
-        for index, threshold in enumerate(self.iou_threshold_list):
-            metrics |= {f'{self.metric}_IOU_{threshold}': max_box_acc[index]}
+            metrics |= {self.metric: np.average(max_box_acc_iou)}
+        for index, _THRESHOLD in enumerate(self.iou_threshold_list):
+            metrics |= {f'{self.metric}_IOU_{_THRESHOLD}': max_box_acc_iou[index]}
 
         return metrics
 
@@ -442,7 +458,7 @@ class MaskEvaluator(LocalizationEvaluator):
                                         bins=self.threshold_list_right_edge)
         self.gt_false_score_hist += gt_false_hist.astype(float)
 
-    def compute(self):
+    def compute(self, log=False):
         """
         Arrays are arranged in the following convention (bin edges):
 
@@ -478,6 +494,20 @@ class MaskEvaluator(LocalizationEvaluator):
         # non_zero_indices = (tp + fp) != 0
         # auc = (precision[1:] * np.diff(recall))[non_zero_indices[1:]].sum()
         auc = (precision[1:] * np.diff(recall)).sum()
+        if log:
+            pr_curve = {
+                'auc': auc,
+                'precision': precision.tolist(),
+                'recall': recall.tolist()
+            }
+            mlflow.log_dict(pr_curve, f'data/{self.split}_pr_curve.json')
+            fig, ax = plt.subplots()
+            ax.plot(recall, precision)
+            plt.title(f'{self.dataset_name} PR Curve')
+            plt.xlabel('Recall')
+            plt.ylabel('Precision')
+            plt.axis('tight')
+            mlflow.log_figure(fig, f'plots/{self.split}_pr_curve.png')
 
         return {self.metric: auc}
 
@@ -491,8 +521,8 @@ class MultiEvaluator():
         self.box_evaluator.accumulate(scoremap, image_id)
         self.mask_evaluator.accumulate(scoremap, image_id)
 
-    def compute(self):
-        return self.box_evaluator.compute() | self.mask_evaluator.compute()
+    def compute(self, log=False):
+        return self.box_evaluator.compute(log=log) | self.mask_evaluator.compute(log=log)
 
     def compute_optimal_cam_threshold(self, iou_threshold):
         return self.box_evaluator.compute_optimal_cam_threshold(iou_threshold)
@@ -627,11 +657,11 @@ def evaluate_wsol(xai_root, scoremap_root, data_root, metadata_root, mask_root,
     print("Loading and evaluating cams.")
     metadata = configure_metadata(metadata_root)
     image_ids = get_image_ids(metadata)
-    #cam_threshold_list = list(np.arange(0, 1, cam_curve_interval))
+    cam_threshold_list = list(np.arange(0, 1, cam_curve_interval))
     # The length of the output of np.arange might not be numerically stable.
     # Better to use np.linspace
-    cam_threshold_list = np.linspace(0, 1, num=int(1/cam_curve_interval),
-                                     endpoint=False)
+    # cam_threshold_list = np.linspace(0, 1, num=int(1/cam_curve_interval),
+    #                                  endpoint=False).tolist()
 
     evaluator = {"OpenImages": MaskEvaluator,
                  "CUB": BoxEvaluator,

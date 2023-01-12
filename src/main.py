@@ -553,7 +553,7 @@ class Trainer(object):
                 cv2.imwrite(img_ann_path, img_ann)
                 mlflow.log_artifact(img_ann_path, 'xai')
 
-    def evaluate(self, epoch, split, save_cams=False):
+    def evaluate(self, epoch, split, save_cams=False, log=False):
         # print("Evaluate epoch {}, split {}".format(epoch, split))
         self.model.eval()
         with torch.no_grad():
@@ -575,7 +575,8 @@ class Trainer(object):
                 multi_gt_eval=self.args.multi_gt_eval,
                 log_folder=self.args.log_folder,
                 device = self._DEVICE,
-                bbox_metric=self.args.bbox_metric
+                bbox_metric=self.args.bbox_metric,
+                log=log
             )
             metrics = cam_computer.compute_and_evaluate_cams()
             for metric, value in metrics.items():
@@ -694,7 +695,7 @@ def main():
             print("Epoch {} done.".format(epoch))
     print("===========================================================")
     print("Final epoch evaluation on test set ...")
-    trainer.evaluate(trainer.args.epochs, split='test', save_cams=True)
+    trainer.evaluate(trainer.args.epochs, split='test', save_cams=True, log=True)
     trainer.print_performances()
     trainer.report(trainer.args.epochs, split='test')
     trainer.save_performances()

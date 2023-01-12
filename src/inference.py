@@ -35,13 +35,14 @@ class CAMComputer(object):
                  iou_threshold_list, dataset_name, split,
                  multi_contour_eval, multi_gt_eval=False, cam_curve_interval=.001,
                  bbox_metric='MaxBoxAccV2', log_folder=None,
-                 device='cpu'):
+                 device='cpu', log=False):
         self.model = model
         self.model.eval()
         self.loader = loader
         self.split = split
         self.log_folder = log_folder
         self.device = device
+        self.log=log
         metadata = configure_metadata(metadata_root)
         cam_threshold_list = list(np.arange(0, 1, cam_curve_interval))
         self.evaluator = {"OpenImages": MaskEvaluator,
@@ -79,4 +80,4 @@ class CAMComputer(object):
                         os.makedirs(os.path.dirname(cam_path))
                     np.save(cam_path, cam_normalized)
                 self.evaluator.accumulate(cam_normalized, image_id)
-        return self.evaluator.compute()
+        return self.evaluator.compute(log=self.log)
