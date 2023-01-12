@@ -497,12 +497,12 @@ class MaskEvaluator(LocalizationEvaluator):
         if log:
             pr_curve = {
                 'auc': auc,
-                'precision': precision.tolist(),
-                'recall': recall.tolist()
+                'precision': precision[1:].tolist(),
+                'recall': recall[1:].tolist()
             }
             mlflow.log_dict(pr_curve, f'data/{self.split}_pr_curve.json')
             fig, ax = plt.subplots()
-            ax.plot(recall, precision)
+            ax.plot(recall[1:], precision[1:])
             plt.title(f'{self.dataset_name} PR Curve')
             plt.xlabel('Recall')
             plt.ylabel('Precision')
