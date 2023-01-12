@@ -196,7 +196,6 @@ class Trainer(object):
             model=self.model.__class__.__name__,
             optimizer=self.optimizer.__class__.__name__,
             pretrained=self.args.pretrained,
-            pretrained_path=self.args.pretrained_path,
             large_feature_map=self.args.large_feature_map,
             num_classes=self._NUM_CLASSES_MAPPING[self.args.dataset_name]
         )
