@@ -18,10 +18,16 @@ from .util import initialize_weights
 
 __all__ = ['vgg16']
 
+"""
+VGG 16-layer model (configuration "D")
+    Very Deep Convolutional Networks For Large-Scale Image Recognition <https://arxiv.org/pdf/1409.1556.pdf>.
+    Pre-trained on ImageNet
+"""
 model_urls = {
     'vgg16': 'https://download.pytorch.org/models/vgg16-397923af.pth'
 }
 
+# CAM variants have last pooling layer removed
 configs_dict = {
     'cam': {
         '14x14': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512,
