@@ -35,12 +35,6 @@ configs_dict = {
         '28x28': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512,
                   512, 512, 512, 512],
     },
-    'minmaxcam': {
-        '14x14': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512,
-                  512, 'M', 512, 512, 512],
-        '28x28': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512,
-                  512, 512, 512, 512],
-    },
     'acol': {
         '14x14': [64, 64, 'M1', 128, 128, 'M1', 256, 256, 256, 'M1', 512, 512,
                   512, 'M1', 512, 512, 512, 'M2'],
@@ -309,8 +303,7 @@ def vgg16(architecture_type, pretrained=False, pretrained_path=None,
     model = {'cam': VggCam,
              'acol': VggAcol,
              'spg': VggSpg,
-             'adl': VggCam,
-             'minmaxcam': VggCam}[architecture_type](layers, **kwargs)
+             'adl': VggCam}[architecture_type](layers, **kwargs)
     if pretrained:
         model = load_pretrained_model(model, architecture_type,
                                       path=pretrained_path)

@@ -190,6 +190,7 @@ class Trainer(object):
         tags = dict(
             architecture=self.args.architecture,
             architecture_type=self.args.architecture_type,
+            wsol_method=self.args.wsol_method,
             experiment=self.args.experiment_name,
             dataset=self.args.dataset_name,
             dataset_spec=self.args.dataset_name_suffix,
