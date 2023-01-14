@@ -70,18 +70,16 @@ def configure_mask_root(args, tags=None):
 
 
 def configure_scoremap_output_paths(args):
-    scoremaps_root = os.path.join(args.log_folder, 'scoremaps')
     scoremaps = mch()
     for split in ('train', 'val', 'test'):
-        scoremaps[split] = os.path.join(scoremaps_root, split)
+        scoremaps[split] = os.path.join(args.scoremap_root, split)
         if not os.path.isdir(scoremaps[split]):
             os.makedirs(scoremaps[split])
     return scoremaps
 
 
 def configure_log_folder(args):
-    log_folder = os.path.join('train_log', args.experiment_name)
-
+    log_folder = os.path.join(args.log_folder, args.experiment_name)
     if os.path.isdir(log_folder):
         if args.override_cache:
             shutil.rmtree(log_folder, ignore_errors=True)
@@ -127,6 +125,11 @@ def configure_parse(load_config=True):
     # Util
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--experiment_name', type=str, default='test_case')
+    parser.add_argument('--log_folder', type=str, default='train_log', help='log folder')
+    parser.add_argument('--scoremap_folder', type=str,
+                        default='scoremaps',
+                        help="The root folder for score maps to be evaluated.")
+    parser.add_argument('--xai_folder', type=str, default='xai', help='xai folder')
     parser.add_argument('--override_cache', type=str2bool, nargs='?',
                         const=True, default=False)
     parser.add_argument('--workers', default=0, type=int,
@@ -269,6 +272,8 @@ def get_configs():
     if args.dataset_name_suffix:
         tags_encoded.append('_'.join(list(args.dataset_name_suffix)))
     args.log_folder = configure_log_folder(args)
+    args.scoremap_root = os.path.join(args.log_folder, args.scoremap_folder)
+    args.xai_root = os.path.join(args.log_folder, args.xai_folder)
     configure_log(args)
     configure_bbox_metric(args)
 

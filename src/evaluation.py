@@ -536,7 +536,14 @@ def _get_cam_loader(image_ids, scoremap_path):
         num_workers=0,
         pin_memory=True)
 
-def cam_normalize(cam):
+def normalize_scoremap(cam):
+    """
+    Args:
+        cam: numpy.ndarray(size=(H, W), dtype=np.float)
+    Returns:
+        numpy.ndarray(size=(H, W), dtype=np.float) between 0 and 1.
+        If input array is constant, a zero-array is returned.
+    """
     if np.isnan(cam).any():
         return np.zeros_like(cam)
     if cam.min() == cam.max():
@@ -545,7 +552,7 @@ def cam_normalize(cam):
     cam /= cam.max()
     return cam
 
-def xai_save_cams(xai_root, metadata, data_root, scoremap_root, evaluator, multi_contour_eval):
+def xai_save_cams(xai_root, metadata, data_root, scoremap_root, evaluator, multi_contour_eval, log=False):
     has_opt_cam_thresh = not isinstance(evaluator, MaskEvaluator)
     # dummy init to get rid of pycharm warning that this variable can be accessed before assignment
     opt_cam_thresh = 0
@@ -565,13 +572,13 @@ def xai_save_cams(xai_root, metadata, data_root, scoremap_root, evaluator, multi
             img = cv2.imread(path_img) # color channels in BGR format
             orig_img_shape = image_sizes[image_id]
             _cam = cv2.resize(cam, orig_img_shape, interpolation=cv2.INTER_CUBIC)
-            _cam_norm = cam_normalize(_cam)
+            _cam_norm = normalize_scoremap(_cam)
             _cam_mask = _cam_norm >= opt_cam_thresh
             # assign minimal value to area outside segment mask so normalization is constrained to segment values
             _cam_heatmap = _cam_norm.copy()
             _cam_heatmap[np.logical_not(_cam_mask)] = np.amin(_cam_norm[_cam_mask])
             # normalize
-            _cam_heatmap = cam_normalize(_cam_heatmap)
+            _cam_heatmap = normalize_scoremap(_cam_heatmap)
             # mask out area outside segment mask
             _cam_heatmap[np.logical_not(_cam_mask)] = 0.0
             _cam_grey = (_cam_heatmap * 255).astype('uint8')
@@ -583,6 +590,8 @@ def xai_save_cams(xai_root, metadata, data_root, scoremap_root, evaluator, multi
             if not os.path.exists(os.path.dirname(cam_path)):
                 os.makedirs(os.path.dirname(cam_path))
             cv2.imwrite(cam_path, cam_annotated)
+            if log:
+                mlflow.log_artifact(cam_path, 'xai')
 
             # render image with annotations and CAM overlay
             # CAM overlay
@@ -613,6 +622,8 @@ def xai_save_cams(xai_root, metadata, data_root, scoremap_root, evaluator, multi
             if not os.path.exists(os.path.dirname(img_ann_path)):
                 os.makedirs(os.path.dirname(img_ann_path))
             cv2.imwrite(img_ann_path, img_ann)
+            if log:
+                mlflow.log_artifact(img_ann_path, 'xai')
 
 
 def evaluate_wsol(xai_root, scoremap_root, data_root, metadata_root, mask_root,

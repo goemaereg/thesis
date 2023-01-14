@@ -1,9 +1,7 @@
 import cv2
 import numpy as np
-from evaluation import BoxEvaluator
-from evaluation import MaskEvaluator
-from evaluation import MultiEvaluator
-from evaluation import configure_metadata
+from evaluation import BoxEvaluator, MaskEvaluator, MultiEvaluator
+from evaluation import configure_metadata, normalize_scoremap
 from util import t2n
 import tqdm
 import os
@@ -11,23 +9,6 @@ import os
 _IMAGENET_MEAN = [0.485, .456, .406]
 _IMAGENET_STDDEV = [.229, .224, .225]
 _RESIZE_LENGTH = 224
-
-
-def normalize_scoremap(cam):
-    """
-    Args:
-        cam: numpy.ndarray(size=(H, W), dtype=np.float)
-    Returns:
-        numpy.ndarray(size=(H, W), dtype=np.float) between 0 and 1.
-        If input array is constant, a zero-array is returned.
-    """
-    if np.isnan(cam).any():
-        return np.zeros_like(cam)
-    if cam.min() == cam.max():
-        return np.zeros_like(cam)
-    cam -= cam.min()
-    cam /= cam.max()
-    return cam
 
 
 class CAMComputer(object):

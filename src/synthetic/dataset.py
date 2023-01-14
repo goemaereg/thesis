@@ -7,8 +7,8 @@ import math
 import cv2
 import tqdm
 
+
 def prepare_data(dargs):
-    print('prepare_data...')
     tag1 = 'o' if dargs['overlapping'] else 'd'
     tag2 = '0' if dargs['random_n_instances'] else str(dargs['n_instances'])
     tag3 = 'b' if dargs['background'] else 't'
@@ -34,7 +34,7 @@ def prepare_data(dargs):
     MASKDATA_FOLDER_DIR = DIRS[MASKDATA_MODES[dargs['data_mode']]]
 
     if len(os.listdir(DATA_FOLDER_DIR))==0:
-        print(f'preparing data to save')
+        print(f'Preparing {dargs["data_mode"]} data to save')
         save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
                        dargs['n_classes'], dargs['n_samples'], dargs['data_mode'],
                        dargs['n_instances'], dargs['random_n_instances'], dargs['type_noise'],
