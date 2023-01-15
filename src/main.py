@@ -266,12 +266,12 @@ class Trainer(object):
             nesterov=opt.nesterov)
         return optimizer
 
-    def _wsol_training(self, images, target):
+    def _wsol_training(self, images, targets):
         if (self.args.wsol_method == 'cutmix' and
                 self.args.cutmix_prob > np.random.rand(1) and
                 self.args.cutmix_beta > 0):
             images, target_a, target_b, lam = wsol.method.cutmix(
-                images, target, self.args.cutmix_beta)
+                images, targets, self.args.cutmix_beta)
             output_dict = self.model(images)
             logits = output_dict['logits']
             loss = (self.cross_entropy_loss(logits, target_a) * lam +
@@ -282,14 +282,14 @@ class Trainer(object):
             images = wsol.method.has(images, self.args.has_grid_size,
                                      self.args.has_drop_rate)
 
-        output_dict = self.model(images, target)
+        output_dict = self.model(images, targets)
         logits = output_dict['logits']
 
         if self.args.wsol_method in ('acol', 'spg'):
             loss = wsol.method.__dict__[self.args.wsol_method].get_loss(
-                output_dict, target, spg_thresholds=self.args.spg_thresholds)
+                output_dict, targets, spg_thresholds=self.args.spg_thresholds)
         else:
-            loss = self.cross_entropy_loss(logits, target)
+            loss = self.cross_entropy_loss(logits, targets)
 
         return logits, loss
 
