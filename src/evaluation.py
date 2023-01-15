@@ -23,7 +23,9 @@ _CONTOUR_INDEX = 1 if cv2.__version__.split('.')[0] == '3' else 0
 _BBOX_METRIC_NAMES = ('MaxBoxAcc', 'MaxBoxAccV2', 'MaxBoxAccV3')
 _BBOX_METRIC_DEFAULT = 'MaxBoxAccV2'
 _DATASET_NAMES = ('CUB', 'ILSVRC', 'OpenImages', 'SYNTHETIC')
-_DATASET_DEFAULT = 'SYNTHETHIC'
+_DATASET_DEFAULT = 'SYNTHETIC'
+_SPLIT_NAMES = ('val', 'test')
+_SPLIT_DEFAULT = 'test'
 
 def calculate_multiple_iou(box_a, box_b):
     """
@@ -181,8 +183,9 @@ class LocalizationEvaluator(object):
     """
 
     def __init__(self, metric, metadata, dataset_name, split, cam_threshold_list,
-                 iou_threshold_list, mask_root, multi_contour_eval, multi_gt_eval=False):
+                 iou_threshold_list, mask_root, multi_contour_eval, multi_gt_eval=False, log=False):
         self.metric = metric
+        self.log=log
         self.metadata = metadata
         self.cam_threshold_list = cam_threshold_list
         self.iou_threshold_list = iou_threshold_list
@@ -195,7 +198,7 @@ class LocalizationEvaluator(object):
     def accumulate(self, scoremap, image_id):
         raise NotImplementedError
 
-    def compute(self, log=False):
+    def compute(self):
         raise NotImplementedError
 
     def compute_optimal_cam_threshold(self, iou_threshold):
@@ -316,7 +319,7 @@ class BoxEvaluator(LocalizationEvaluator):
         else:
             self.accumulate_maxboxacc_v1_2(multiple_iou, number_of_box_list)
 
-    def compute(self, log=False):
+    def compute(self):
         """
         Returns:
             max_localization_accuracy: float. The ratio of images where the
@@ -329,9 +332,11 @@ class BoxEvaluator(LocalizationEvaluator):
         for _THRESHOLD in self.iou_threshold_list:
             box_acc_iou[_THRESHOLD] = self.num_correct[_THRESHOLD] * 1. / float(self.cnt)
             max_box_acc_iou.append(box_acc_iou[_THRESHOLD].max())
-            if log:
+            cam_threshold_optimal = self.cam_threshold_list[box_acc_iou[_THRESHOLD].argmax()]
+            if self.log:
                 box_acc = {
-                    'iou_treshold': _THRESHOLD,
+                    'iou_threshold': _THRESHOLD,
+                    'cam_threshold_optimal': cam_threshold_optimal,
                     'cam_threshold': self.cam_threshold_list,
                     'box_accuracy': box_acc_iou[_THRESHOLD].tolist()
                 }
@@ -458,7 +463,7 @@ class MaskEvaluator(LocalizationEvaluator):
                                         bins=self.threshold_list_right_edge)
         self.gt_false_score_hist += gt_false_hist.astype(float)
 
-    def compute(self, log=False):
+    def compute(self):
         """
         Arrays are arranged in the following convention (bin edges):
 
@@ -494,7 +499,7 @@ class MaskEvaluator(LocalizationEvaluator):
         # non_zero_indices = (tp + fp) != 0
         # auc = (precision[1:] * np.diff(recall))[non_zero_indices[1:]].sum()
         auc = (precision[1:] * np.diff(recall)).sum()
-        if log:
+        if self.log:
             pr_curve = {
                 'auc': auc,
                 'precision': precision[1:].tolist(),
@@ -521,8 +526,8 @@ class MultiEvaluator():
         self.box_evaluator.accumulate(scoremap, image_id)
         self.mask_evaluator.accumulate(scoremap, image_id)
 
-    def compute(self, log=False):
-        return self.box_evaluator.compute(log=log) | self.mask_evaluator.compute(log=log)
+    def compute(self):
+        return self.box_evaluator.compute() | self.mask_evaluator.compute()
 
     def compute_optimal_cam_threshold(self, iou_threshold):
         return self.box_evaluator.compute_optimal_cam_threshold(iou_threshold)
@@ -718,6 +723,8 @@ def main():
                         help="Root folder of masks.")
     parser.add_argument('--dataset_name', type=str, default=_DATASET_DEFAULT,
                         choices=_DATASET_NAMES)
+    parser.add_argument('--split', type=str, default=_SPLIT_DEFAULT,
+                        choices=_SPLIT_NAMES)
     parser.add_argument('--split', type=str,
                         help="One of [val, test]. They correspond to "
                              "train-fullsup and test, respectively.")

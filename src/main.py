@@ -168,7 +168,6 @@ class Trainer(object):
         mlflow.log_artifact(self.args.config, 'config')
         state = vars(self.args)
         state['data_paths'] = vars(self.args.data_paths)
-        state['scoremap_paths'] = vars(self.args.scoremap_paths)
         del state['reporter']
         if self.args.pretrained_path is None:
             del state['pretrained_path']
@@ -480,80 +479,7 @@ class Trainer(object):
         classification_acc = num_correct / float(num_images) # * 100
         return classification_acc
 
-    # def xai_save_cams(self, loader, split, evaluator):
-    #     has_opt_cam_thresh = not isinstance(evaluator, MaskEvaluator)
-    #     # dummy init to get rid of pycharm warning that this variable can be accessed before assignment
-    #     opt_cam_thresh = 0
-    #     if has_opt_cam_thresh:
-    #         opt_cam_thresh, opt_cam_thresh_index = evaluator.compute_optimal_cam_threshold(50)
-    #     metadata_root = os.path.join(self.args.metadata_root, split)
-    #     metadata = configure_metadata(metadata_root)
-    #     image_sizes = get_image_sizes(metadata)
-    #     gt_bbox_dict = get_bounding_boxes(metadata)
-    #     tq0 = tqdm.tqdm(loader, total=len(loader), desc='xai_cam_batches')
-    #     for images, targets, image_ids in tq0:
-    #         images = images.to(self._DEVICE)  # .cuda()
-    #         result = self.model(images, targets, return_cam=True)
-    #         cams = result['cams'].detach().clone()
-    #         cams = t2n(cams)
-    #         cams_it = zip(cams, image_ids)
-    #         for cam, image_id in cams_it:
-    #             # render image with CAM heatmap overlay
-    #             data_root = loader.dataset.data_root
-    #             path_img = os.path.join(data_root, image_id)
-    #             img = cv2.imread(path_img) # color channels in BGR format
-    #             orig_img_shape = image_sizes[image_id]
-    #             _cam = cv2.resize(cam, orig_img_shape, interpolation=cv2.INTER_CUBIC)
-    #             _cam_norm = normalize_scoremap(_cam)
-    #             _cam_mask = _cam_norm >= opt_cam_thresh
-    #             # assign minimal value to area outside segment mask so normalization is constrained to segment values
-    #             _cam_heatmap = _cam_norm.copy()
-    #             _cam_heatmap[np.logical_not(_cam_mask)] = np.amin(_cam_norm[_cam_mask])
-    #             # normalize
-    #             _cam_heatmap = normalize_scoremap(_cam_heatmap)
-    #             # mask out area outside segment mask
-    #             _cam_heatmap[np.logical_not(_cam_mask)] = 0.0
-    #             _cam_grey = (_cam_heatmap * 255).astype('uint8')
-    #             heatmap = cv2.applyColorMap(_cam_grey, cv2.COLORMAP_JET)
-    #             # mask out area outside segment mask
-    #             heatmap[np.logical_not(_cam_mask)] = (0, 0, 0)
-    #             cam_annotated = heatmap * 0.3 + img * 0.5
-    #             cam_path = os.path.join(self.args.log_folder, 'xai', image_id)
-    #             if not os.path.exists(os.path.dirname(cam_path)):
-    #                 os.makedirs(os.path.dirname(cam_path))
-    #             cv2.imwrite(cam_path, cam_annotated)
-    #             mlflow.log_artifact(cam_path, 'xai')
-    #
-    #             # render image with annotations and CAM overlay
-    #             # CAM mask overlay
-    #             segment = np.zeros(shape=img.shape)
-    #             segment[_cam_mask] = (0, 0, 255)  # BGR
-    #             img_ann = segment * 0.3 + img * 0.5
-    #             # estimated and GT bboxes overlay
-    #             if has_opt_cam_thresh:
-    #                 gt_bbox_list = gt_bbox_dict[image_id]
-    #                 est_bbox_per_thresh, _ = compute_bboxes_from_scoremaps(
-    #                     _cam_norm, [opt_cam_thresh],
-    #                     multi_contour_eval=self.args.multi_contour_eval)
-    #                 est_bbox_list = est_bbox_per_thresh[0]
-    #                 if (len(gt_bbox_list) + len(est_bbox_list)) > 0:
-    #                     thickness = 2  # Pixels
-    #                     for bbox in gt_bbox_list:
-    #                         start, end = bbox[:2], bbox[2:]
-    #                         color = (0, 255, 0) # Green color in BGR
-    #                         img_ann = cv2.rectangle(img_ann, start, end, color, thickness)
-    #                     for bbox in est_bbox_list:
-    #                         start, end = bbox[:2], bbox[2:]
-    #                         color = (0, 0, 255) # Red color in BGR
-    #                         img_ann = cv2.rectangle(img_ann, start, end, color, thickness)
-    #             img_ann_id = f'{image_id.split(".")[0]}_ann.png'
-    #             img_ann_path = os.path.join(self.args.log_folder, 'xai', img_ann_id)
-    #             if not os.path.exists(os.path.dirname(img_ann_path)):
-    #                 os.makedirs(os.path.dirname(img_ann_path))
-    #             cv2.imwrite(img_ann_path, img_ann)
-    #             mlflow.log_artifact(img_ann_path, 'xai')
-
-    def evaluate(self, epoch, split, save_cams=False, log=False):
+    def evaluate(self, epoch, split, save_xai=False, save_cams=False, log=False):
         # print("Evaluate epoch {}, split {}".format(epoch, split))
         self.model.eval()
         with torch.no_grad():
@@ -567,21 +493,21 @@ class Trainer(object):
                 loader=self.loaders[split],
                 metadata_root=metadata_root,
                 mask_root=self.args.mask_root,
+                scoremap_root=self.args.scoremap_root,
                 iou_threshold_list=self.args.iou_threshold_list,
                 dataset_name=self.args.dataset_name,
                 split=split,
                 cam_curve_interval=self.args.cam_curve_interval,
                 multi_contour_eval=self.args.multi_contour_eval,
                 multi_gt_eval=self.args.multi_gt_eval,
-                log_folder=self.args.log_folder,
                 device = self._DEVICE,
                 bbox_metric=self.args.bbox_metric,
                 log=log
             )
-            metrics = cam_computer.compute_and_evaluate_cams()
+            metrics = cam_computer.compute_and_evaluate_cams(save_cams=save_cams)
             for metric, value in metrics.items():
                 self.performance_meters[split][metric].update(value)
-            if self.args.xai and save_cams:
+            if self.args.xai and save_xai:
                 metadata = configure_metadata(metadata_root)
                 xai_save_cams(xai_root=self.args.xai_root,
                               metadata=metadata,
@@ -694,15 +620,19 @@ def main():
             trainer.adjust_learning_rate(epoch)
             train_performance = trainer.train(epoch, split='train')
             trainer.report_train(train_performance, epoch, split='train')
-            trainer.evaluate(epoch, split='val')
+            last_epoch = (epoch == (trainer.args.epochs - 1))
+            trainer.evaluate(epoch, split='val', save_xai=last_epoch, save_cams=last_epoch, log=last_epoch)
             # trainer.print_performances()
             trainer.report(epoch, split='val')
             trainer.epoch += 1
             trainer.save_checkpoint(epoch, split='val')
-            # print("Epoch {} done.".format(epoch))
+    else:
+        print("===========================================================")
+        print("Final epoch evaluation on val set ...")
+        trainer.evaluate(trainer.args.epochs, split='val', save_xai=True, save_cams=True, log=True)
     print("===========================================================")
     print("Final epoch evaluation on test set ...")
-    trainer.evaluate(trainer.args.epochs, split='test', save_cams=True, log=True)
+    trainer.evaluate(trainer.args.epochs, split='test', save_xai=True, save_cams=True, log=True)
     trainer.print_performances()
     trainer.report(trainer.args.epochs, split='test')
     trainer.save_performances()

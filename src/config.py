@@ -69,15 +69,6 @@ def configure_mask_root(args, tags=None):
     return mask_root
 
 
-def configure_scoremap_output_paths(args):
-    scoremaps = mch()
-    for split in ('train', 'val', 'test'):
-        scoremaps[split] = os.path.join(args.scoremap_root, split)
-        if not os.path.isdir(scoremaps[split]):
-            os.makedirs(scoremaps[split])
-    return scoremaps
-
-
 def configure_log_folder(args):
     log_folder = os.path.join(args.log_folder, args.experiment_name)
     if os.path.isdir(log_folder):
@@ -281,7 +272,6 @@ def get_configs():
     args.data_paths = configure_data_paths(args, tags=tags_encoded)
     args.metadata_root = os.path.join(args.metadata_root, args.dataset_name, *tags_encoded)
     args.mask_root = configure_mask_root(args, tags=tags_encoded)
-    args.scoremap_paths = configure_scoremap_output_paths(args)
     args.reporter, args.reporter_log_root = configure_reporter(args)
     args.pretrained_path = configure_pretrained_path(args)
     args.spg_thresholds = ((args.spg_threshold_1h, args.spg_threshold_1l),

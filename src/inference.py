@@ -12,16 +12,15 @@ _RESIZE_LENGTH = 224
 
 
 class CAMComputer(object):
-    def __init__(self, model, loader, metadata_root, mask_root,
+    def __init__(self, model, loader, metadata_root, mask_root, scoremap_root,
                  iou_threshold_list, dataset_name, split,
                  multi_contour_eval, multi_gt_eval=False, cam_curve_interval=.001,
-                 bbox_metric='MaxBoxAccV2', log_folder=None,
-                 device='cpu', log=False):
+                 bbox_metric='MaxBoxAccV2', device='cpu', log=False):
         self.model = model
         self.model.eval()
         self.loader = loader
+        self.scoremap_root = scoremap_root
         self.split = split
-        self.log_folder = log_folder
         self.device = device
         self.log=log
         metadata = configure_metadata(metadata_root)
@@ -41,7 +40,7 @@ class CAMComputer(object):
                                           metric=bbox_metric)
 
 
-    def compute_and_evaluate_cams(self):
+    def compute_and_evaluate_cams(self, save_cams=False):
         # print("Computing and evaluating cams.")
         for images, targets, image_ids in self.loader:
             image_size = images.shape[2:]
@@ -54,8 +53,8 @@ class CAMComputer(object):
                 cam_resized = cv2.resize(cam, image_size,
                                          interpolation=cv2.INTER_CUBIC)
                 cam_normalized = normalize_scoremap(cam_resized)
-                if self.split in ('val', 'test'):
-                    cam_path = os.path.join(self.log_folder, 'scoremaps', image_id)
+                if self.split in ('val', 'test') and save_cams:
+                    cam_path = os.path.join(self.scoremap_root, image_id)
                     if not os.path.exists(os.path.dirname(cam_path)):
                         os.makedirs(os.path.dirname(cam_path))
                     np.save(cam_path, cam_normalized)
