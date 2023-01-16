@@ -3,6 +3,7 @@ Original repository: https://github.com/kkanshul/Hide-and-Seek
 """
 
 import random
+from base_method import BaseMethod
 
 __all__ = ['has']
 
@@ -29,3 +30,20 @@ def has(image, grid_size, drop_rate):
                 if random.random() <= drop_rate:
                     image[batch_idx, :, x:x_end, y:y_end] = 0.
     return image
+
+
+class HASMethod(BaseMethod):
+    def __init__(self, **kwargs):
+        super(HASMethod, self).__init__(**kwargs)
+        self.has_grid_size = kwargs.get('has_grid_size', 4)
+        self.has_drop_rate = kwargs.get('has_drop_rate', 0.5)
+
+    def train(self, images, labels):
+        images = has(images, self.has_grid_size, self.has_drop_rate)
+        output_dict = self.model(images, labels)
+        logits = output_dict['logits']
+        loss = self.loss_fn(logits, labels)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        return logits, loss

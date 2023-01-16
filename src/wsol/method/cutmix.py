@@ -4,6 +4,7 @@ Original repository: https://github.com/clovaai/CutMix-PyTorch
 
 import numpy as np
 import torch
+from base_method import BaseMethod
 
 __all__ = ['cutmix']
 
@@ -38,3 +39,26 @@ def rand_bbox(size, lam):
     bby2 = np.clip(cy + cut_h // 2, 0, h)
 
     return bbx1, bby1, bbx2, bby2
+
+
+class CutMixMethod(BaseMethod):
+    def __init__(self, **kwargs):
+        super(CutMixMethod, self).__init__(**kwargs)
+        self.cutmix_prob = kwargs.get('cutmix_prob', 1.0)
+        self.cutmix_beta = kwargs.get('cutmix_beta', 1.0)
+
+    def train(self, images, labels):
+        if self.cutmix_prob > np.random.rand(1) and self.cutmix_beta > 0:
+            images, target_a, target_b, lam = cutmix(images, labels, self.cutmix_beta)
+            output_dict = self.model(images)
+            logits = output_dict['logits']
+            loss = (self.loss_fn(logits, target_a) * lam +
+                    self.loss_fn(logits, target_b) * (1. - lam))
+        else:
+            output_dict = self.model(images)
+            logits = output_dict['logits']
+            loss = self.loss_fn(logits, labels)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        return logits, loss

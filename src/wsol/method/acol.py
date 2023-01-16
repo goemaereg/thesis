@@ -4,6 +4,7 @@ Original repository: https://github.com/xiaomengyc/ACoL
 
 import torch
 import torch.nn as nn
+from  base_method import BaseMethod
 
 from .util import get_attention
 
@@ -42,3 +43,8 @@ def _erase_attention(feature, attention, drop_threshold):
 def get_loss(output_dict, gt_labels, **kwargs):
     return nn.CrossEntropyLoss()(output_dict['logits'], gt_labels.long()) + \
            nn.CrossEntropyLoss()(output_dict['logit_b'], gt_labels.long())
+
+
+class AcolMethod(BaseMethod):
+    def __init__(self, **kwargs):
+        super(AcolMethod, self).__init__(**kwargs)

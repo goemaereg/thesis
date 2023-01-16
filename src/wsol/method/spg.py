@@ -4,8 +4,8 @@ Original repository: https://github.com/xiaomengyc/SPG
 
 import torch
 import torch.nn as nn
-
 from .util import get_attention
+from base_method import BaseMethod
 
 __all__ = ['spg']
 
@@ -85,3 +85,27 @@ def loss_attention(loss_func, logits, labels):
     pos = labels.view(-1, 1) < 255.
     return loss_func(logits.view(-1, 1)[pos],
                      labels.view(-1, 1)[pos].detach().clone())
+
+
+class SPGMethod(BaseMethod):
+    def __init__(self, **kwargs):
+        super(SPGMethod, self).__init__(**kwargs)
+        self.spg_threshold_1h = kwargs.get('spg_threshold_1h', 0.7)
+        self.spg_threshold_1l = kwargs.get('spg_threshold_1l', 0.01)
+        self.spg_threshold_2h = kwargs.get('spg_threshold_2h', 0.5)
+        self.spg_threshold_2l = kwargs.get('spg_threshold_2l', 0.05)
+        self.spg_threshold_3h = kwargs.get('spg_threshold_3h', 0.7)
+        self.spg_threshold_3l = kwargs.get('spg_threshold_3l', 0.1)
+        self.spg_thresholds = ((self.spg_threshold_1h, self.spg_threshold_1l),
+                               (self.spg_threshold_2h, self.spg_threshold_2l),
+                               (self.spg_threshold_3h, self.spg_threshold_3l))
+        self.spg_thresholds = kwargs.get('spg_thresholds', self.spg_thresholds)
+
+    def train(self, images, labels):
+        output_dict = self.model(images)
+        logits = output_dict['logits']
+        loss = get_loss(output_dict, labels, spg_thresholds=self.spg_thresholds)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        return logits, loss

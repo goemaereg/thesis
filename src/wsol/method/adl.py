@@ -4,6 +4,7 @@ Original repository: https://github.com/junsukchoe/ADL
 
 import torch
 import torch.nn as nn
+from base_method import BaseMethod
 
 __all__ = ['ADL']
 
@@ -45,3 +46,23 @@ class ADL(nn.Module):
     def extra_repr(self):
         return 'adl_drop_rate={}, adl_drop_threshold={}'.format(
             self.adl_drop_rate, self.adl_drop_threshold)
+
+
+class ADLMethod(BaseMethod):
+    def __init__(self, model, **kwargs):
+        super(ADLMethod, self).__init__(model=model, **kwargs)
+
+    @classmethod
+    def get_loss(cls, logits, logits_b, gt_labels):
+        return nn.CrossEntropyLoss()(logits, gt_labels.long()) + \
+               nn.CrossEntropyLoss()(logits_b, gt_labels.long())
+
+    def train(self, images, labels):
+        output_dict = self.model(images, labels)
+        logits = output_dict['logits']
+        logits_b = output_dict['logits']
+        loss = self.get_loss(logits, logits_b, labels)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        return logits, loss

@@ -20,7 +20,18 @@ import tqdm
 import mlflow
 from munch import Munch
 import sys
+from wsol.method import AcolMethod, ADLMethod, CAMMethod, CutMixMethod, HASMethod, MinMaxCAMMethod, SPGMethod
 
+
+methods = {
+    'acol': AcolMethod,
+    'adl': ADLMethod,
+    'cam': CAMMethod,
+    'cutmix': CutMixMethod,
+    'has': HASMethod,
+    'minmaxcam': MinMaxCAMMethod,
+    'spg': SPGMethod
+}
 
 def set_random_seed(seed):
     if seed is None:
@@ -162,6 +173,9 @@ class Trainer(object):
             batch_set_size=batch_set_size,
             train_augment=self.args.train_augment
         )
+        method_args = vars(self.args) | {'model': self.model, 'device': self._DEVICE, 'optimizer': self.optimizer}
+        self.wsol_method = methods[self.args.wsol_method](**method_args)
+
         # MLFlow logging
         # artifacts
         mlflow.log_artifact('requirements.txt')
@@ -357,8 +371,28 @@ class Trainer(object):
         loss_frr /= bs
         return loss_crr, loss_frr
 
-
     def train(self, epoch, split):
+        loader = self.loaders[split]
+        total_loss = 0.0
+        num_correct = 0
+        num_images = 0
+        for images, targets, _ in loader:
+            images = images.to(self._DEVICE)
+            targets = targets.to(self._DEVICE)
+            logits, loss = self.wsol_method.train(images, targets)
+            pred = logits.argmax(dim=1)
+            total_loss += loss.item() * images.size(0)
+            num_correct += (pred == targets).sum().item()
+            num_images += images.size(0)
+        loss_average = total_loss / float(num_images)
+        classification_acc = num_correct / float(num_images) # * 100
+        self.performance_meters[split]['classification'].update(classification_acc)
+        self.performance_meters[split]['loss'].update(loss_average)
+        mlflow_metrics = {f'{split}_loss': loss_average, f'{split}_accuracy': classification_acc}
+        mlflow.log_metrics(mlflow_metrics, step=epoch)
+        return dict(classification_acc=classification_acc, loss=loss_average)
+
+    def _train(self, epoch, split):
         loader = self.loaders[split]
 
         total_loss = 0.0
