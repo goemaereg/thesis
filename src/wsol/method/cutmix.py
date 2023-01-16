@@ -4,7 +4,7 @@ Original repository: https://github.com/clovaai/CutMix-PyTorch
 
 import numpy as np
 import torch
-from base_method import BaseMethod
+from .base_method import BaseMethod
 
 __all__ = ['cutmix']
 

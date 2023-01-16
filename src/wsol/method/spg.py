@@ -5,7 +5,7 @@ Original repository: https://github.com/xiaomengyc/SPG
 import torch
 import torch.nn as nn
 from .util import get_attention
-from base_method import BaseMethod
+from .base_method import BaseMethod
 
 __all__ = ['spg']
 

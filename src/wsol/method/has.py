@@ -3,7 +3,7 @@ Original repository: https://github.com/kkanshul/Hide-and-Seek
 """
 
 import random
-from base_method import BaseMethod
+from .base_method import BaseMethod
 
 __all__ = ['has']
 

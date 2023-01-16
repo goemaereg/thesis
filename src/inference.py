@@ -59,4 +59,4 @@ class CAMComputer(object):
                         os.makedirs(os.path.dirname(cam_path))
                     np.save(cam_path, cam_normalized)
                 self.evaluator.accumulate(cam_normalized, image_id)
-        return self.evaluator.compute(log=self.log)
+        return self.evaluator.compute()

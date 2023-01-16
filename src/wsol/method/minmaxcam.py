@@ -1,16 +1,13 @@
-from base_method import BaseMethod
+from .base_method import BaseMethod
 import torch
 import torch.nn.functional as F
 import numpy as np
 import itertools
 
 
-
-
-
 class MinMaxCAMMethod(BaseMethod):
     def __init__(self, optimizer, **kwargs):
-        super(MinMaxCAMMethod, self).__init__(self, **kwargs)
+        super(MinMaxCAMMethod, self).__init__(**kwargs)
         self.optimizer = optimizer
         self.mse_loss = torch.nn.MSELoss(reduction='mean').to(self.device)
         self.minmaxcam_class_set_size = kwargs.get('minmaxcam_class_set_size', 5)

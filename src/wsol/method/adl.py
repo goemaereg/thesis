@@ -4,7 +4,7 @@ Original repository: https://github.com/junsukchoe/ADL
 
 import torch
 import torch.nn as nn
-from base_method import BaseMethod
+from .base_method import BaseMethod
 
 __all__ = ['ADL']
 
@@ -50,7 +50,7 @@ class ADL(nn.Module):
 
 class ADLMethod(BaseMethod):
     def __init__(self, model, **kwargs):
-        super(ADLMethod, self).__init__(model=model, **kwargs)
+        super(ADLMethod, self).__init__(**kwargs)
 
     @classmethod
     def get_loss(cls, logits, logits_b, gt_labels):

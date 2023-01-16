@@ -4,7 +4,7 @@ Original repository: https://github.com/xiaomengyc/ACoL
 
 import torch
 import torch.nn as nn
-from  base_method import BaseMethod
+from  .base_method import BaseMethod
 
 from .util import get_attention
 
