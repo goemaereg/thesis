@@ -100,7 +100,7 @@ def configure_reporter(args):
 
 
 def configure_pretrained_path(args):
-    pretrained_path = None
+    pretrained_path = args.pretrained_path
     return pretrained_path
 
 
@@ -164,7 +164,8 @@ def configure_parse(load_config=True):
                         help='number of total epochs to run')
     parser.add_argument('--pretrained', type=str2bool, nargs='?',
                         const=True, default=True,
-                        help='Use pre_trained model.')
+                        help='Use pre-trained model.')
+    parser.add_argument('--pretrained_path', type=str, default=None, help='Path of pre-trained model.')
     parser.add_argument('--cam_curve_interval', type=float, default=0.01,#.001,
                         help='CAM curve interval')
     parser.add_argument('--resize_size', type=int, default=256,

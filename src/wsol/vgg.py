@@ -261,16 +261,18 @@ def batch_replace_layer(state_dict):
     return state_dict
 
 
-def load_pretrained_model(model, architecture_type, path=None):
+def load_pretrained_model(model, architecture_type, path=None, adapt=True):
     if path is not None:
-        state_dict = torch.load(os.path.join(path, 'vgg16.pth'))
+        state_dict = torch.load(path)
     else:
         state_dict = load_url(model_urls['vgg16'], progress=True)
+        adapt = True
 
-    if architecture_type == 'spg':
-        state_dict = batch_replace_layer(state_dict)
-    state_dict = remove_layer(state_dict, 'classifier.')
-    state_dict = adjust_pretrained_model(state_dict, model)
+    if adapt:
+        if architecture_type == 'spg':
+            state_dict = batch_replace_layer(state_dict)
+        state_dict = remove_layer(state_dict, 'classifier.')
+        state_dict = adjust_pretrained_model(state_dict, model)
 
     model.load_state_dict(state_dict, strict=False)
     return model
@@ -305,6 +307,7 @@ def vgg16(architecture_type, pretrained=False, pretrained_path=None,
              'spg': VggSpg,
              'adl': VggCam}[architecture_type](layers, **kwargs)
     if pretrained:
+        adapt = pretrained_path is None
         model = load_pretrained_model(model, architecture_type,
-                                      path=pretrained_path)
+                                      path=pretrained_path, adapt=adapt)
     return model

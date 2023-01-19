@@ -449,22 +449,24 @@ def batch_replace_layer(state_dict):
     return state_dict
 
 
-def load_pretrained_model(model, wsol_method, path=None, **kwargs):
+def load_pretrained_model(model, wsol_method, path=None, adapt=True, **kwargs):
     strict_rule = True
 
     if path:
-        state_dict = torch.load(os.path.join(path, 'resnet50.pth'))
+        state_dict = torch.load(os.path.join(path))
     else:
         state_dict = load_url(model_urls['resnet50'], progress=True)
+        adapt = True
 
-    if wsol_method == 'adl':
-        state_dict = align_layer(state_dict)
-    elif wsol_method == 'spg':
-        state_dict = batch_replace_layer(state_dict)
+    if adapt:
+        if wsol_method == 'adl':
+            state_dict = align_layer(state_dict)
+        elif wsol_method == 'spg':
+            state_dict = batch_replace_layer(state_dict)
 
-    if kwargs['dataset_name'] != 'ILSVRC' or wsol_method in ('acol', 'spg'):
-        state_dict = remove_layer(state_dict, 'fc')
-        strict_rule = False
+        if kwargs['dataset_name'] != 'ILSVRC' or wsol_method in ('acol', 'spg'):
+            state_dict = remove_layer(state_dict, 'fc')
+            strict_rule = False
 
     model.load_state_dict(state_dict, strict=strict_rule)
     return model
@@ -478,6 +480,7 @@ def resnet50(architecture_type, pretrained=False, pretrained_path=None,
              'adl': ResNetAdl}[architecture_type](Bottleneck, [3, 4, 6, 3],
                                                   **kwargs)
     if pretrained:
+        adapt = pretrained_path is None
         model = load_pretrained_model(model, architecture_type,
-                                      path=pretrained_path, **kwargs)
+                                      path=pretrained_path, adapt=adapt, **kwargs)
     return model

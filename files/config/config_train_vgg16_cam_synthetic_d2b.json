@@ -13,7 +13,7 @@
   "data_root": "data/dataset",
   "dataset_name": "SYNTHETIC",
   "dataset_name_suffix": "d2b",
-  "epochs": 20,
+  "epochs": 10,
   "eval_checkpoint_type": "last",
   "experiment_name": "vgg16_cam_synthetic_d2b",
   "has_drop_rate": 0.5,

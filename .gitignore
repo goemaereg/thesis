@@ -17,6 +17,7 @@ src/synthetic/checkpoint/
 data/dataset/
 data/maskdata/
 mlruns/
+models/
 notebook/mlruns/
 train_log
 
