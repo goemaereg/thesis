@@ -21,9 +21,9 @@ import mlflow
 from munch import Munch
 import sys
 from wsol.method import AcolMethod, ADLMethod, CAMMethod, CutMixMethod, HASMethod, MinMaxCAMMethod, SPGMethod
+from wsol.cam_method import CAM, GradCAM, ScoreCAM
 
-
-methods = {
+wsol_methods = {
     'acol': AcolMethod,
     'adl': ADLMethod,
     'cam': CAMMethod,
@@ -31,6 +31,12 @@ methods = {
     'has': HASMethod,
     'minmaxcam': MinMaxCAMMethod,
     'spg': SPGMethod
+}
+
+cam_methods = {
+    'cam': CAM,
+    'gradcam': GradCAM,
+    'scorecam': ScoreCAM
 }
 
 def set_random_seed(seed):
@@ -174,8 +180,8 @@ class Trainer(object):
             train_augment=self.args.train_augment
         )
         method_args = vars(self.args) | {'model': self.model, 'device': self._DEVICE, 'optimizer': self.optimizer}
-        self.wsol_method = methods[self.args.wsol_method](**method_args)
-
+        self.wsol_method = wsol_methods[self.args.wsol_method](**method_args)
+        self.cam_method = self._set_cam_method()
         # MLFlow logging
         # artifacts
         mlflow.log_artifact('requirements.txt')
@@ -204,6 +210,7 @@ class Trainer(object):
             architecture=self.args.architecture,
             architecture_type=self.args.architecture_type,
             wsol_method=self.args.wsol_method,
+            cam_method=self.args.cam_method,
             experiment=self.args.experiment_name,
             dataset=self.args.dataset_name,
             dataset_spec=self.args.dataset_name_suffix,
@@ -215,6 +222,15 @@ class Trainer(object):
         )
         mlflow.set_tags(tags)
 
+    def _set_cam_method(self):
+        target_layers = None
+        if self.model.__class__.__name__ == 'VggCam':
+            target_layers = [self.model.conv6_relu]
+        if target_layers is None:
+            raise NotImplementedError
+        use_cuda = ('cuda' in self._DEVICE)
+        cam_args = dict(model=self.model, target_layers=target_layers, use_cuda=use_cuda, reshape_transform=False)
+        return cam_methods[self.args.cam_method](**cam_args)
 
     def _set_performance_meters(self):
         if self.args.dataset_name in ('SYNTHETIC', 'OpenImages'):
@@ -529,6 +545,7 @@ class Trainer(object):
             metadata_root=metadata_root,
             mask_root=self.args.mask_root,
             scoremap_root=self.args.scoremap_root,
+            cam_method=self.cam_method,
             iou_threshold_list=self.args.iou_threshold_list,
             dataset_name=self.args.dataset_name,
             split=split,

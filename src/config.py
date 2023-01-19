@@ -10,11 +10,13 @@ from typing import Dict
 
 _DATASET_NAMES = ('CUB', 'ILSVRC', 'OpenImages', 'SYNTHETIC')
 _ARCHITECTURE_NAMES = ('vgg16', 'resnet50', 'inception_v3')
+_ARCHITECTURE_DEFAULT = 'vgg16'
 _METHOD_NAMES = ('cam', 'adl', 'acol', 'spg', 'has', 'cutmix', 'minmaxcam')
 _SPLITS = ('train', 'val', 'test')
 _BBOX_METRIC_NAMES = ('MaxBoxAcc', 'MaxBoxAccV2', 'MaxBoxAccV3')
 _BBOX_METRIC_DEFAULT = 'MaxBoxAccV2'
-
+_CAM_METHOD_NAMES = ('cam', 'gradcam', 'scorecam')
+_CAM_METHOD_DEFAULT = 'cam'
 
 def mch(**kwargs):
     return munch.Munch(dict(**kwargs))
@@ -145,11 +147,14 @@ def configure_parse(load_config=True):
                              'class. 0 means "use all available samples".')
 
     # Setting
-    parser.add_argument('--architecture', default='resnet18',
+    parser.add_argument('--architecture', default=_ARCHITECTURE_DEFAULT,
                         choices=_ARCHITECTURE_NAMES,
                         help='model architecture: ' +
                              ' | '.join(_ARCHITECTURE_NAMES) +
-                             ' (default: resnet18)')
+                             f' (default: {_ARCHITECTURE_DEFAULT})')
+    parser.add_argument('--cam_method', default=_CAM_METHOD_DEFAULT,
+                        choices=_CAM_METHOD_NAMES,
+                        help='CAM method used to generate scoremaps')
     parser.add_argument('--epochs', default=40, type=int,
                         help='number of total epochs to run')
     parser.add_argument('--pretrained', type=str2bool, nargs='?',

@@ -1,3 +1,4 @@
+from .cam import CAM
 from .grad_cam import GradCAM
 from .hirescam import HiResCAM
 from .grad_cam_elementwise import GradCAMElementWise
