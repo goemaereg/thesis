@@ -60,7 +60,7 @@ class VggCam(nn.Module):
         self.features = features
 
         self.conv6 = nn.Conv2d(512, 1024, kernel_size=3, padding=1)
-        self.relu = nn.ReLU(inplace=False)
+        self.conv6_relu = nn.ReLU(inplace=False)
         self.avgpool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Linear(1024, num_classes)
         initialize_weights(self.modules(), init_mode='he')
@@ -68,7 +68,7 @@ class VggCam(nn.Module):
     def forward(self, x, labels=None, return_cam=False, clone_cam=True):
         features = self.features(x)
         conv6 = self.conv6(features)
-        conv6_relu = self.relu(conv6)
+        conv6_relu = self.conv6_relu(conv6)
         avgpool = self.avgpool(conv6_relu)
         avgpool_flat = avgpool.view(avgpool.size(0), -1) # flatten
         logits = self.fc(avgpool_flat)

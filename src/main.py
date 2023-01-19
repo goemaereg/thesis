@@ -229,7 +229,7 @@ class Trainer(object):
         if target_layers is None:
             raise NotImplementedError
         use_cuda = ('cuda' in self._DEVICE)
-        cam_args = dict(model=self.model, target_layers=target_layers, use_cuda=use_cuda, reshape_transform=False)
+        cam_args = dict(model=self.model, target_layers=target_layers, use_cuda=use_cuda)
         return cam_methods[self.args.cam_method](**cam_args)
 
     def _set_performance_meters(self):
