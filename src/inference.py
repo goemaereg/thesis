@@ -3,8 +3,8 @@ import numpy as np
 from evaluation import BoxEvaluator, MaskEvaluator, MultiEvaluator
 from evaluation import configure_metadata, normalize_scoremap
 from util import t2n
-import tqdm
 import os
+import torch
 
 _IMAGENET_MEAN = [0.485, .456, .406]
 _IMAGENET_STDDEV = [.229, .224, .225]
@@ -42,21 +42,24 @@ class CAMComputer(object):
 
     def compute_and_evaluate_cams(self, save_cams=False):
         # print("Computing and evaluating cams.")
-        for images, targets, image_ids in self.loader:
-            image_size = images.shape[2:]
-            images = images.to(self.device) #.cuda()
-            result = self.model(images, targets, return_cam=True)
-            cams = result['cams'].detach().clone()
-            cams = t2n(cams)
-            cams_it = zip(cams, image_ids)
-            for cam, image_id in cams_it:
-                cam_resized = cv2.resize(cam, image_size,
-                                         interpolation=cv2.INTER_CUBIC)
-                cam_normalized = normalize_scoremap(cam_resized)
-                if self.split in ('val', 'test') and save_cams:
-                    cam_path = os.path.join(self.scoremap_root, image_id)
-                    if not os.path.exists(os.path.dirname(cam_path)):
-                        os.makedirs(os.path.dirname(cam_path))
-                    np.save(cam_path, cam_normalized)
-                self.evaluator.accumulate(cam_normalized, image_id)
-        return self.evaluator.compute()
+        metrics = {}
+        with torch.no_grad():
+            for images, targets, image_ids in self.loader:
+                image_size = images.shape[2:]
+                images = images.to(self.device) #.cuda()
+                result = self.model(images, targets, return_cam=True)
+                cams = result['cams'].detach().clone()
+                cams = t2n(cams)
+                cams_it = zip(cams, image_ids)
+                for cam, image_id in cams_it:
+                    cam_resized = cv2.resize(cam, image_size,
+                                             interpolation=cv2.INTER_CUBIC)
+                    cam_normalized = normalize_scoremap(cam_resized)
+                    if self.split in ('val', 'test') and save_cams:
+                        cam_path = os.path.join(self.scoremap_root, image_id)
+                        if not os.path.exists(os.path.dirname(cam_path)):
+                            os.makedirs(os.path.dirname(cam_path))
+                        np.save(cam_path, cam_normalized)
+                    self.evaluator.accumulate(cam_normalized, image_id)
+            metrics = self.evaluator.compute()
+        return metrics

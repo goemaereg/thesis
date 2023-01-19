@@ -47,7 +47,7 @@ def str2bool(v):
 
 
 def get_architecture_type(wsol_method):
-    if wsol_method in ('has', 'cutmix', 'minmaxcam'):
+    if wsol_method in ('cam', 'has', 'cutmix', 'minmaxcam'):
         architecture_type = 'cam'
     else:
         architecture_type = wsol_method

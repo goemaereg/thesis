@@ -128,6 +128,7 @@ torchvision==0.14.0
 tornado==6.2
 tqdm==4.64.1
 traitlets==5.5.0
+ttach==0.0.3
 typing_extensions==4.4.0
 urllib3==1.26.12
 virtualenv==20.17.1

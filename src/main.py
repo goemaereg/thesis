@@ -280,96 +280,168 @@ class Trainer(object):
             nesterov=opt.nesterov)
         return optimizer
 
-    def _wsol_training(self, images, targets):
-        if (self.args.wsol_method == 'cutmix' and
-                self.args.cutmix_prob > np.random.rand(1) and
-                self.args.cutmix_beta > 0):
-            images, target_a, target_b, lam = wsol.method.cutmix(
-                images, targets, self.args.cutmix_beta)
-            output_dict = self.model(images)
-            logits = output_dict['logits']
-            loss = (self.cross_entropy_loss(logits, target_a) * lam +
-                    self.cross_entropy_loss(logits, target_b) * (1. - lam))
-            return logits, loss
+    # def _wsol_training(self, images, targets):
+    #     if (self.args.wsol_method == 'cutmix' and
+    #             self.args.cutmix_prob > np.random.rand(1) and
+    #             self.args.cutmix_beta > 0):
+    #         images, target_a, target_b, lam = wsol.method.cutmix(
+    #             images, targets, self.args.cutmix_beta)
+    #         output_dict = self.model(images)
+    #         logits = output_dict['logits']
+    #         loss = (self.cross_entropy_loss(logits, target_a) * lam +
+    #                 self.cross_entropy_loss(logits, target_b) * (1. - lam))
+    #         return logits, loss
+    #
+    #     if self.args.wsol_method == 'has':
+    #         images = wsol.method.has(images, self.args.has_grid_size,
+    #                                  self.args.has_drop_rate)
+    #
+    #     output_dict = self.model(images, targets)
+    #     logits = output_dict['logits']
+    #
+    #     if self.args.wsol_method in ('acol', 'spg'):
+    #         loss = wsol.method.__dict__[self.args.wsol_method].get_loss(
+    #             output_dict, targets, spg_thresholds=self.args.spg_thresholds)
+    #     else:
+    #         loss = self.cross_entropy_loss(logits, targets)
+    #
+    #     return logits, loss
 
-        if self.args.wsol_method == 'has':
-            images = wsol.method.has(images, self.args.has_grid_size,
-                                     self.args.has_drop_rate)
+    # def vgg16_minmaxcam_regularization_loss(self, images, labels):
+    #     for param in self.model.features.parameters():
+    #         param.requires_grad = False
+    #     for param in self.model.conv6.parameters():
+    #         param.requires_grad = False
+    #     for param in self.model.fc.parameters():
+    #         param.requires_grad = True
+    #
+    #     images = images.to(self._DEVICE)  # .cuda()
+    #     # Compute CAMs from B(I) with I=input image
+    #     result_orig = self.model(images, labels,
+    #                              return_cam=True, clone_cam=False)
+    #     cams = result_orig['cams']
+    #     # cams = t2n(cams)
+    #     cams = cams.unsqueeze(1)
+    #     # rescale cams to images input size
+    #     resize = tuple(images.shape[2:])
+    #     cams_resized = F.interpolate(cams, size=resize, mode='bilinear')
+    #     # normalize cams
+    #     cams_min = torch.amin(cams_resized, dim=(2, 3), keepdim=True)
+    #     cams_max = torch.amax(cams_resized, dim=(2, 3), keepdim=True)
+    #     cams_normalized = torch.zeros_like(cams_resized)
+    #     if ((not torch.isnan(cams_resized).any()) and
+    #         (not torch.equal(cams_min, cams_max))):
+    #         cams_normalized = (cams_resized - cams_min)/(cams_max - cams_min)
+    #
+    #     # Compute B(I * cams_normalized)
+    #     result_mask = self.model(images * cams_normalized)
+    #     # x = self.model.features(images * cams_normalized)
+    #     # x = self.model.conv6(x)
+    #     # out_extra_masked = self.model.relu(x)
+    #
+    #     # compute features_i
+    #     features_i = result_mask['avgpool_flat']
+    #     # compute features_o
+    #     features_o = result_orig['avgpool_flat']
+    #
+    #     # compute losses
+    #     loss_crr = 0.0
+    #     loss_frr = 0.0
+    #     # compute ss and bs per target
+    #     # ss and bs can be less than minmaxcam_class_set_size and minmaxcam_batch_set_size for small datasets
+    #     # ss = self.args.minmaxcam_class_set_size
+    #     # bs = self.args.minmaxcam_batch_set_size
+    #     bs = np.unique(labels).shape[0]
+    #     starts = np.nonzero(np.r_[1, np.diff(labels)])[0]
+    #     stops = np.nonzero(np.r_[0, np.diff(labels), 1])[0]
+    #     for start, stop in zip(starts, stops):
+    #         loss_crr_ss = 0.0
+    #         f_i_pair_num = 0
+    #         features_i_ss = features_i[start:stop]
+    #         features_o_ss = features_o[start:stop]
+    #         ss = stop - start
+    #         for j, k in itertools.combinations(range(ss), 2):
+    #             f_i_pair_num += 1
+    #             feature_i_ss_j = features_i_ss[j].unsqueeze(0)
+    #             feature_i_ss_k = features_i_ss[k].unsqueeze(0)
+    #             loss_crr_ss += self.mse_loss(feature_i_ss_j, feature_i_ss_k)
+    #         loss_frr += self.mse_loss(features_i_ss, features_o_ss)
+    #         loss_crr += loss_crr_ss / f_i_pair_num
+    #     loss_crr /= bs
+    #     loss_frr /= bs
+    #     return loss_crr, loss_frr
 
-        output_dict = self.model(images, targets)
-        logits = output_dict['logits']
-
-        if self.args.wsol_method in ('acol', 'spg'):
-            loss = wsol.method.__dict__[self.args.wsol_method].get_loss(
-                output_dict, targets, spg_thresholds=self.args.spg_thresholds)
-        else:
-            loss = self.cross_entropy_loss(logits, targets)
-
-        return logits, loss
-
-    def vgg16_minmaxcam_regularization_loss(self, images, labels):
-        for param in self.model.features.parameters():
-            param.requires_grad = False
-        for param in self.model.conv6.parameters():
-            param.requires_grad = False
-        for param in self.model.fc.parameters():
-            param.requires_grad = True
-
-        images = images.to(self._DEVICE)  # .cuda()
-        # Compute CAMs from B(I) with I=input image
-        result_orig = self.model(images, labels,
-                                 return_cam=True, clone_cam=False)
-        cams = result_orig['cams']
-        # cams = t2n(cams)
-        cams = cams.unsqueeze(1)
-        # rescale cams to images input size
-        resize = tuple(images.shape[2:])
-        cams_resized = F.interpolate(cams, size=resize, mode='bilinear')
-        # normalize cams
-        cams_min = torch.amin(cams_resized, dim=(2, 3), keepdim=True)
-        cams_max = torch.amax(cams_resized, dim=(2, 3), keepdim=True)
-        cams_normalized = torch.zeros_like(cams_resized)
-        if ((not torch.isnan(cams_resized).any()) and
-            (not torch.equal(cams_min, cams_max))):
-            cams_normalized = (cams_resized - cams_min)/(cams_max - cams_min)
-
-        # Compute B(I * cams_normalized)
-        result_mask = self.model(images * cams_normalized)
-        # x = self.model.features(images * cams_normalized)
-        # x = self.model.conv6(x)
-        # out_extra_masked = self.model.relu(x)
-
-        # compute features_i
-        features_i = result_mask['avgpool_flat']
-        # compute features_o
-        features_o = result_orig['avgpool_flat']
-
-        # compute losses
-        loss_crr = 0.0
-        loss_frr = 0.0
-        # compute ss and bs per target
-        # ss and bs can be less than minmaxcam_class_set_size and minmaxcam_batch_set_size for small datasets
-        # ss = self.args.minmaxcam_class_set_size
-        # bs = self.args.minmaxcam_batch_set_size
-        bs = np.unique(labels).shape[0]
-        starts = np.nonzero(np.r_[1, np.diff(labels)])[0]
-        stops = np.nonzero(np.r_[0, np.diff(labels), 1])[0]
-        for start, stop in zip(starts, stops):
-            loss_crr_ss = 0.0
-            f_i_pair_num = 0
-            features_i_ss = features_i[start:stop]
-            features_o_ss = features_o[start:stop]
-            ss = stop - start
-            for j, k in itertools.combinations(range(ss), 2):
-                f_i_pair_num += 1
-                feature_i_ss_j = features_i_ss[j].unsqueeze(0)
-                feature_i_ss_k = features_i_ss[k].unsqueeze(0)
-                loss_crr_ss += self.mse_loss(feature_i_ss_j, feature_i_ss_k)
-            loss_frr += self.mse_loss(features_i_ss, features_o_ss)
-            loss_crr += loss_crr_ss / f_i_pair_num
-        loss_crr /= bs
-        loss_frr /= bs
-        return loss_crr, loss_frr
+    # def _train(self, epoch, split):
+    #     loader = self.loaders[split]
+    #
+    #     total_loss = 0.0
+    #     num_correct = 0
+    #     num_images = 0
+    #
+    #     for images, targets, _ in loader:
+    #         images = images.to(self._DEVICE) # images.cuda()
+    #         targets = targets.to(self._DEVICE) #.cuda()
+    #
+    #         # minmaxcam stage I
+    #         if self.args.wsol_method == 'minmaxcam':
+    #             for param in self.model.features.parameters():
+    #                 param.requires_grad = True
+    #             for param in self.model.conv6.parameters():
+    #                 param.requires_grad = True
+    #             for param in self.model.fc.parameters():
+    #                 param.requires_grad = True
+    #
+    #         self.model.train()
+    #         logits, loss = self._wsol_training(images, targets)
+    #         pred = logits.argmax(dim=1)
+    #
+    #         total_loss += loss.item() * images.size(0)
+    #         num_correct += (pred == targets).sum().item()
+    #         num_images += images.size(0)
+    #
+    #         self.optimizer.zero_grad()
+    #         loss.backward()
+    #         self.optimizer.step()
+    #
+    #         # minmaxcam stage II
+    #         if self.args.wsol_method == 'minmaxcam':
+    #             for param in self.model.features.parameters():
+    #                 param.requires_grad = False
+    #             for param in self.model.conv6.parameters():
+    #                 param.requires_grad = False
+    #             for param in self.model.fc.parameters():
+    #                 param.requires_grad = True
+    #
+    #             self.optimizer.zero_grad()
+    #             self.model.eval()
+    #
+    #             loss_crr, loss_frr = \
+    #                 self.vgg16_minmaxcam_regularization_loss(images, targets)
+    #
+    #             self.model.train()
+    #             loss_all_p2 = self.args.minmaxcam_crr_weight * loss_crr + \
+    #                           self.args.minmaxcam_frr_weight * loss_frr
+    #             try:
+    #                 loss_all_p2.backward()
+    #             except RuntimeError as e:
+    #                 print(e)
+    #                 print(loss_all_p2)
+    #             self.optimizer.step()
+    #
+    #     loss_average = total_loss / float(num_images)
+    #     # if loss_average > 1000:
+    #     #     print(loss_average)
+    #     classification_acc = num_correct / float(num_images) # * 100
+    #
+    #     self.performance_meters[split]['classification'].update(
+    #         classification_acc)
+    #     self.performance_meters[split]['loss'].update(loss_average)
+    #
+    #     mlflow_metrics = {f'{split}_loss': loss_average, f'{split}_accuracy': classification_acc}
+    #     mlflow.log_metrics(mlflow_metrics, step=epoch)
+    #
+    #     return dict(classification_acc=classification_acc,
+    #                 loss=loss_average)
 
     def train(self, epoch, split):
         loader = self.loaders[split]
@@ -391,78 +463,6 @@ class Trainer(object):
         mlflow_metrics = {f'{split}_loss': loss_average, f'{split}_accuracy': classification_acc}
         mlflow.log_metrics(mlflow_metrics, step=epoch)
         return dict(classification_acc=classification_acc, loss=loss_average)
-
-    def _train(self, epoch, split):
-        loader = self.loaders[split]
-
-        total_loss = 0.0
-        num_correct = 0
-        num_images = 0
-
-        for images, targets, _ in loader:
-            images = images.to(self._DEVICE) # images.cuda()
-            targets = targets.to(self._DEVICE) #.cuda()
-
-            # minmaxcam stage I
-            if self.args.wsol_method == 'minmaxcam':
-                for param in self.model.features.parameters():
-                    param.requires_grad = True
-                for param in self.model.conv6.parameters():
-                    param.requires_grad = True
-                for param in self.model.fc.parameters():
-                    param.requires_grad = True
-
-            self.model.train()
-            logits, loss = self._wsol_training(images, targets)
-            pred = logits.argmax(dim=1)
-
-            total_loss += loss.item() * images.size(0)
-            num_correct += (pred == targets).sum().item()
-            num_images += images.size(0)
-
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
-
-            # minmaxcam stage II
-            if self.args.wsol_method == 'minmaxcam':
-                for param in self.model.features.parameters():
-                    param.requires_grad = False
-                for param in self.model.conv6.parameters():
-                    param.requires_grad = False
-                for param in self.model.fc.parameters():
-                    param.requires_grad = True
-
-                self.optimizer.zero_grad()
-                self.model.eval()
-
-                loss_crr, loss_frr = \
-                    self.vgg16_minmaxcam_regularization_loss(images, targets)
-
-                self.model.train()
-                loss_all_p2 = self.args.minmaxcam_crr_weight * loss_crr + \
-                              self.args.minmaxcam_frr_weight * loss_frr
-                try:
-                    loss_all_p2.backward()
-                except RuntimeError as e:
-                    print(e)
-                    print(loss_all_p2)
-                self.optimizer.step()
-
-        loss_average = total_loss / float(num_images)
-        # if loss_average > 1000:
-        #     print(loss_average)
-        classification_acc = num_correct / float(num_images) # * 100
-
-        self.performance_meters[split]['classification'].update(
-            classification_acc)
-        self.performance_meters[split]['loss'].update(loss_average)
-
-        mlflow_metrics = {f'{split}_loss': loss_average, f'{split}_accuracy': classification_acc}
-        mlflow.log_metrics(mlflow_metrics, step=epoch)
-
-        return dict(classification_acc=classification_acc,
-                    loss=loss_average)
 
 
     def print_performances(self):
@@ -489,71 +489,72 @@ class Trainer(object):
     def _compute_loss(self, loader):
         total_loss = 0.0
         num_images = 0
-        for images, targets, image_ids in loader:
-            images = images.to(self._DEVICE) #.cuda()
-            targets = targets.to(self._DEVICE) #.cuda()
-            output_dict = self.model(images)
-            logits = output_dict['logits']
-            loss = self.cross_entropy_loss(logits, targets)
-            total_loss += loss.item() * images.size(0)
-            num_images += images.size(0)
+        with torch.no_grad():
+            for images, targets, image_ids in loader:
+                images = images.to(self._DEVICE) #.cuda()
+                targets = targets.to(self._DEVICE) #.cuda()
+                output_dict = self.model(images)
+                logits = output_dict['logits']
+                loss = self.cross_entropy_loss(logits, targets)
+                total_loss += loss.item() * images.size(0)
+                num_images += images.size(0)
         loss_average = total_loss / float(num_images)
         return loss_average
 
     def _compute_accuracy(self, loader):
         num_correct = 0
         num_images = 0
-        for images, targets, image_ids in loader:
-            images = images.to(self._DEVICE) #.cuda()
-            targets = targets.to(self._DEVICE) #.cuda()
-            output_dict = self.model(images)
-            pred = output_dict['logits'].argmax(dim=1)
-            num_correct += (pred == targets).sum().item()
-            num_images += images.size(0)
-        classification_acc = num_correct / float(num_images) # * 100
+        with torch.no_grad():
+            for images, targets, image_ids in loader:
+                images = images.to(self._DEVICE) #.cuda()
+                targets = targets.to(self._DEVICE) #.cuda()
+                output_dict = self.model(images)
+                pred = output_dict['logits'].argmax(dim=1)
+                num_correct += (pred == targets).sum().item()
+                num_images += images.size(0)
+            classification_acc = num_correct / float(num_images) # * 100
         return classification_acc
 
     def evaluate(self, epoch, split, save_xai=False, save_cams=False, log=False):
         # print("Evaluate epoch {}, split {}".format(epoch, split))
         self.model.eval()
-        with torch.no_grad():
-            loss = self._compute_loss(loader=self.loaders[split])
-            self.performance_meters[split]['loss'].update(loss)
-            accuracy = self._compute_accuracy(loader=self.loaders[split])
-            self.performance_meters[split]['classification'].update(accuracy)
-            metadata_root = os.path.join(self.args.metadata_root, split)
-            cam_computer = CAMComputer(
-                model=self.model,
-                loader=self.loaders[split],
-                metadata_root=metadata_root,
-                mask_root=self.args.mask_root,
-                scoremap_root=self.args.scoremap_root,
-                iou_threshold_list=self.args.iou_threshold_list,
-                dataset_name=self.args.dataset_name,
-                split=split,
-                cam_curve_interval=self.args.cam_curve_interval,
-                multi_contour_eval=self.args.multi_contour_eval,
-                multi_gt_eval=self.args.multi_gt_eval,
-                device = self._DEVICE,
-                bbox_metric=self.args.bbox_metric,
-                log=log
-            )
-            metrics = cam_computer.compute_and_evaluate_cams(save_cams=save_cams)
-            for metric, value in metrics.items():
-                self.performance_meters[split][metric].update(value)
-            if self.args.xai and save_xai:
-                metadata = configure_metadata(metadata_root)
-                xai_save_cams(xai_root=self.args.xai_root,
-                              metadata=metadata,
-                              data_root=self.args.data_paths[split],
-                              scoremap_root=self.args.scoremap_root,
-                              evaluator=cam_computer.evaluator,
-                              multi_contour_eval=self.args.multi_contour_eval,
-                              log=True)
+        loss = self._compute_loss(loader=self.loaders[split])
+        self.performance_meters[split]['loss'].update(loss)
+        accuracy = self._compute_accuracy(loader=self.loaders[split])
+        self.performance_meters[split]['classification'].update(accuracy)
+        metadata_root = os.path.join(self.args.metadata_root, split)
+        cam_computer = CAMComputer(
+            model=self.model,
+            loader=self.loaders[split],
+            metadata_root=metadata_root,
+            mask_root=self.args.mask_root,
+            scoremap_root=self.args.scoremap_root,
+            iou_threshold_list=self.args.iou_threshold_list,
+            dataset_name=self.args.dataset_name,
+            split=split,
+            cam_curve_interval=self.args.cam_curve_interval,
+            multi_contour_eval=self.args.multi_contour_eval,
+            multi_gt_eval=self.args.multi_gt_eval,
+            device = self._DEVICE,
+            bbox_metric=self.args.bbox_metric,
+            log=log
+        )
+        metrics = cam_computer.compute_and_evaluate_cams(save_cams=save_cams)
+        for metric, value in metrics.items():
+            self.performance_meters[split][metric].update(value)
+        if self.args.xai and save_xai:
+            metadata = configure_metadata(metadata_root)
+            xai_save_cams(xai_root=self.args.xai_root,
+                          metadata=metadata,
+                          data_root=self.args.data_paths[split],
+                          scoremap_root=self.args.scoremap_root,
+                          evaluator=cam_computer.evaluator,
+                          multi_contour_eval=self.args.multi_contour_eval,
+                          log=True)
 
-            mlflow_metrics = { f'{split}_loss': loss, f'{split}_accuracy': accuracy}
-            mlflow_metrics |= { f'{split}_{metric}':value  for metric, value in metrics.items() }
-            mlflow.log_metrics(mlflow_metrics, step=epoch)
+        mlflow_metrics = { f'{split}_loss': loss, f'{split}_accuracy': accuracy}
+        mlflow_metrics |= { f'{split}_{metric}':value  for metric, value in metrics.items() }
+        mlflow.log_metrics(mlflow_metrics, step=epoch)
 
 
     def _torch_save_model(self, filename):
