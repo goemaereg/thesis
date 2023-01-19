@@ -155,7 +155,7 @@ def configure_parse(load_config=True):
     parser.add_argument('--cam_method', default=_CAM_METHOD_DEFAULT,
                         choices=_CAM_METHOD_NAMES,
                         help='CAM method used to generate scoremaps')
-    parser.add_argument('--epochs', default=40, type=int,
+    parser.add_argument('--epochs', default=10, type=int,
                         help='number of total epochs to run')
     parser.add_argument('--pretrained', type=str2bool, nargs='?',
                         const=True, default=True,
