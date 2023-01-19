@@ -600,7 +600,7 @@ def xai_save_cams(xai_root, metadata, data_root, scoremap_root, evaluator, multi
 
             # render image with annotations and CAM overlay
             # CAM overlay
-            _cam_mask = _cam_norm > 0
+            # _cam_mask = _cam_norm > 0
             segment = np.zeros(shape=img.shape)
             segment[_cam_mask] = (0, 0, 255)  # BGR
             img_ann = segment * 0.3 + img * 0.5
