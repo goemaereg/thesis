@@ -33,7 +33,7 @@ class BaseCAM:
 
     def get_cam_weights(self,
                         input_tensor: torch.Tensor,
-                        target_layers: List[torch.nn.Module],
+                        target_layer: torch.nn.Module,
                         targets: List[torch.nn.Module],
                         activations: torch.Tensor,
                         grads: torch.Tensor) -> np.ndarray:
@@ -71,7 +71,8 @@ class BaseCAM:
             input_tensor = torch.autograd.Variable(input_tensor,
                                                    requires_grad=True)
 
-        outputs = self.activations_and_grads(input_tensor)
+        result = self.activations_and_grads(input_tensor)
+        outputs = result['logits']
         if targets is None:
             target_categories = np.argmax(outputs.cpu().data.numpy(), axis=-1)
             targets = [ClassifierOutputTarget(

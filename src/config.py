@@ -11,6 +11,8 @@ from typing import Dict
 _DATASET_NAMES = ('CUB', 'ILSVRC', 'OpenImages', 'SYNTHETIC')
 _ARCHITECTURE_NAMES = ('vgg16', 'resnet50', 'inception_v3')
 _ARCHITECTURE_DEFAULT = 'vgg16'
+_ARCHITECTURE_TYPE_NAMES = ('auto', 'vanilla')
+_ARCHITECTURE_TYPE_DEFAULT = 'auto'
 _METHOD_NAMES = ('cam', 'adl', 'acol', 'spg', 'has', 'cutmix', 'minmaxcam')
 _SPLITS = ('train', 'val', 'test')
 _BBOX_METRIC_NAMES = ('MaxBoxAcc', 'MaxBoxAccV2', 'MaxBoxAccV3')
@@ -48,11 +50,12 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def get_architecture_type(wsol_method):
-    if wsol_method in ('cam', 'has', 'cutmix', 'minmaxcam'):
-        architecture_type = 'cam'
-    else:
-        architecture_type = wsol_method
+def get_architecture_type(architecture_type, wsol_method):
+    if architecture_type == 'auto':
+        if wsol_method in ('cam', 'has', 'cutmix', 'minmaxcam'):
+            architecture_type = 'cam'
+        else:
+            architecture_type = wsol_method
     return architecture_type
 
 
@@ -152,6 +155,8 @@ def configure_parse(load_config=True):
                         help='model architecture: ' +
                              ' | '.join(_ARCHITECTURE_NAMES) +
                              f' (default: {_ARCHITECTURE_DEFAULT})')
+    parser.add_argument('--architecture_type', default=_ARCHITECTURE_TYPE_DEFAULT,
+                        choices=_ARCHITECTURE_TYPE_NAMES, help='model architecturer type')
     parser.add_argument('--cam_method', default=_CAM_METHOD_DEFAULT,
                         choices=_CAM_METHOD_NAMES,
                         help='CAM method used to generate scoremaps')
@@ -273,7 +278,7 @@ def get_configs():
     configure_log(args)
     configure_bbox_metric(args)
 
-    args.architecture_type = get_architecture_type(args.wsol_method)
+    args.architecture_type = get_architecture_type(args.architecture_type, args.wsol_method)
     args.data_paths = configure_data_paths(args, tags=tags_encoded)
     args.metadata_root = os.path.join(args.metadata_root, args.dataset_name, *tags_encoded)
     args.mask_root = configure_mask_root(args, tags=tags_encoded)

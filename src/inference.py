@@ -52,8 +52,8 @@ class CAMComputer(object):
             # result = self.model(images, targets, return_cam=True)
             # cams = result['cams'].detach().clone()
             output_targets = [ClassifierOutputTarget(target.item()) for target in targets]
-            cams = self.cam_method(images, output_targets)
-            cams = t2n(cams)
+            cams = self.cam_method(images, output_targets).astype('float')
+            # cams = t2n(cams)
             cams_it = zip(cams, image_ids)
             for cam, image_id in cams_it:
                 # cam_resized = cv2.resize(cam, image_size,
