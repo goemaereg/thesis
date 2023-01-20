@@ -156,7 +156,7 @@ def configure_parse(load_config=True):
                              ' | '.join(_ARCHITECTURE_NAMES) +
                              f' (default: {_ARCHITECTURE_DEFAULT})')
     parser.add_argument('--architecture_type', default=_ARCHITECTURE_TYPE_DEFAULT,
-                        choices=_ARCHITECTURE_TYPE_NAMES, help='model architecturer type')
+                        choices=_ARCHITECTURE_TYPE_NAMES, help='model architecture type')
     parser.add_argument('--cam_method', default=_CAM_METHOD_DEFAULT,
                         choices=_CAM_METHOD_NAMES,
                         help='CAM method used to generate scoremaps')

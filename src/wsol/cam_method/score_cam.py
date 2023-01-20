@@ -40,7 +40,8 @@ class ScoreCAM(BaseCAM):
             maxs, mins = maxs[:, :, None, None], mins[:, :, None, None]
             # upsampled: shape(batch, channels, H, W)
             upsampled = (upsampled - mins) / (maxs - mins)
-            # input tensor: shape(batch, H, W, RGB channels) -> shape(batch, 1, H, W, RGB channels)
+            # input tensor: shape(batch, RGB channels, H, W) -> shape(batch, 1, RGB channels, H, W)
+            # upsampled: shape(batch, channels, H, W) -> shape(batch, channels, 1, H, W)
             input_tensors = input_tensor[:, None,
                                          :, :] * upsampled[:, :, None, :, :]
 
@@ -50,11 +51,12 @@ class ScoreCAM(BaseCAM):
                 BATCH_SIZE = 16
 
             scores = []
-            for target, tensor in zip(targets, input_tensors):
-                for i in tqdm.tqdm(range(0, tensor.size(0), BATCH_SIZE)):
+            input_it = zip(targets, input_tensors)
+            for target, tensor in tqdm.tqdm(input_it, total=len(targets), desc='scorecam'):
+                for i in range(0, tensor.size(0), BATCH_SIZE):
                     batch = tensor[i: i + BATCH_SIZE, :]
                     outputs = [target(o).cpu().item()
-                               for o in self.model(batch)]
+                               for o in self.model(batch)['logits']]
                     scores.extend(outputs)
             scores = torch.Tensor(scores)
             scores = scores.view(activations.shape[0], activations.shape[1])
