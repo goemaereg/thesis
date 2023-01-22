@@ -16,6 +16,7 @@ src/train_log
 src/synthetic/checkpoint/
 data/dataset/
 data/maskdata/
+jobs/
 mlruns/
 models/
 notebook/mlruns/

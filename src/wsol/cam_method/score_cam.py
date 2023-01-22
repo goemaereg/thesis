@@ -42,21 +42,27 @@ class ScoreCAM(BaseCAM):
             upsampled = (upsampled - mins) / (maxs - mins)
             # input tensor: shape(batch, RGB channels, H, W) -> shape(batch, 1, RGB channels, H, W)
             # upsampled: shape(batch, channels, H, W) -> shape(batch, channels, 1, H, W)
-            input_tensors = input_tensor[:, None,
-                                         :, :] * upsampled[:, :, None, :, :]
+            # input_tensors = input_tensor[:, None,
+            #                              :, :] * upsampled[:, :, None, :, :]
 
             if hasattr(self, "batch_size"):
                 BATCH_SIZE = self.batch_size
             else:
-                BATCH_SIZE = 16
+                BATCH_SIZE = 64 #16
 
             scores = []
-            input_it = zip(targets, input_tensors)
-            for target, tensor in tqdm.tqdm(input_it, total=len(targets), desc='scorecam'):
-                for i in range(0, tensor.size(0), BATCH_SIZE):
-                    batch = tensor[i: i + BATCH_SIZE, :]
-                    outputs = [target(o).cpu().item()
-                               for o in self.model(batch)['logits']]
+            it_inputs = zip(targets, input_tensor, upsampled)
+            for target, in_tensor, act_tensor in tqdm.tqdm(it_inputs, total=len(targets), desc='scorecam images'):
+                # compute input * activation here to reduce memory requirements by factor of input batch size
+                # input tensor: shape(RGB channels, H, W) -> shape(1, RGB channels, H, W)
+                # upsampled: shape(activation channels, H, W) -> shape(activation channels, 1, H, W)
+                # resulting in_tensor: shape(activation channels, RGB channels, H, W)
+                in_tensor = in_tensor[None, :, :, :] * act_tensor[:, None, :, :]
+                it_acts = range(0, in_tensor.size(0), BATCH_SIZE)
+                for i in tqdm.tqdm(it_acts, total=len(it_acts), desc='scorecam activation batches'):
+                    batch = in_tensor[i: i + BATCH_SIZE]
+                    logits = self.model(in_tensor)['logits']
+                    outputs = target(logits).cpu().tolist()
                     scores.extend(outputs)
             scores = torch.Tensor(scores)
             scores = scores.view(activations.shape[0], activations.shape[1])
