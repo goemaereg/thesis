@@ -1,3 +1,24 @@
+"""
+Copyright (c) 2020-present NAVER Corp.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+"""
+
 import argparse
 import cv2
 import numpy as np
@@ -7,11 +28,11 @@ import tqdm
 import mlflow
 import matplotlib.pyplot as plt
 from config import str2bool, configure_bbox_metric, configure_mask_root
-from dataloaders import configure_metadata
-from dataloaders import get_image_ids
-from dataloaders import get_bounding_boxes
-from dataloaders import get_image_sizes
-from dataloaders import get_mask_paths
+from data_loaders import configure_metadata
+from data_loaders import get_image_ids
+from data_loaders import get_bounding_boxes
+from data_loaders import get_image_sizes
+from data_loaders import get_mask_paths
 from util import check_scoremap_validity
 from util import check_box_convention
 from util import t2n
@@ -581,7 +602,7 @@ def xai_save_cams(xai_root, metadata, data_root, scoremap_root, evaluator, multi
             _cam_mask = _cam_norm >= opt_cam_thresh
             # assign minimal value to area outside segment mask so normalization is constrained to segment values
             _cam_heatmap = _cam_norm.copy()
-            _cam_heatmap[np.logical_not(_cam_mask)] = np.amin(_cam_norm[_cam_mask])
+            _cam_heatmap[np.logical_not(_cam_mask)] = 0.0 # np.amin(_cam_norm[_cam_mask])
             # normalize
             _cam_heatmap = normalize_scoremap(_cam_heatmap)
             # mask out area outside segment mask

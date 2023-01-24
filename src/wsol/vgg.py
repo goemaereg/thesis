@@ -29,6 +29,10 @@ model_urls = {
 
 # CAM variants have last pooling layer removed
 configs_dict = {
+    'vanilla': {
+        '14x14': [64, 64, "M", 128, 128, "M", 256, 256, 256, "M", 512, 512, 512, "M", 512, 512, 512, "M"],
+        '28x28': [64, 64, "M", 128, 128, "M", 256, 256, 256, "M", 512, 512, 512, 512, 512, 512, "M"]
+    },
     'cam': {
         '14x14': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512,
                   512, 'M', 512, 512, 512],
@@ -52,6 +56,48 @@ configs_dict = {
                   512, 512, 'A', 512, 512, 512, 'A'],
     }
 }
+
+class Vgg(nn.Module):
+    def __init__(
+        self, features: nn.Module, num_classes: int = 1000, init_weights: bool = True, dropout: float = 0.5, **kwargs
+    ) -> None:
+        super(Vgg, self).__init__()
+        self.features = features
+        self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
+        self.classifier = nn.Sequential(
+            nn.Linear(512 * 7 * 7, 4096),
+            nn.ReLU(True),
+            nn.Dropout(p=dropout),
+            nn.Linear(4096, 4096),
+            nn.ReLU(True),
+            nn.Dropout(p=dropout),
+            nn.Linear(4096, num_classes),
+        )
+        if init_weights:
+            for m in self.modules():
+                if isinstance(m, nn.Conv2d):
+                    nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+                    if m.bias is not None:
+                        nn.init.constant_(m.bias, 0)
+                elif isinstance(m, nn.BatchNorm2d):
+                    nn.init.constant_(m.weight, 1)
+                    nn.init.constant_(m.bias, 0)
+                elif isinstance(m, nn.Linear):
+                    nn.init.normal_(m.weight, 0, 0.01)
+                    nn.init.constant_(m.bias, 0)
+
+    def forward(self, x: torch.Tensor):
+        features = self.features(x)
+        avgpool = self.avgpool(features)
+        avgpool_flat = torch.flatten(avgpool, 1)
+        logits = self.classifier(avgpool_flat)
+        result = {
+            'features': features,
+            'avgpool': avgpool,
+            'avgpool_flat': avgpool_flat,
+            'logits': logits
+        }
+        return result
 
 
 class VggCam(nn.Module):
@@ -298,16 +344,18 @@ def make_layers(cfg, **kwargs):
     return nn.Sequential(*layers)
 
 
-def vgg16(architecture_type, pretrained=False, pretrained_path=None,
-          **kwargs):
+def vgg16(architecture_type, pretrained=False, pretrained_path=None, **kwargs):
     config_key = '28x28' if kwargs['large_feature_map'] else '14x14'
+    dataset = kwargs.get('dataset_name', 'SYNTHETIC')
     layers = make_layers(configs_dict[architecture_type][config_key], **kwargs)
-    model = {'cam': VggCam,
+    model = {'vanilla': Vgg,
+             'cam': VggCam,
              'acol': VggAcol,
              'spg': VggSpg,
              'adl': VggCam}[architecture_type](layers, **kwargs)
     if pretrained:
-        adapt = pretrained_path is None
+        num_classes = kwargs.get('num_classes', 1000)
+        adapt = pretrained_path is None and (dataset != 'ILSVRC' or num_classes != 1000)
         model = load_pretrained_model(model, architecture_type,
                                       path=pretrained_path, adapt=adapt)
     return model

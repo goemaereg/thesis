@@ -7,6 +7,7 @@ from .util import get_attention
 
 from .acol import AcolMethod
 from .adl import ADLMethod
+from .base_method import BaseMethod
 from .cutmix import CutMixMethod
 from .has import HASMethod
 from .spg import SPGMethod

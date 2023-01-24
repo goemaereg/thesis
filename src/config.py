@@ -1,3 +1,24 @@
+"""
+Copyright (c) 2020-present NAVER Corp.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+"""
+
 import argparse
 import munch
 import os
@@ -13,7 +34,7 @@ _ARCHITECTURE_NAMES = ('vgg16', 'resnet50', 'inception_v3')
 _ARCHITECTURE_DEFAULT = 'vgg16'
 _ARCHITECTURE_TYPE_NAMES = ('auto', 'vanilla')
 _ARCHITECTURE_TYPE_DEFAULT = 'auto'
-_METHOD_NAMES = ('cam', 'adl', 'acol', 'spg', 'has', 'cutmix', 'minmaxcam')
+_METHOD_NAMES = ('basic', 'cam', 'adl', 'acol', 'spg', 'has', 'cutmix', 'minmaxcam')
 _SPLITS = ('train', 'val', 'test')
 _BBOX_METRIC_NAMES = ('MaxBoxAcc', 'MaxBoxAccV2', 'MaxBoxAccV3')
 _BBOX_METRIC_DEFAULT = 'MaxBoxAccV2'
@@ -54,8 +75,12 @@ def get_architecture_type(architecture_type, wsol_method):
     if architecture_type == 'auto':
         if wsol_method in ('cam', 'has', 'cutmix', 'minmaxcam'):
             architecture_type = 'cam'
-        else:
+        elif wsol_method in ('acol', 'adl', 'spg'):
             architecture_type = wsol_method
+        else:
+            architecture_type = 'vanilla'
+    elif architecture_type == 'vanilla' and wsol_method not in ('basic'):
+        raise ValueError
     return architecture_type
 
 

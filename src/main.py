@@ -1,3 +1,24 @@
+"""
+Copyright (c) 2020-present NAVER Corp.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+"""
+
 from typing import Mapping, Any, List
 import cv2
 import numpy as np
@@ -9,7 +30,7 @@ import torch.nn as nn
 import torch.optim
 import torch.nn.functional as F
 from config import get_configs
-from dataloaders import get_data_loader, configure_metadata, get_image_sizes, get_bounding_boxes
+from data_loaders import get_data_loader, configure_metadata, get_image_sizes, get_bounding_boxes
 from inference import CAMComputer
 from evaluation import MaskEvaluator, compute_bboxes_from_scoremaps, normalize_scoremap, xai_save_cams
 from util import string_contains_any, t2n  # , t2n
@@ -20,23 +41,17 @@ import tqdm
 import mlflow
 from munch import Munch
 import sys
-from wsol.method import AcolMethod, ADLMethod, CAMMethod, CutMixMethod, HASMethod, MinMaxCAMMethod, SPGMethod
-from wsol.cam_method import CAM, GradCAM, ScoreCAM
+from wsol.method import AcolMethod, ADLMethod, BaseMethod, CAMMethod, CutMixMethod, HASMethod, MinMaxCAMMethod, SPGMethod
 
 wsol_methods = {
     'acol': AcolMethod,
     'adl': ADLMethod,
+    'basic': BaseMethod,
     'cam': CAMMethod,
     'cutmix': CutMixMethod,
     'has': HASMethod,
     'minmaxcam': MinMaxCAMMethod,
     'spg': SPGMethod
-}
-
-cam_methods = {
-    'cam': CAM,
-    'gradcam': GradCAM,
-    'scorecam': ScoreCAM
 }
 
 def set_random_seed(seed):
@@ -139,6 +154,7 @@ class Trainer(object):
        )
         model_kwargs = model_params | dict(
             architecture_type=self.args.architecture_type,
+            dataset = self.args.dataset_name,
             pretrained=self.args.pretrained,
             pretrained_path=self.args.pretrained_path,
             large_feature_map=self.args.large_feature_map,
@@ -181,7 +197,7 @@ class Trainer(object):
         )
         method_args = vars(self.args) | {'model': self.model, 'device': self._DEVICE, 'optimizer': self.optimizer}
         self.wsol_method = wsol_methods[self.args.wsol_method](**method_args)
-        self.cam_method = self._set_cam_method()
+        self.cam_method = self.args.cam_method
         # MLFlow logging
         # artifacts
         mlflow.log_artifact('requirements.txt')
@@ -221,16 +237,6 @@ class Trainer(object):
             num_classes=self._NUM_CLASSES_MAPPING[self.args.dataset_name]
         )
         mlflow.set_tags(tags)
-
-    def _set_cam_method(self):
-        target_layers = None
-        if self.model.__class__.__name__ == 'VggCam':
-            target_layers = [self.model.conv6_relu]
-        if target_layers is None:
-            raise NotImplementedError
-        use_cuda = ('cuda' in self._DEVICE)
-        cam_args = dict(model=self.model, target_layers=target_layers, use_cuda=use_cuda)
-        return cam_methods[self.args.cam_method](**cam_args)
 
     def _set_performance_meters(self):
         if self.args.dataset_name in ('SYNTHETIC', 'OpenImages'):
