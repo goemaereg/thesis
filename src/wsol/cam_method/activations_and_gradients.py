@@ -1,3 +1,5 @@
+import torch
+
 class ActivationsAndGradients:
     """ Class for extracting activations and
     registering gradients from targetted intermediate layers """
@@ -18,7 +20,8 @@ class ActivationsAndGradients:
 
     def save_activation(self, module, input, output):
         activation = output
-
+        if torch.isnan(output).any():
+            raise ValueError('activations contain nan values.')
         if self.reshape_transform is not None:
             activation = self.reshape_transform(activation)
         self.activations.append(activation.cpu().detach())

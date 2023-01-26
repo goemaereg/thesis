@@ -52,6 +52,10 @@ class BaseCAM:
                                        targets,
                                        activations,
                                        grads)
+        if np.isnan(activations).any():
+            raise ValueError("Scoremap must not contain nans.")
+        if np.isnan(weights).any():
+            raise ValueError("Weights must not contain nans.")
         weighted_activations = weights[:, :, None, None] * activations
         if eigen_smooth:
             cam = get_2d_projection(weighted_activations)

@@ -294,8 +294,7 @@ class Trainer(object):
         opt = Munch(kwargs)
         optimizer = torch.optim.SGD([
             {'params': param_features, 'lr': opt.learning_rate_features},
-            {'params': param_classifiers,
-             'lr': opt.learning_rate_classifier}],
+            {'params': param_classifiers, 'lr': opt.learning_rate_classifier}],
             lr=opt.learning_rate,
             momentum=opt.momentum,
             weight_decay=opt.weight_decay,
@@ -466,6 +465,7 @@ class Trainer(object):
     #                 loss=loss_average)
 
     def train(self, epoch, split):
+        self.model.train()
         loader = self.loaders[split]
         total_loss = 0.0
         num_correct = 0
