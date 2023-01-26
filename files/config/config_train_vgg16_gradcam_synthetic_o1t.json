@@ -26,7 +26,7 @@
     70
   ],
   "large_feature_map": false,
-  "lr": 0.01,
+  "lr": 0.001,
   "lr_classifier_ratio": 10,
   "lr_decay_frequency": 10,
   "mask_root": "data/maskdata",

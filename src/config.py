@@ -271,9 +271,10 @@ def configure_parse(load_config=True):
                              'tag1 = <choice o (overlapping) | d (disjunct)'
                              'tag2 = <n_instances: 0..4>'
                              'tag3 = <choice b (background) | t (transparent'),
-    parser.add_argument('--train', action=argparse.BooleanOptionalAction, default=True, help=None)
-    parser.add_argument('--train_augment', action=argparse.BooleanOptionalAction, default=True, help=None)
-    parser.add_argument('--xai', action=argparse.BooleanOptionalAction, default=False, help=None)
+    parser.add_argument('--train', type=str2bool, nargs='?', const=True, default=True)
+    parser.add_argument('--train_augment', type=str2bool, nargs='?', const=True, default=True)
+    parser.add_argument('--wsol', type=str2bool, nargs='?', const=True, default=False)
+    parser.add_argument('--xai', type=str2bool, nargs='?', const=True, default=False)
 
     args = parser.parse_args()
     if load_config and args.config is not None:

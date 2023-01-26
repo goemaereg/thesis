@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
-from typing import Mapping, Any, List
+from typing import Mapping, Any, List, Dict
 import cv2
 import numpy as np
 import os
@@ -202,11 +202,13 @@ class Trainer(object):
         # artifacts
         mlflow.log_artifact('requirements.txt')
         mlflow.log_artifact(self.args.config, 'config')
-        state = vars(self.args)
+        state: dict[str, Any] = vars(self.args)
         state['data_paths'] = vars(self.args.data_paths)
         del state['reporter']
         if self.args.pretrained_path is None:
             del state['pretrained_path']
+        # sort by key
+        state = dict(sorted(state.items()))
         mlflow.log_dict(state, 'state/config.json')
         info = dict(
             loss_fn_class=self.cross_entropy_loss.__class__.__name__,
@@ -543,40 +545,41 @@ class Trainer(object):
         loss = self._compute_loss(loader=self.loaders[split])
         self.performance_meters[split]['loss'].update(loss)
         accuracy = self._compute_accuracy(loader=self.loaders[split])
-        self.performance_meters[split]['classification'].update(accuracy)
-        metadata_root = os.path.join(self.args.metadata_root, split)
-        cam_computer = CAMComputer(
-            model=self.model,
-            loader=self.loaders[split],
-            metadata_root=metadata_root,
-            mask_root=self.args.mask_root,
-            scoremap_root=self.args.scoremap_root,
-            cam_method=self.cam_method,
-            iou_threshold_list=self.args.iou_threshold_list,
-            dataset_name=self.args.dataset_name,
-            split=split,
-            cam_curve_interval=self.args.cam_curve_interval,
-            multi_contour_eval=self.args.multi_contour_eval,
-            multi_gt_eval=self.args.multi_gt_eval,
-            device = self._DEVICE,
-            bbox_metric=self.args.bbox_metric,
-            log=log
-        )
-        metrics = cam_computer.compute_and_evaluate_cams(save_cams=save_cams)
-        for metric, value in metrics.items():
-            self.performance_meters[split][metric].update(value)
-        if self.args.xai and save_xai:
-            metadata = configure_metadata(metadata_root)
-            xai_save_cams(xai_root=self.args.xai_root,
-                          metadata=metadata,
-                          data_root=self.args.data_paths[split],
-                          scoremap_root=self.args.scoremap_root,
-                          evaluator=cam_computer.evaluator,
-                          multi_contour_eval=self.args.multi_contour_eval,
-                          log=True)
-
         mlflow_metrics = { f'{split}_loss': loss, f'{split}_accuracy': accuracy}
-        mlflow_metrics |= { f'{split}_{metric}':value  for metric, value in metrics.items() }
+
+        if self.args.wsol:
+            self.performance_meters[split]['classification'].update(accuracy)
+            metadata_root = os.path.join(self.args.metadata_root, split)
+            cam_computer = CAMComputer(
+                model=self.model,
+                loader=self.loaders[split],
+                metadata_root=metadata_root,
+                mask_root=self.args.mask_root,
+                scoremap_root=self.args.scoremap_root,
+                cam_method=self.cam_method,
+                iou_threshold_list=self.args.iou_threshold_list,
+                dataset_name=self.args.dataset_name,
+                split=split,
+                cam_curve_interval=self.args.cam_curve_interval,
+                multi_contour_eval=self.args.multi_contour_eval,
+                multi_gt_eval=self.args.multi_gt_eval,
+                device = self._DEVICE,
+                bbox_metric=self.args.bbox_metric,
+                log=log
+            )
+            metrics = cam_computer.compute_and_evaluate_cams(save_cams=save_cams)
+            for metric, value in metrics.items():
+                self.performance_meters[split][metric].update(value)
+            if self.args.xai and save_xai:
+                metadata = configure_metadata(metadata_root)
+                xai_save_cams(xai_root=self.args.xai_root,
+                              metadata=metadata,
+                              data_root=self.args.data_paths[split],
+                              scoremap_root=self.args.scoremap_root,
+                              evaluator=cam_computer.evaluator,
+                              multi_contour_eval=self.args.multi_contour_eval,
+                              log=True)
+            mlflow_metrics |= { f'{split}_{metric}':value  for metric, value in metrics.items() }
         mlflow.log_metrics(mlflow_metrics, step=epoch)
 
 
