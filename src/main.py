@@ -238,7 +238,7 @@ class Trainer(object):
         # elif device == 'mps' and not torch.backends.mps.is_available():
         #     print('Device mps is unavailable. Switching to cpu.')
         #     device = 'cpu'
-        return torch.device(device)
+        return device
 
     def _set_performance_meters(self):
         if self.args.dataset_name in ('SYNTHETIC', 'OpenImages'):
