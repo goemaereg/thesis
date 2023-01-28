@@ -29,6 +29,8 @@ from util import Logger, Reporter
 from typing import Dict
 
 
+_DEVICE_NAMES = ('cpu', 'cuda')
+_DEVICE_DEFAULT = 'cpu'
 _DATASET_NAMES = ('CUB', 'ILSVRC', 'OpenImages', 'SYNTHETIC')
 _ARCHITECTURE_NAMES = ('vgg16', 'resnet50', 'inception_v3')
 _ARCHITECTURE_DEFAULT = 'vgg16'
@@ -155,6 +157,7 @@ def configure_parse(load_config=True):
                         const=True, default=False)
     parser.add_argument('--workers', default=0, type=int,
                         help='number of data loading workers (default: 0)')
+    parser.add_argument('--device', type=str, default=_DEVICE_DEFAULT, choices=_DEVICE_NAMES)
 
     # Data
     parser.add_argument('--dataset_name', type=str, default='SYNTHETIC',

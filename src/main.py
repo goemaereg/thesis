@@ -114,19 +114,7 @@ class PerformanceMeter(object):
             self.best_epoch = self.value_per_epoch.index(self.best_value)
 
 
-def accelerator_get():
-    if torch.backends.mps.is_available():
-        device = 'mps'
-    elif torch.cuda.is_available():
-        device = 'cuda:0'
-    else:
-        device = 'cpu'
-    device = 'cpu'
-    return device
-
-
 class Trainer(object):
-    _DEVICE = accelerator_get()
     _CHECKPOINT_NAME_TEMPLATE = '{}_checkpoint.pt' #'{}_checkpoint.pth.tar'
     _SPLITS = ('train', 'val', 'test')
     _EVAL_METRICS = ['loss', 'classification']
@@ -168,13 +156,15 @@ class Trainer(object):
             weight_decay=self.args.weight_decay,
             nesterov=True
         )
+
         set_random_seed(self.args.seed)
         # print(self.args)
         self.performance_meters = self._set_performance_meters()
         self.reporter = self.args.reporter
+        self.device = self._set_device()
         self.model = self._set_model(**model_kwargs)
-        self.cross_entropy_loss = nn.CrossEntropyLoss().to(self._DEVICE)#.cuda()
-        self.mse_loss = nn.MSELoss(reduction='mean').to(self._DEVICE)#.cuda()
+        self.cross_entropy_loss = nn.CrossEntropyLoss().to(self.device)#.cuda()
+        self.mse_loss = nn.MSELoss(reduction='mean').to(self.device)#.cuda()
         batch_set_size = None
         class_set_size = None
         if self.args.wsol_method == 'minmaxcam':
@@ -195,7 +185,7 @@ class Trainer(object):
             batch_set_size=batch_set_size,
             train_augment=self.args.train_augment
         )
-        method_args = vars(self.args) | {'model': self.model, 'device': self._DEVICE, 'optimizer': self.optimizer}
+        method_args = vars(self.args) | {'model': self.model, 'device': self.device, 'optimizer': self.optimizer}
         self.wsol_method = wsol_methods[self.args.wsol_method](**method_args)
         self.cam_method = self.args.cam_method
         # MLFlow logging
@@ -240,6 +230,16 @@ class Trainer(object):
         )
         mlflow.set_tags(tags)
 
+    def _set_device(self):
+        device = self.args.processor
+        if device == 'cuda' and not torch.cuda.is_available():
+            print('Device cuda is unavailable. Switching to cpu.')
+            device = 'cpu'
+        # elif device == 'mps' and not torch.backends.mps.is_available():
+        #     print('Device mps is unavailable. Switching to cpu.')
+        #     device = 'cpu'
+        return torch.device(device)
+
     def _set_performance_meters(self):
         if self.args.dataset_name in ('SYNTHETIC', 'OpenImages'):
             metric = 'PxAP'
@@ -265,7 +265,7 @@ class Trainer(object):
     def _set_model(self, **kwargs):
         print("Loading model {}".format(self.args.architecture))
         model = wsol.__dict__[self.args.architecture](**kwargs)
-        model = model.to(self._DEVICE) # model.cuda()
+        model = model.to(self.device) # model.cuda()
         # print(model)
         return model
 
@@ -338,7 +338,7 @@ class Trainer(object):
     #     for param in self.model.fc.parameters():
     #         param.requires_grad = True
     #
-    #     images = images.to(self._DEVICE)  # .cuda()
+    #     images = images.to(self.device)  # .cuda()
     #     # Compute CAMs from B(I) with I=input image
     #     result_orig = self.model(images, labels,
     #                              return_cam=True, clone_cam=False)
@@ -402,8 +402,8 @@ class Trainer(object):
     #     num_images = 0
     #
     #     for images, targets, _ in loader:
-    #         images = images.to(self._DEVICE) # images.cuda()
-    #         targets = targets.to(self._DEVICE) #.cuda()
+    #         images = images.to(self.device) # images.cuda()
+    #         targets = targets.to(self.device) #.cuda()
     #
     #         # minmaxcam stage I
     #         if self.args.wsol_method == 'minmaxcam':
@@ -473,8 +473,8 @@ class Trainer(object):
         num_correct = 0
         num_images = 0
         for images, targets, _ in loader:
-            images = images.to(self._DEVICE)
-            targets = targets.to(self._DEVICE)
+            images = images.to(self.device)
+            targets = targets.to(self.device)
             logits, loss = self.wsol_method.train(images, targets)
             pred = logits.argmax(dim=1)
             total_loss += loss.item() * images.size(0)
@@ -515,8 +515,8 @@ class Trainer(object):
         num_images = 0
         with torch.no_grad():
             for images, targets, image_ids in loader:
-                images = images.to(self._DEVICE) #.cuda()
-                targets = targets.to(self._DEVICE) #.cuda()
+                images = images.to(self.device) #.cuda()
+                targets = targets.to(self.device) #.cuda()
                 output_dict = self.model(images)
                 logits = output_dict['logits']
                 loss = self.cross_entropy_loss(logits, targets)
@@ -530,8 +530,8 @@ class Trainer(object):
         num_images = 0
         with torch.no_grad():
             for images, targets, image_ids in loader:
-                images = images.to(self._DEVICE) #.cuda()
-                targets = targets.to(self._DEVICE) #.cuda()
+                images = images.to(self.device) #.cuda()
+                targets = targets.to(self.device) #.cuda()
                 output_dict = self.model(images)
                 pred = output_dict['logits'].argmax(dim=1)
                 num_correct += (pred == targets).sum().item()
@@ -563,7 +563,7 @@ class Trainer(object):
                 cam_curve_interval=self.args.cam_curve_interval,
                 multi_contour_eval=self.args.multi_contour_eval,
                 multi_gt_eval=self.args.multi_gt_eval,
-                device = self._DEVICE,
+                device = self.device,
                 bbox_metric=self.args.bbox_metric,
                 log=log
             )
