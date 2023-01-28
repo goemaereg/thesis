@@ -618,7 +618,7 @@ class Trainer(object):
             self.args.log_folder,
             self._CHECKPOINT_NAME_TEMPLATE.format(checkpoint_type))
         if os.path.isfile(checkpoint_path):
-            checkpoint = torch.load(checkpoint_path)
+            checkpoint = torch.load(checkpoint_path, map_location=torch.device(self.device))
             self.epoch = checkpoint['epoch']
             if 'model_state_dict' in checkpoint:
                 self.model.load_state_dict(checkpoint['model_state_dict'], strict=True)
@@ -670,7 +670,7 @@ class Trainer(object):
 def main():
     trainer = Trainer()
     print("===========================================================")
-    print(f"Accelerator: {accelerator_get()}")
+    print(f"Device: {trainer.device}")
     trainer.load_checkpoint(checkpoint_type=trainer.args.eval_checkpoint_type)
     if trainer.args.train:
         print("===========================================================")
