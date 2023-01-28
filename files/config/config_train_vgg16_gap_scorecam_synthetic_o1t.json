@@ -40,7 +40,7 @@
   "num_val_sample_per_class": 0,
   "override_cache": false,
   "pretrained": true,
-  "pretrained_path": "models/vgg16_cam_synthetic_o1t.pt",
+  "pretrained_path": "models/vgg16_gap_synthetic_o1t.pt",
   "proxy_training_set": false,
   "resize_size": 256,
   "seed": 42,
