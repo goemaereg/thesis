@@ -7,6 +7,7 @@ __pycache__/
 *.so
 
 # Project
+backup
 pytorch/
 scratch/
 src/data/
