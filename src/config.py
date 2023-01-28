@@ -267,14 +267,14 @@ def configure_parse(load_config=True):
                         help='MinMaxCam Common Region Regularization Weight'),
     # tags
     parser.add_argument('--dataset_name_suffix', type=str, default='',
-                        help='Suffix = <tag1><tag2><tag3> used to partition SYNTHETHIC dataset. '
+                        help='Suffix = <tag1><tag2><tag3> used to partition SYNTHETIC dataset. '
                              'tag1 = <choice o (overlapping) | d (disjunct)'
                              'tag2 = <n_instances: 0..4>'
                              'tag3 = <choice b (background) | t (transparent'),
     parser.add_argument('--train', type=str2bool, nargs='?', const=True, default=True)
     parser.add_argument('--train_augment', type=str2bool, nargs='?', const=True, default=True)
-    parser.add_argument('--wsol', type=str2bool, nargs='?', const=True, default=False)
-    parser.add_argument('--xai', type=str2bool, nargs='?', const=True, default=False)
+    parser.add_argument('--wsol', type=str2bool, nargs='?', const=True, default=True)
+    parser.add_argument('--xai', type=str2bool, nargs='?', const=True, default=True)
 
     args = parser.parse_args()
     if load_config and args.config is not None:
