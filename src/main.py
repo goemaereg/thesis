@@ -231,7 +231,7 @@ class Trainer(object):
         mlflow.set_tags(tags)
 
     def _set_device(self):
-        device = self.args.processor
+        device = self.args.device
         if device == 'cuda' and not torch.cuda.is_available():
             print('Device cuda is unavailable. Switching to cpu.')
             device = 'cpu'
