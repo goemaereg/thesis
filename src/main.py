@@ -545,10 +545,9 @@ class Trainer(object):
         loss = self._compute_loss(loader=self.loaders[split])
         self.performance_meters[split]['loss'].update(loss)
         accuracy = self._compute_accuracy(loader=self.loaders[split])
+        self.performance_meters[split]['classification'].update(accuracy)
         mlflow_metrics = { f'{split}_loss': loss, f'{split}_accuracy': accuracy}
-
         if self.args.wsol:
-            self.performance_meters[split]['classification'].update(accuracy)
             metadata_root = os.path.join(self.args.metadata_root, split)
             cam_computer = CAMComputer(
                 model=self.model,

@@ -10,8 +10,8 @@ class GradCAM(BaseCAM):
             self).__init__(
             model,
             target_layers,
-            use_cuda,
-            reshape_transform)
+            use_cuda=use_cuda,
+            reshape_transform=reshape_transform)
 
     def get_cam_weights(self,
                         input_tensor,

@@ -19,13 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
-import cv2
 import numpy as np
 from evaluation import BoxEvaluator, MaskEvaluator, MultiEvaluator
 from evaluation import configure_metadata, normalize_scoremap
-from util import t2n
 import os
-import torch
+import tqdm
 from wsol.cam_method.utils.model_targets import ClassifierOutputTarget
 from wsol.cam_method import CAM, GradCAM, ScoreCAM
 
@@ -86,9 +84,11 @@ class CAMComputer(object):
     def compute_and_evaluate_cams(self, save_cams=False):
         # print("Computing and evaluating cams.")
         metrics = {}
-        for index, (images, targets, image_ids) in enumerate(self.loader):
+
+        tq0 = tqdm.tqdm(self.loader, total=len(self.loader), desc='evaluate cams batches')
+        for images, targets, image_ids in tq0:
             image_size = images.shape[2:]
-            # images = images.to(self.device) #.cuda()
+            # images =  images.to(self.device) #.cuda()
             # result = self.model(images, targets, return_cam=True)
             # cams = result['cams'].detach().clone()
 

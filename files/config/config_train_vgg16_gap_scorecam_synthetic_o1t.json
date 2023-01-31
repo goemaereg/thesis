@@ -3,7 +3,8 @@
   "adl_drop_rate": 0.75,
   "adl_threshold": 0.9,
   "architecture": "vgg16",
-  "batch_size": 64,
+  "architecture_type": "auto",
+  "batch_size": 16,
   "bbox_metric": "MaxBoxAccV3",
   "cam_curve_interval": 0.01,
   "cam_method": "scorecam",
@@ -39,7 +40,7 @@
   "multi_contour_eval": true,
   "multi_iou_eval": true,
   "num_val_sample_per_class": 0,
-  "override_cache": false,
+  "override_cache": true,
   "pretrained": true,
   "pretrained_path": "models/vgg16_gap_synthetic_o1t.pt",
   "proxy_training_set": false,
@@ -55,6 +56,7 @@
   "train_augment": false,
   "weight_decay": 0.0001,
   "workers": 0,
+  "wsol": true,
   "wsol_method": "cam",
   "xai": true
 }
