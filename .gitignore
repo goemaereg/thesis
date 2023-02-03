@@ -12,9 +12,9 @@ pytorch/
 scratch/
 src/data/
 src/dataset/
-src/other/
 src/train_log
-src/synthetic/checkpoint/
+synthetic/checkpoint/
+other/
 data/dataset/
 data/maskdata/
 mlruns/
