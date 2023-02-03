@@ -15,6 +15,7 @@
   "data_root": "data/dataset",
   "dataset_name": "SYNTHETIC",
   "dataset_name_suffix": "o1b",
+  "device": "cuda",
   "epochs": 20,
   "eval_checkpoint_type": "last",
   "experiment_name": "vgg16_gradcam_synthetic_o1b",
