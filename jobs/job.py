@@ -43,8 +43,8 @@ job = {
         "scheduling": {
             "interactive": True,
             "restartable": False,
-            "minDuration": "4 hour",
-            "maxDuration": "8 hour"
+            "minDuration": "6 hours",
+            "maxDuration": "1 day"
         }
     }
 }
