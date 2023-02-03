@@ -126,7 +126,7 @@ class Trainer(object):
         "SYNTHETIC": 9
     }
     _FEATURE_PARAM_LAYER_PATTERNS = {
-        'vgg': ['features.', 'conv6.'],
+        'vgg': ['features.'],#, 'conv6.'], original code is without conv6 because that layer needs same lr as classifier
         'resnet': ['layer4.', 'fc.'],
         'inception': ['Mixed', 'Conv2d_1', 'Conv2d_2',
                       'Conv2d_3', 'Conv2d_4'],
