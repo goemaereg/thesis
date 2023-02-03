@@ -1,0 +1,29 @@
+{
+    "name": "pytorch",
+    "description": "Used to run pytorch jobs",
+    "request": {
+        "resources": {
+            "cpus": 2,
+            "gpus": 1,
+            "cpuMemoryGb": 16,
+            "gpuModel": [ "V100" ]
+        },
+        "docker": {
+            "environment": {
+                "EXPERIMENT_NAME": "test",
+                "RUN_NAME": "vgg16_scorecam_synthetic_o1t",
+                "CONFIG_FILE": "files/config/config_train_vgg16_scorecam_synthetic_o1t.json"
+            },
+            "portMappings": [ { "containerPort": 5000 } ],
+            "storage": [{
+                "hostPath": "/project_antwerp",
+                "containerPath": "/project"
+            }],
+            "image": "pytorch/pytorch",
+            "command": "sleep 36000"
+        },
+        "scheduling": {
+            "interactive": true
+        }
+    }
+}

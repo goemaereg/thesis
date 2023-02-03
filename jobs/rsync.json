@@ -1,0 +1,22 @@
+{
+    "name": "rsync",
+    "description": "Used to rsync files",
+    "request": {
+        "resources": {
+            "cpus": 2,
+            "gpus": 0,
+            "cpuMemoryGb": 16
+        },
+        "docker": {
+            "storage": [{
+                "hostPath": "/project_antwerp",
+                "containerPath": "/project"
+            }],
+            "image": "gitlab.ilabt.imec.be:4567/ilabt/gpu-docker-stacks/pytorch-notebook:latest",
+            "command": "sleep 36000"
+        },
+        "scheduling": {
+            "interactive": true
+        }
+    }
+}

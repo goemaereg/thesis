@@ -1,0 +1,28 @@
+{
+    "name": "pytorch",
+    "description": "Used to rsync files",
+    "request": {
+        "resources": {
+            "cpus": 2,
+            "gpus": 1,
+            "cpuMemoryGb": 16,
+            "gpuModel": [ "V100", "1080" ]
+        },
+        "docker": {
+            "environment": {
+                "EXPERIMENT_NAME": "test",
+                "RUN_NAME": "vgg16_scorecam_synthetic_o1t",
+                "CONFIG_FILE": "files/config/config_train_vgg16_scorecam_synthetic_o1t.json"
+            },
+            "storage": [{
+                "hostPath": "/project_ghent",
+                "containerPath": "/project"
+            }],
+            "image": "pytorch/pytorch",
+            "command": "sleep 36000"
+        },
+        "scheduling": {
+            "interactive": true
+        }
+    }
+}
