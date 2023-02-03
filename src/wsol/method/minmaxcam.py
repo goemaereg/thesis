@@ -68,9 +68,12 @@ class MinMaxCAMMethod(BaseMethod):
         # ss and bs can be less than minmaxcam_class_set_size and minmaxcam_batch_set_size for small datasets
         # ss = self.args.minmaxcam_class_set_size
         # bs = self.args.minmaxcam_batch_set_size
-        bs = np.unique(labels).shape[0]
-        starts = np.nonzero(np.r_[1, np.diff(labels)])[0]
-        stops = np.nonzero(np.r_[0, np.diff(labels), 1])[0]
+        # adapt bs to actual number of unique labels
+        labels_np = labels.numpy(force=True)
+        bs = np.unique(labels_np).shape[0]
+        # starts, stops mark ranges of sequentially identical classes
+        starts = np.nonzero(np.r_[1, np.diff(labels_np)])[0]
+        stops = np.nonzero(np.r_[0, np.diff(labels_np), 1])[0]
         for start, stop in zip(starts, stops):
             loss_crr_ss = 0.0
             f_i_pair_num = 0
