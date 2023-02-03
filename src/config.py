@@ -42,6 +42,8 @@ _BBOX_METRIC_NAMES = ('MaxBoxAcc', 'MaxBoxAccV2', 'MaxBoxAccV3')
 _BBOX_METRIC_DEFAULT = 'MaxBoxAccV2'
 _CAM_METHOD_NAMES = ('cam', 'gradcam', 'scorecam')
 _CAM_METHOD_DEFAULT = 'cam'
+_LR_SCHEDULER_NAMES = ('StepLR', "MultiStepLR")
+_LR_SCHEDULER_DEFAULT = 'StepLR'
 
 def mch(**kwargs):
     return munch.Munch(dict(**kwargs))
@@ -217,8 +219,11 @@ def configure_parse(load_config=True):
                              'using Data Parallel or Distributed Data Parallel')
     parser.add_argument('--lr', default=0.001, type=float, #default=0.01, type=float,
                         help='initial learning rate', dest='lr')
+    parser.add_argument('--lr_scheduler', default=_LR_SCHEDULER_DEFAULT,
+                        choices=_LR_SCHEDULER_NAMES, help='Learning rate scheduler')
     parser.add_argument('--lr_decay_frequency', type=int, default=30,
                         help='How frequently do we decay the learning rate?')
+    parser.add_argument('--lr_multistep_milestones', type=int, action='extend', default=list())
     parser.add_argument('--lr_classifier_ratio', type=float, default=10,
                         help='Multiplicative factor on the classifier layer.')
     parser.add_argument('--momentum', default=0.9, type=float,

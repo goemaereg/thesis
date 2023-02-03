@@ -172,6 +172,7 @@ class Trainer(object):
             class_set_size = self.args.minmaxcam_class_set_size
 
         self.optimizer = self._set_optimizer(**optimizer_params)
+        self.lr_scheduler = None
         self.loaders = get_data_loader(
             data_roots=self.args.data_paths,
             metadata_root=self.args.metadata_root,
@@ -302,6 +303,20 @@ class Trainer(object):
             weight_decay=opt.weight_decay,
             nesterov=opt.nesterov)
         return optimizer
+
+    def _set_lr_scheduler(self, optimizer, last_epoch=-1):
+        scheduler = None
+        if self.args.lr_scheduler == 'StepLR':
+            scheduler = torch.optim.lr_scheduler.StepLR(
+                optimizer,
+                self.args.lr_decay_frequency,
+                gamma=0.1, last_epoch=last_epoch)
+        elif self.args.lr_scheduler == 'MultiStepLR':
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(
+                optimizer,
+                self.args.lr_scheduler_multisteplr_milestones,
+                gamma=0.1, last_epoch=last_epoch)
+        return scheduler
 
     # def _wsol_training(self, images, targets):
     #     if (self.args.wsol_method == 'cutmix' and
@@ -671,17 +686,21 @@ def main():
     print("===========================================================")
     print(f"Device: {trainer.device}")
     trainer.load_checkpoint(checkpoint_type=trainer.args.eval_checkpoint_type)
+    last_epoch = trainer.epoch - 1
+    trainer._set_lr_scheduler(trainer.optimizer, last_epoch)
     if trainer.args.train:
         print("===========================================================")
         print("Start training {} epochs ...".format(trainer.args.epochs))
         epochs_range = range(trainer.epoch, trainer.args.epochs, 1)
         tq0 = tqdm.tqdm(epochs_range, total=len(epochs_range), desc='training epochs')
         for epoch in tq0:
-            trainer.adjust_learning_rate(epoch)
+            # trainer.adjust_learning_rate(epoch)
             train_performance = trainer.train(epoch, split='train')
             trainer.report_train(train_performance, epoch, split='train')
             last_epoch = (epoch == (trainer.args.epochs - 1))
             trainer.evaluate(epoch, split='val', save_xai=last_epoch, save_cams=last_epoch, log=last_epoch)
+            if trainer.lr_scheduler is not None:
+                trainer.lr_scheduler.step()
             # trainer.print_performances()
             trainer.report(epoch, split='val')
             trainer.epoch += 1
