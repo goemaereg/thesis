@@ -721,7 +721,14 @@ def main():
 
 
 if __name__ == '__main__':
-    with mlflow.start_run():
+    with mlflow.start_run() as run:
         main()
+        print("===========================================================")
+        print(f"Tracking URI: {mlflow.get_tracking_uri()}")
+        print(f"Artifact URI: {mlflow.get_artifact_uri()}")
+        print(f"Experiment ID: {run.info.experiment_id}")
+        print(f"Run ID: {run.info.run_id}")
+        print("===========================================================")
+
 
 
