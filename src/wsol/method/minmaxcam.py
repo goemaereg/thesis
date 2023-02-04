@@ -22,7 +22,7 @@ class MinMaxCAMMethod(BaseMethod):
         for param in self.model.fc.parameters():
             param.requires_grad = True
 
-    def unfreeze_layers(self):
+    def unfreeze_features(self):
         for param in self.model.features.parameters():
             param.requires_grad = True
         for param in self.model.conv6.parameters():
@@ -93,7 +93,7 @@ class MinMaxCAMMethod(BaseMethod):
 
     def train(self, images, labels):
         # minmaxcam stage I
-        self.freeze_features()
+        self.unfreeze_features()
         self.model.train()
         output_dict = self.model(images)
         logits = output_dict['logits']
@@ -103,7 +103,7 @@ class MinMaxCAMMethod(BaseMethod):
         self.optimizer.step()
 
         # minmaxcam state II
-        self.unfreeze_layers()
+        self.freeze_features()
         self.optimizer.zero_grad()
         self.model.eval()
         loss_crr, loss_frr = self.regularization_loss(images, labels)

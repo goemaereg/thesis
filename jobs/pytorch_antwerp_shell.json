@@ -1,0 +1,22 @@
+{
+    "name": "pytorch",
+    "description": "Used to run pytorch jobs",
+    "request": {
+        "resources": {
+            "cpus": 1,
+            "gpus": 0,
+            "cpuMemoryGb": 16
+        },
+        "docker": {
+            "storage": [{
+                "hostPath": "/project_antwerp",
+                "containerPath": "/project"
+            }],
+            "image": "pytorch/pytorch",
+            "command": "sleep 36000"
+        },
+        "scheduling": {
+            "interactive": true
+        }
+    }
+}
