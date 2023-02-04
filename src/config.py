@@ -223,7 +223,7 @@ def configure_parse(load_config=True):
                         choices=_LR_SCHEDULER_NAMES, help='Learning rate scheduler')
     parser.add_argument('--lr_decay_frequency', type=int, default=30,
                         help='How frequently do we decay the learning rate?')
-    parser.add_argument('--lr_multistep_milestones', type=int, action='extend', default=list())
+    parser.add_argument('--lr_scheduler_multisteplr_milestones', type=int, action='extend', default=list())
     parser.add_argument('--lr_classifier_ratio', type=float, default=10,
                         help='Multiplicative factor on the classifier layer.')
     parser.add_argument('--momentum', default=0.9, type=float,

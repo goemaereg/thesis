@@ -36,7 +36,7 @@
   "minmaxcam_batch_set_size": 5,
   "minmaxcam_class_set_size": 5,
   "minmaxcam_crr_weight": 1,
-  "minmaxcam_frr_weight": 10,
+  "minmaxcam_frr_weight": 1,
   "momentum": 0.9,
   "multi_contour_eval": true,
   "multi_iou_eval": true,

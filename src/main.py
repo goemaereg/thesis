@@ -304,7 +304,7 @@ class Trainer(object):
             nesterov=opt.nesterov)
         return optimizer
 
-    def _set_lr_scheduler(self, optimizer, last_epoch=-1):
+    def set_lr_scheduler(self, optimizer, last_epoch=-1):
         scheduler = None
         if self.args.lr_scheduler == 'StepLR':
             scheduler = torch.optim.lr_scheduler.StepLR(
@@ -316,6 +316,7 @@ class Trainer(object):
                 optimizer,
                 self.args.lr_scheduler_multisteplr_milestones,
                 gamma=0.1, last_epoch=last_epoch)
+        self.scheduler = scheduler
         return scheduler
 
     # def _wsol_training(self, images, targets):
@@ -687,7 +688,7 @@ def main():
     print(f"Device: {trainer.device}")
     trainer.load_checkpoint(checkpoint_type=trainer.args.eval_checkpoint_type)
     last_epoch = trainer.epoch - 1
-    trainer._set_lr_scheduler(trainer.optimizer, last_epoch)
+    trainer.set_lr_scheduler(trainer.optimizer, last_epoch)
     if trainer.args.train:
         print("===========================================================")
         print("Start training {} epochs ...".format(trainer.args.epochs))
