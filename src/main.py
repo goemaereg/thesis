@@ -316,7 +316,7 @@ class Trainer(object):
                 optimizer,
                 self.args.lr_scheduler_multisteplr_milestones,
                 gamma=0.1, last_epoch=last_epoch)
-        self.scheduler = scheduler
+        self.lr_scheduler = scheduler
         return scheduler
 
     # def _wsol_training(self, images, targets):
