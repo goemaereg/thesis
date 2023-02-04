@@ -578,7 +578,7 @@ def normalize_scoremap(cam):
     cam /= cam.max()
     return cam
 
-def xai_save_cams(xai_root, metadata, data_root, scoremap_root, evaluator, multi_contour_eval, log=False):
+def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, evaluator, multi_contour_eval, log=False):
     has_opt_cam_thresh = not isinstance(evaluator, MaskEvaluator)
     # dummy init to get rid of pycharm warning that this variable can be accessed before assignment
     opt_cam_thresh = 0
@@ -617,7 +617,7 @@ def xai_save_cams(xai_root, metadata, data_root, scoremap_root, evaluator, multi
                 os.makedirs(os.path.dirname(cam_path))
             cv2.imwrite(cam_path, cam_annotated)
             if log:
-                mlflow.log_artifact(cam_path, 'xai')
+                mlflow.log_artifact(cam_path, f'xai/{split}')
 
             # render image with annotations and CAM overlay
             # CAM overlay
@@ -649,7 +649,7 @@ def xai_save_cams(xai_root, metadata, data_root, scoremap_root, evaluator, multi
                 os.makedirs(os.path.dirname(img_ann_path))
             cv2.imwrite(img_ann_path, img_ann)
             if log:
-                mlflow.log_artifact(img_ann_path, 'xai')
+                mlflow.log_artifact(img_ann_path, f'xai/{split}')
 
 
 def evaluate_wsol(xai_root, scoremap_root, data_root, metadata_root, mask_root,
@@ -724,7 +724,7 @@ def evaluate_wsol(xai_root, scoremap_root, data_root, metadata_root, mask_root,
     if xai is False:
         return
     # XAI
-    xai_save_cams(xai_root=xai_root, metadata=metadata, data_root=data_root,
+    xai_save_cams(xai_root=xai_root, split=split, metadata=metadata, data_root=data_root,
                   scoremap_root=scoremap_root, evaluator=evaluator, multi_contour_eval=multi_contour_eval)
 
 

@@ -588,6 +588,7 @@ class Trainer(object):
             if self.args.xai and save_xai:
                 metadata = configure_metadata(metadata_root)
                 xai_save_cams(xai_root=self.args.xai_root,
+                              split=split,
                               metadata=metadata,
                               data_root=self.args.data_paths[split],
                               scoremap_root=self.args.scoremap_root,
@@ -716,19 +717,22 @@ def main():
     trainer.print_performances()
     trainer.report(trainer.args.epochs, split='test')
     trainer.save_performances()
+    print("===========================================================")
+    print(f"Tracking URI: {mlflow.get_tracking_uri()}")
+    print(f"Artifact URI: {mlflow.get_artifact_uri()}")
+    print(f"Experiment ID: {run.info.experiment_id}")
+    print(f"Run ID: {run.info.run_id}")
+    print(f"Run Name: {run.info.run_name}")
+    print("===========================================================")
     # MLFlow logging
     mlflow.pytorch.log_model(trainer.model, 'model', pip_requirements='requirements.txt')
+    mlflow.log_artifact(trainer.args.log_path)
 
 
 if __name__ == '__main__':
     with mlflow.start_run() as run:
         main()
-        print("===========================================================")
-        print(f"Tracking URI: {mlflow.get_tracking_uri()}")
-        print(f"Artifact URI: {mlflow.get_artifact_uri()}")
-        print(f"Experiment ID: {run.info.experiment_id}")
-        print(f"Run ID: {run.info.run_id}")
-        print("===========================================================")
+
 
 
 

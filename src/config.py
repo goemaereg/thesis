@@ -118,6 +118,7 @@ def configure_log_folder(args):
 def configure_log(args):
     log_file_name = os.path.join(args.log_folder, 'log.log')
     Logger(log_file_name)
+    return log_file_name
 
 
 def configure_reporter(args):
@@ -310,7 +311,7 @@ def get_configs():
     args.log_folder = configure_log_folder(args)
     args.scoremap_root = os.path.join(args.log_folder, args.scoremap_folder)
     args.xai_root = os.path.join(args.log_folder, args.xai_folder)
-    configure_log(args)
+    args.log_path = configure_log(args)
     configure_bbox_metric(args)
 
     args.architecture_type = get_architecture_type(args.architecture_type, args.wsol_method)
