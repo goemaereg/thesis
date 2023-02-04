@@ -8,18 +8,18 @@ __pycache__/
 
 # Project
 backup
+data/dataset/
+data/maskdata/
+mlruns/
+models/
+notebook/mlruns/
+other/
 pytorch/
 scratch/
 src/data/
 src/dataset/
 src/train_log
 synthetic/checkpoint/
-other/
-data/dataset/
-data/maskdata/
-mlruns/
-models/
-notebook/mlruns/
 train_log
 
 
