@@ -361,14 +361,20 @@ class BoxEvaluator(LocalizationEvaluator):
                     'cam_threshold': self.cam_threshold_list,
                     'box_accuracy': box_acc_iou[_THRESHOLD].tolist()
                 }
-                mlflow.log_dict(box_acc, f'data/{self.split}_box_acc_iou_{_THRESHOLD}.json')
+                log_path = f'data/{self.split}/box_acc_iou_{_THRESHOLD}.json'
+                if not os.path.exists(os.path.dirname(log_path)):
+                    os.makedirs(os.path.dirname(log_path))
+                mlflow.log_dict(box_acc, log_path)
                 fig, ax = plt.subplots()
                 ax.plot(self.cam_threshold_list, box_acc_iou[_THRESHOLD])
                 plt.title(f'{self.dataset_name} BoxAcc IOU={_THRESHOLD}')
                 plt.xlabel('CAM threshold')
                 plt.ylabel('BoxAcc')
                 plt.axis('tight')
-                mlflow.log_figure(fig, f'plots/{self.split}_box_acc_iou_{_THRESHOLD}.png')
+                log_path = f'plots/{self.split}/box_acc_iou_{_THRESHOLD}.png'
+                if not os.path.exists(os.path.dirname(log_path)):
+                    os.makedirs(os.path.dirname(log_path))
+                mlflow.log_figure(fig, log_path)
 
         if self.metric == 'MaxBoxAcc':
             metrics |= {self.metric: max_box_acc_iou[self.iou_threshold_list.index(50)]}
@@ -452,9 +458,8 @@ class MaskEvaluator(LocalizationEvaluator):
 
         # cam_threshold_list is given as [0, bw, 2bw, ..., 1-bw]
         # Set bins as [0, bw), [bw, 2bw), ..., [1-bw, 1), [1, 2), [2, 3)
-        self.num_bins = len(self.cam_threshold_list) + 2
-        self.threshold_list_right_edge = np.append(self.cam_threshold_list,
-                                                   [1.0, 2.0, 3.0])
+        self.threshold_list_right_edge = np.append(self.cam_threshold_list,[1.0])#, 2.0, 3.0])
+        self.num_bins = len(self.threshold_list_right_edge) - 1
         self.gt_true_score_hist = np.zeros(self.num_bins, dtype=float)
         self.gt_false_score_hist = np.zeros(self.num_bins, dtype=float)
 
@@ -523,17 +528,23 @@ class MaskEvaluator(LocalizationEvaluator):
         if self.log:
             pr_curve = {
                 'auc': auc,
-                'precision': precision[1:].tolist(),
-                'recall': recall[1:].tolist()
+                'precision': precision.tolist(),
+                'recall': recall.tolist()
             }
-            mlflow.log_dict(pr_curve, f'data/{self.split}_pr_curve.json')
+            log_path = f'data/{self.split}/pr_curve.json'
+            if not os.path.exists(os.path.dirname(log_path)):
+                os.makedirs(os.path.dirname(log_path))
+            mlflow.log_dict(pr_curve, log_path)
             fig, ax = plt.subplots()
             ax.plot(recall[1:], precision[1:])
             plt.title(f'{self.dataset_name} PR Curve')
             plt.xlabel('Recall')
             plt.ylabel('Precision')
             plt.axis('tight')
-            mlflow.log_figure(fig, f'plots/{self.split}_pr_curve.png')
+            log_path = f'plots/{self.split}/pr_curve.png'
+            if not os.path.exists(os.path.dirname(log_path)):
+                os.makedirs(os.path.dirname(log_path))
+            mlflow.log_figure(fig, log_path)
 
         return {self.metric: auc}
 

@@ -78,7 +78,8 @@ class CAMComputer(object):
                                           mask_root=mask_root,
                                           multi_contour_eval=multi_contour_eval,
                                           multi_gt_eval=multi_gt_eval,
-                                          metric=bbox_metric)
+                                          metric=bbox_metric,
+                                          log=log)
 
 
     def compute_and_evaluate_cams(self, save_cams=False):
