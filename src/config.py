@@ -34,14 +34,13 @@ _DEVICE_DEFAULT = 'cpu'
 _DATASET_NAMES = ('CUB', 'ILSVRC', 'OpenImages', 'SYNTHETIC')
 _ARCHITECTURE_NAMES = ('vgg16', 'resnet50', 'inception_v3')
 _ARCHITECTURE_DEFAULT = 'vgg16'
-_ARCHITECTURE_TYPE_NAMES = ('auto', 'vanilla')
-_ARCHITECTURE_TYPE_DEFAULT = 'auto'
-_METHOD_NAMES = ('basic', 'cam', 'adl', 'acol', 'spg', 'has', 'cutmix', 'minmaxcam')
+_ARCHITECTURE_TYPE_NAMES = ('vanilla', 'cam')#, 'acol', 'spg', 'adl')
+_ARCHITECTURE_TYPE_DEFAULT = 'cam'
+_METHOD_NAMES = ('cam', 'minmaxcam', 'gradcam', 'scorecam')#, 'adl', 'acol', 'spg', 'has', 'cutmix')
+_METHOD_DEFAULT = 'cam'
 _SPLITS = ('train', 'val', 'test')
 _BBOX_METRIC_NAMES = ('MaxBoxAcc', 'MaxBoxAccV2', 'MaxBoxAccV3')
 _BBOX_METRIC_DEFAULT = 'MaxBoxAccV2'
-_CAM_METHOD_NAMES = ('cam', 'gradcam', 'scorecam')
-_CAM_METHOD_DEFAULT = 'cam'
 _LR_SCHEDULER_NAMES = ('StepLR', "MultiStepLR")
 _LR_SCHEDULER_DEFAULT = 'StepLR'
 
@@ -76,14 +75,14 @@ def str2bool(v):
 
 
 def get_architecture_type(architecture_type, wsol_method):
-    if architecture_type == 'auto':
-        if wsol_method in ('cam', 'has', 'cutmix', 'minmaxcam'):
-            architecture_type = 'cam'
-        elif wsol_method in ('acol', 'adl', 'spg'):
-            architecture_type = wsol_method
-        else:
-            architecture_type = 'vanilla'
-    elif architecture_type == 'vanilla' and wsol_method not in ('basic'):
+    # if architecture_type == 'auto':
+    #     if wsol_method in ('cam', 'has', 'cutmix', 'minmaxcam'):
+    #         architecture_type = 'cam'
+    #     elif wsol_method in ('acol', 'adl', 'spg'):
+    #         architecture_type = wsol_method
+    #     else:
+    #         architecture_type = 'vanilla'
+    if architecture_type == 'vanilla' and wsol_method not in ('gradcam', 'scorecam'):
         raise ValueError
     return architecture_type
 
@@ -188,9 +187,6 @@ def configure_parse(load_config=True):
                              f' (default: {_ARCHITECTURE_DEFAULT})')
     parser.add_argument('--architecture_type', default=_ARCHITECTURE_TYPE_DEFAULT,
                         choices=_ARCHITECTURE_TYPE_NAMES, help='model architecture type')
-    parser.add_argument('--cam_method', default=_CAM_METHOD_DEFAULT,
-                        choices=_CAM_METHOD_NAMES,
-                        help='CAM method used to generate scoremaps')
     parser.add_argument('--epochs', default=10, type=int,
                         help='number of total epochs to run')
     parser.add_argument('--pretrained', type=str2bool, nargs='?',

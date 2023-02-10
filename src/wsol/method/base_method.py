@@ -21,5 +21,3 @@ class BaseMethod:
         self.optimizer.step()
         return logits, loss
 
-
-

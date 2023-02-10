@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import numpy as np
 from evaluation import BoxEvaluator, MaskEvaluator, MultiEvaluator
-from evaluation import configure_metadata, normalize_scoremap
+from evaluation import configure_metadata
 import os
 import tqdm
-from wsol.cam_method.utils.model_targets import ClassifierOutputTarget
-from wsol.cam_method import CAM, GradCAM, ScoreCAM
+from .wsol.cam_method.utils.model_targets import ClassifierOutputTarget
+from .wsol.cam_method import CAM, GradCAM, ScoreCAM
 
 
 _IMAGENET_MEAN = [0.485, .456, .406]
@@ -35,7 +35,8 @@ _RESIZE_LENGTH = 224
 cam_methods = {
     'cam': CAM,
     'gradcam': GradCAM,
-    'scorecam': ScoreCAM
+    'scorecam': ScoreCAM,
+    'minmaxcam': CAM
 }
 
 def get_cam_algorithm(model, cam_method, device):
