@@ -218,15 +218,17 @@ class Trainer(object):
         tags = dict(
             architecture=self.args.architecture,
             architecture_type=self.args.architecture_type,
-            wsol_method=self.args.wsol_method,
-            experiment=self.args.experiment_name,
             dataset=self.args.dataset_name,
             dataset_spec=self.args.dataset_name_suffix,
+            experiment=self.args.experiment_name,
+            large_feature_map=self.args.large_feature_map,
+            method=self.args.wsol_method,
             model=self.model.__class__.__name__,
+            num_classes=self._NUM_CLASSES_MAPPING[self.args.dataset_name],
             optimizer=self.optimizer.__class__.__name__,
             pretrained=self.args.pretrained,
-            large_feature_map=self.args.large_feature_map,
-            num_classes=self._NUM_CLASSES_MAPPING[self.args.dataset_name]
+            train=self.args.train,
+            train_augment=self.args.train_augment
         )
         mlflow.set_tags(tags)
 
@@ -408,7 +410,7 @@ class Trainer(object):
                 metadata_root=metadata_root,
                 mask_root=self.args.mask_root,
                 scoremap_root=self.args.scoremap_root,
-                cam_method=self.wsol_method,
+                cam_method=self.args.wsol_method,
                 iou_threshold_list=self.args.iou_threshold_list,
                 dataset_name=self.args.dataset_name,
                 split=split,

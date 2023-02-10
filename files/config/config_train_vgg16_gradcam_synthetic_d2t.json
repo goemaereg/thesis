@@ -7,7 +7,6 @@
   "batch_size": 64,
   "bbox_metric": "MaxBoxAccV3",
   "cam_curve_interval": 0.01,
-  "cam_method": "gradcam",
   "config": "files/config/config_train_vgg16_gradcam_synthetic_d2t.json",
   "crop_size": 224,
   "cutmix_beta": 1.0,
@@ -42,6 +41,7 @@
   "num_val_sample_per_class": 0,
   "override_cache": false,
   "pretrained": true,
+  "pretrained_path": "models/vgg16_synthetic_d2t.pt",
   "proxy_training_set": false,
   "resize_size": 256,
   "seed": 42,
@@ -51,10 +51,10 @@
   "spg_threshold_2l": 0.05,
   "spg_threshold_3h": 0.7,
   "spg_threshold_3l": 0.1,
-  "train": true,
+  "train": false,
   "train_augment": true,
   "weight_decay": 0.0001,
   "workers": 0,
-  "wsol_method": "basic",
+  "wsol_method": "gradcam",
   "xai": true
 }

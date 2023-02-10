@@ -7,7 +7,6 @@
   "batch_size": 16,
   "bbox_metric": "MaxBoxAccV3",
   "cam_curve_interval": 0.01,
-  "cam_method": "scorecam",
   "config": "files/config/config_train_vgg16_scorecam_synthetic_d4t.json",
   "crop_size": 224,
   "cutmix_beta": 1.0,
@@ -40,7 +39,7 @@
   "multi_contour_eval": true,
   "multi_iou_eval": true,
   "num_val_sample_per_class": 0,
-  "override_cache": true,
+  "override_cache": false,
   "pretrained": true,
   "pretrained_path": "models/vgg16_synthetic_d4t.pt",
   "proxy_training_set": false,
@@ -57,6 +56,6 @@
   "weight_decay": 0.0001,
   "workers": 0,
   "wsol": true,
-  "wsol_method": "basic",
+  "wsol_method": "scorecam",
   "xai": true
 }

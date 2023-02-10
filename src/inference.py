@@ -24,8 +24,8 @@ from evaluation import BoxEvaluator, MaskEvaluator, MultiEvaluator
 from evaluation import configure_metadata
 import os
 import tqdm
-from .wsol.cam_method.utils.model_targets import ClassifierOutputTarget
-from .wsol.cam_method import CAM, GradCAM, ScoreCAM
+from wsol.cam_method.utils.model_targets import ClassifierOutputTarget
+from wsol.cam_method import CAM, GradCAM, ScoreCAM
 
 
 _IMAGENET_MEAN = [0.485, .456, .406]

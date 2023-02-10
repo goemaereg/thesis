@@ -3,10 +3,10 @@
   "adl_drop_rate": 0.75,
   "adl_threshold": 0.9,
   "architecture": "vgg16",
+  "architecture_type": "cam",
   "batch_size": 64,
   "bbox_metric": "MaxBoxAccV3",
   "cam_curve_interval": 0.01,
-  "cam_method": "gradcam",
   "config": "files/config/config_train_vgg16_gap_gradcam_synthetic_d2t.json",
   "crop_size": 224,
   "cutmix_beta": 1.0,
@@ -55,6 +55,6 @@
   "train_augment": false,
   "weight_decay": 0.0001,
   "workers": 0,
-  "wsol_method": "cam",
+  "wsol_method": "gradcam",
   "xai": true
 }
