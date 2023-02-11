@@ -523,11 +523,11 @@ def main(args):
     print("===========================================================")
     print(f"Device: {trainer.device}")
     trainer.load_checkpoint(checkpoint_type=trainer.args.eval_checkpoint_type)
-    last_epoch = trainer.epoch - 1
-    trainer.set_lr_scheduler(trainer.optimizer, last_epoch)
     if trainer.args.train:
         print("===========================================================")
         print("Start training {} epochs ...".format(trainer.args.epochs))
+        last_epoch = trainer.epoch - 1
+        trainer.set_lr_scheduler(trainer.optimizer, last_epoch)
         epochs_range = range(trainer.epoch, trainer.args.epochs, 1)
         tq0 = tqdm.tqdm(epochs_range, total=len(epochs_range), desc='training epochs')
         for epoch in tq0:
