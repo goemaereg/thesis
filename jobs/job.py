@@ -41,10 +41,10 @@ job = {
             "command": "/project/thesis/start_job.sh"
         },
         "scheduling": {
-            "interactive": True,
+            "interactive": False,
             "restartable": False,
-            "minDuration": "6 hours",
-            "maxDuration": "1 day"
+            "minDuration": "1 day",
+            "maxDuration": "2 days"
         }
     }
 }

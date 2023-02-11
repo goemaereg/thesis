@@ -25,7 +25,7 @@ import os
 import shutil
 import warnings
 import json
-from util import Logger, Reporter
+from util import Reporter
 from typing import Dict
 
 
@@ -116,7 +116,6 @@ def configure_log_folder(args):
 
 def configure_log(args):
     log_file_name = os.path.join(args.log_folder, 'log.log')
-    Logger(log_file_name)
     return log_file_name
 
 

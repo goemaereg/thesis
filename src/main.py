@@ -19,8 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
-from typing import Mapping, Any, List, Dict
-import cv2
+from typing import Mapping, Any, List
 import numpy as np
 import os
 import pickle
@@ -28,15 +27,12 @@ import random
 import torch
 import torch.nn as nn
 import torch.optim
-import torch.nn.functional as F
 from config import get_configs
-from data_loaders import get_data_loader, configure_metadata, get_image_sizes, get_bounding_boxes
+from data_loaders import get_data_loader, configure_metadata
 from inference import CAMComputer
-from evaluation import MaskEvaluator, compute_bboxes_from_scoremaps, normalize_scoremap, xai_save_cams
-from util import string_contains_any, t2n  # , t2n
+from evaluation import xai_save_cams
+from util import string_contains_any, Logger
 import wsol
-# import wsol.method
-import itertools
 import tqdm
 import mlflow
 from munch import Munch
@@ -133,9 +129,9 @@ class Trainer(object):
                       'Conv2d_3', 'Conv2d_4'],
     }
 
-    def __init__(self):
+    def __init__(self, args):
         self.epoch = 0
-        self.args = get_configs()
+        self.args = args
         model_params = dict(
             adl_drop_rate=self.args.adl_drop_rate,
             adl_drop_threshold=self.args.adl_threshold,
@@ -522,8 +518,8 @@ class Trainer(object):
                 param_group['lr'] *= 0.1
 
 
-def main():
-    trainer = Trainer()
+def main(args):
+    trainer = Trainer(args)
     print("===========================================================")
     print(f"Device: {trainer.device}")
     trainer.load_checkpoint(checkpoint_type=trainer.args.eval_checkpoint_type)
@@ -565,12 +561,14 @@ def main():
     print("===========================================================")
     # MLFlow logging
     mlflow.pytorch.log_model(trainer.model, 'model', pip_requirements='requirements.txt')
-    mlflow.log_artifact(trainer.args.log_path)
 
 
 if __name__ == '__main__':
+    args = get_configs()
     with mlflow.start_run() as run:
-        main()
+        with Logger(args.log_path):
+            main(args)
+        mlflow.log_artifact(args.log_path)
 
 
 

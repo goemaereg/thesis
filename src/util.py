@@ -27,19 +27,33 @@ import sys
 
 class Logger(object):
     """Log stdout messages."""
+    def __init__(self, filename):
+        self.filename = filename
 
-    def __init__(self, outfile):
-        self.terminal = sys.stdout
-        self.log = open(outfile, "w")
+    def __enter__(self):
+        self.console = sys.stdout
+        self.fp = open(self.filename, "w")
         sys.stdout = self
+        return self
 
-    def write(self, message):
-        self.terminal.write(message)
-        self.log.write(message)
+    def __exit__(self, type, value, traceback):
+        self.console.close()
+        self.fp.close()
+        sys.stdout = self.console
+
+    def __getattr__(self, attr):
+        return getattr(self.console, attr)
+
+    def write(self, text):
+        self.console.write(text)
+        self.fp.write(text)
 
     def flush(self):
-        self.terminal.flush()
+        self.console.flush()
+        self.fp.flush()
 
+    def close(self):
+        self.log.close()
 
 def t2n(t):
     return t.detach().cpu().numpy().astype(np.float)
