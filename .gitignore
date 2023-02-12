@@ -16,11 +16,9 @@ notebook/mlruns/
 other/
 pytorch/
 scratch/
-src/data/
-src/dataset/
-src/train_log
 synthetic/checkpoint/
 train_log
+val_log
 
 
 .DS_Store
