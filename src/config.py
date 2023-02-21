@@ -220,6 +220,8 @@ def configure_parse(load_config=True):
                         choices=_LR_SCHEDULER_NAMES, help='Learning rate scheduler')
     parser.add_argument('--lr_decay_frequency', type=int, default=30,
                         help='How frequently do we decay the learning rate?')
+    parser.add_argument('--lr_scheduler_steplr_stepsize', type=int, default=30,
+                        help='Decays the learning by gamma=0.1 every step_size epochs')
     parser.add_argument('--lr_scheduler_multisteplr_milestones', type=int, action='extend', default=list())
     parser.add_argument('--lr_classifier_ratio', type=float, default=10,
                         help='Multiplicative factor on the classifier layer.')
@@ -300,7 +302,6 @@ def configure_load(filename: str) -> Dict:
 def get_configs():
     args = configure_parse()
     check_dependency(args)
-
     tags_encoded = []
     if args.dataset_name_suffix:
         tags_encoded.append('_'.join(list(args.dataset_name_suffix)))

@@ -306,7 +306,7 @@ class Trainer(object):
         if self.args.lr_scheduler == 'StepLR':
             scheduler = torch.optim.lr_scheduler.StepLR(
                 optimizer,
-                self.args.lr_decay_frequency,
+                self.args.lr_scheduler_steplr_stepsize,
                 gamma=0.1, last_epoch=last_epoch)
         elif self.args.lr_scheduler == 'MultiStepLR':
             scheduler = torch.optim.lr_scheduler.MultiStepLR(
