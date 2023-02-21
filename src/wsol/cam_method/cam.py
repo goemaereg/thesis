@@ -18,7 +18,7 @@ class CAM(BaseCAM):
                         targets,
                         activations,
                         grads):
-        if self.model.__class__.__name__ != 'VggCam':
+        if self.model.__class__.__name__ not in ('VggCam', 'ResNetCam'):
             raise NotImplementedError
         _targets = np.asarray(list(map(lambda x: x.category, targets)))
         _weights = self.model.fc.weight.numpy(force=True)

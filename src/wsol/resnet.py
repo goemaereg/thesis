@@ -78,7 +78,7 @@ class ResNetCam(nn.Module):
         self.bn1 = nn.BatchNorm2d(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-
+        # planes = [64, 128, 256, 512], layers = [3,4,6,3], strides = [1,2,2,1]
         self.layer1 = self._make_layer(block, 64, layers[0], stride=1)
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=stride_l3)
@@ -99,17 +99,17 @@ class ResNetCam(nn.Module):
         x = self.layer3(x)
         x = self.layer4(x)
 
-        pre_logit = self.avgpool(x)
-        pre_logit = pre_logit.reshape(pre_logit.size(0), -1)
-        logits = self.fc(pre_logit)
-
+        avgpool = self.avgpool(x)
+        avgpool_flat = avgpool.reshape(avgpool.size(0), -1)
+        logits = self.fc(avgpool_flat)
+        result = {'logits': logits, 'avgpool_flat': avgpool_flat}
         if return_cam:
-            feature_map = x.detach().clone()
+            feature_maps = x.detach().clone()
             cam_weights = self.fc.weight[labels]
-            cams = (cam_weights.view(*feature_map.shape[:2], 1, 1) *
-                    feature_map).mean(1, keepdim=False)
-            return cams
-        return {'logits': logits}
+            cams = (cam_weights.view(*feature_maps.shape[:2], 1, 1) *
+                    feature_maps).mean(1, keepdim=False)
+            result |= { 'cams': cams }
+        return result
 
     def _make_layer(self, block, planes, blocks, stride):
         layers = self._layer(block, planes, blocks, stride)
@@ -407,14 +407,14 @@ class ResNetAdl(nn.Module):
 
 
 def get_downsampling_layer(inplanes, block, planes, stride):
+    downsample = None
     outplanes = planes * block.expansion
-    if stride == 1 and inplanes == outplanes:
-        return
-    else:
-        return nn.Sequential(
-            nn.Conv2d(inplanes, outplanes, 1, stride, bias=False),
+    if stride != 1 or inplanes != outplanes:
+        downsample = nn.Sequential(
+            nn.Conv2d(inplanes, outplanes, kernel_size=1, stride=stride, bias=False),
             nn.BatchNorm2d(outplanes),
         )
+    return downsample
 
 
 def align_layer(state_dict):

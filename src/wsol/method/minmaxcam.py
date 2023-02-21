@@ -3,6 +3,64 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import itertools
+from abc import ABC, abstractmethod
+
+class ModelFreezer(ABC):
+    def __init__(self, model):
+        self.model = model
+        self.frozen = None
+
+    def is_frozen(self):
+        return self.frozen is True
+    @abstractmethod
+    def _freeze_features(self):
+        pass
+    @abstractmethod
+    def _unfreeze_features(self):
+        pass
+    def freeze_features(self):
+        self._freeze_features()
+        self.frozen = True
+    def unfreeze_features(self):
+        self._unfreeze_features()
+        self.frozen = False
+
+class VggCamFreezer(ModelFreezer):
+    def __init__(self, model):
+        super(VggCamFreezer, self).__init__(model)
+    def _freeze_features(self):
+        for param in self.model.features.parameters():
+            param.requires_grad = False
+        for param in self.model.conv6.parameters():
+            param.requires_grad = False
+        for param in self.model.fc.parameters():
+            param.requires_grad = True
+    def _unfreeze_features(self):
+        for param in self.model.features.parameters():
+            param.requires_grad = True
+        for param in self.model.conv6.parameters():
+            param.requires_grad = True
+        for param in self.model.fc.parameters():
+            param.requires_grad = True
+
+class ResNetCamFreezer(ModelFreezer):
+    def __init__(self, model):
+        super(ResNetCamFreezer, self).__init__(model)
+        self.feature_layers = [self.model.conv1, self.model.bn1, self.model.relu, self.model.maxpool,
+                               self.model.layer1, self.model.layer2, self.model.layer3, self.model.layer4,
+                               self.model.avgpool]
+    def _freeze_features(self):
+        for layer in self.feature_layers:
+            for param in layer.params():
+                param.requires_grad = False
+        for param in self.model.fc.parameters():
+            param.requires_grad = True
+    def _unfreeze_features(self):
+        for layer in self.feature_layers:
+            for param in layer.params():
+                param.requires_grad = True
+        for param in self.model.fc.parameters():
+            param.requires_grad = True
 
 
 class MinMaxCAMMethod(BaseMethod):
@@ -13,26 +71,15 @@ class MinMaxCAMMethod(BaseMethod):
         self.minmaxcam_batch_set_size = kwargs.get('minmaxcam_batch_set_size', 12)
         self.minmaxcam_frr_weight = kwargs.get('minmaxcam_frr_weight', 10)
         self.minmaxcam_crr_weight = kwargs.get('minmaxcam_crr_weight', 1)
-
-    def freeze_features(self):
-        for param in self.model.features.parameters():
-            param.requires_grad = False
-        for param in self.model.conv6.parameters():
-            param.requires_grad = False
-        for param in self.model.fc.parameters():
-            param.requires_grad = True
-
-    def unfreeze_features(self):
-        for param in self.model.features.parameters():
-            param.requires_grad = True
-        for param in self.model.conv6.parameters():
-            param.requires_grad = True
-        for param in self.model.fc.parameters():
-            param.requires_grad = True
+        self.freezer = None
+        if self.model.__class__.__name__ == 'VggCam':
+            self.freezer = VggCamFreezer(self.model)
+        elif self.model.__class__.__name__ == 'ResNetCam':
+            self.freezer = ResNetCamFreezer(self.model)
+        else:
+            raise NotImplementedError
 
     def regularization_loss(self, images, labels):
-        if self.model.__class__.__name__ not in ('VggCam'):
-            raise NotImplementedError
         # Compute CAMs from B(I) with I=input image
         result_orig = self.model(images, labels,
                                  return_cam=True, clone_cam=False)
@@ -93,7 +140,9 @@ class MinMaxCAMMethod(BaseMethod):
 
     def train(self, images, labels):
         # minmaxcam stage I
-        self.unfreeze_features()
+        # is_frozen call makes sure freezer is unfrozen at first call of train()
+        if self.freezer.is_frozen():
+            self.freezer.unfreeze_features()
         self.model.train()
         output_dict = self.model(images)
         logits = output_dict['logits']
@@ -103,7 +152,7 @@ class MinMaxCAMMethod(BaseMethod):
         self.optimizer.step()
 
         # minmaxcam state II
-        self.freeze_features()
+        self.freezer.freeze_features()
         self.optimizer.zero_grad()
         self.model.eval()
         loss_crr, loss_frr = self.regularization_loss(images, labels)
@@ -116,5 +165,7 @@ class MinMaxCAMMethod(BaseMethod):
             print(e)
             print(loss_all_p2)
         self.optimizer.step()
+
+        self.freezer.unfreeze_features()
 
         return logits, loss

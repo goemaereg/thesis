@@ -45,6 +45,8 @@ def get_cam_algorithm(model, cam_method, device):
         target_layers = [model.conv6_relu]
     elif model.__class__.__name__ == 'Vgg':
         target_layers = [model.features[-2]]  # last conv+relu layer
+    elif model.__class__.__name__ == 'ResNetCam':
+        target_layers = [model.layer4]
     if target_layers is None:
         raise NotImplementedError
     use_cuda = ('cuda' in device)
