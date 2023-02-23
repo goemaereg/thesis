@@ -346,7 +346,6 @@ def make_layers(cfg, **kwargs):
 
 def vgg16(architecture_type, pretrained=False, pretrained_path=None, **kwargs):
     config_key = '28x28' if kwargs['large_feature_map'] else '14x14'
-    dataset = kwargs.get('dataset_name', 'SYNTHETIC')
     layers = make_layers(configs_dict[architecture_type][config_key], **kwargs)
     model = {'vanilla': Vgg,
              'cam': VggCam,
@@ -355,6 +354,7 @@ def vgg16(architecture_type, pretrained=False, pretrained_path=None, **kwargs):
              'adl': VggCam}[architecture_type](layers, **kwargs)
     if pretrained:
         num_classes = kwargs.get('num_classes', 1000)
+        dataset = kwargs.get('dataset_name', 'SYNTHETIC')
         adapt = pretrained_path is None and (dataset != 'ILSVRC' or num_classes != 1000)
         model = load_pretrained_model(model, architecture_type,
                                       path=pretrained_path, adapt=adapt)

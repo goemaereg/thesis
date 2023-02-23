@@ -139,7 +139,7 @@ class Trainer(object):
        )
         model_kwargs = model_params | dict(
             architecture_type=self.args.architecture_type,
-            dataset = self.args.dataset_name,
+            dataset_name = self.args.dataset_name,
             pretrained=self.args.pretrained,
             pretrained_path=self.args.pretrained_path,
             large_feature_map=self.args.large_feature_map,

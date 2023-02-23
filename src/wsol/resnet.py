@@ -463,8 +463,8 @@ def load_pretrained_model(model, wsol_method, path=None, adapt=True, **kwargs):
             state_dict = align_layer(state_dict)
         elif wsol_method == 'spg':
             state_dict = batch_replace_layer(state_dict)
-
-        if kwargs['dataset_name'] != 'ILSVRC' or wsol_method in ('acol', 'spg'):
+        dataset = kwargs.get('dataset_name', 'SYNTHETIC')
+        if dataset != 'ILSVRC' or wsol_method in ('acol', 'spg'):
             state_dict = remove_layer(state_dict, 'fc')
             strict_rule = False
 
