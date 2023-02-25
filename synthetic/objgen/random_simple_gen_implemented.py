@@ -24,7 +24,7 @@ class TenClassesRandomFetcher(SimpleRandomFetcher):
         types = 10 if self.type_noise else 9
         y0 = np.random.randint(types)
         bg_rand = np.random.randint(3)
-        return self.draw_n_instances(y0, bg_rand, self.n_instances)
+        return self.draw_n_instances_background_stacked(y0, bg_rand, self.n_instances)
 
     def draw_one_sample_no_background(self, y0):
         # y0 is 0,1,...,9
@@ -78,7 +78,7 @@ class TenClassesRandomFetcher(SimpleRandomFetcher):
 
         return cobj, cimg, heatmap, variables
 
-    def draw_n_instances(self, y0, bg_rand, n_instances=1):
+    def draw_n_instances_background_stacked(self, y0, bg_rand, n_instances=1):
         image_list = []
         heatmap_list = []
         variable_list = []

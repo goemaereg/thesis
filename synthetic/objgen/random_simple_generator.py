@@ -33,11 +33,11 @@ class SimpleRandomFetcher(RandomFetcher):
                 'RCellX': RCellX_metasetting,
                 'CCellTX': CCellTX_metasetting,
             }
-            if not self.overlapping:
-                for cell_type in ['CCellX', 'CCellMX', 'CCellPX', 'CCellTX']:
-                    self.general_meta_setting[cell_type]['shape_meta_setting']['radius'] = ccell_meta_radius_small
-                self.general_meta_setting['RCellX']['shape_meta_setting']['h'] = rcell_meta_dim_small
-                self.general_meta_setting['RCellX']['shape_meta_setting']['w'] = rcell_meta_dim_small
+            # if not self.overlapping:
+            #     for cell_type in ['CCellX', 'CCellMX', 'CCellPX', 'CCellTX']:
+            #         self.general_meta_setting[cell_type]['shape_meta_setting']['radius'] = ccell_meta_radius_small
+            #     self.general_meta_setting['RCellX']['shape_meta_setting']['h'] = rcell_meta_dim_small
+            #     self.general_meta_setting['RCellX']['shape_meta_setting']['w'] = rcell_meta_dim_small
         if explanation_setting is None:
             # this setting is peculiar to the implementation of explanations in objgen.cellsX
             self.explanation_setting = { 

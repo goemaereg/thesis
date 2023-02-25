@@ -157,16 +157,24 @@ def show_factorization_on_image(img: np.ndarray,
     return result
 
 
+# normalize a batch of images
+def normalize_image(img):
+    if np.isnan(img).any():
+        return np.zeros_like(img)
+    if img.min() == img.max():
+        return np.zeros_like(img)
+    img -= img.min()
+    img /= img.max()
+    return img
+
 def scale_cam_image(cam, target_size=None):
     result = []
     for img in cam:
-        img = img - np.min(img)
-        img = img / (1e-7 + np.max(img))
+        img = normalize_image(img)
         if target_size is not None:
-            img = cv2.resize(img, target_size)
+            img = cv2.resize(img, target_size, interpolation=cv2.INTER_CUBIC)
         result.append(img)
     result = np.float32(result)
-
     return result
 
 

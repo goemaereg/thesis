@@ -130,7 +130,7 @@ class VggCam(nn.Module):
                 feature_maps = feature_maps.detach().clone()
             cam_weights = self.fc.weight[labels]
             cams = (cam_weights.view(*feature_maps.shape[:2], 1, 1) *
-                    feature_maps).nansum(1, keepdim=False) # sum i.s.o. mean?
+                    feature_maps).nansum(1, keepdim=False)
             result |= { 'cams': cams }
         return result
 

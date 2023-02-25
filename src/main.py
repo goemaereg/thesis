@@ -111,6 +111,36 @@ class PerformanceMeter(object):
             self.best_epoch = self.value_per_epoch.index(self.best_value)
 
 
+class EarlyStopping():
+    """
+    Early stopping to stop the training when the loss does not improve after
+    certain epochs.
+    """
+    def __init__(self, patience=5, min_delta=0):
+        """
+        :param patience: how many epochs to wait before stopping when loss is
+               not improving
+        :param min_delta: minimum difference between new loss and old loss for
+               new loss to be considered as an improvement
+        """
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.best_loss = None
+        self.early_stop = False
+    def __call__(self, val_loss):
+        if self.best_loss == None:
+            self.best_loss = val_loss
+        elif self.best_loss - val_loss > self.min_delta:
+            self.best_loss = val_loss
+            # reset counter if validation loss improves
+            self.counter = 0
+        elif self.best_loss - val_loss < self.min_delta:
+            self.counter += 1
+            if self.counter >= self.patience:
+                self.early_stop = True
+
+
 class Trainer(object):
     _CHECKPOINT_NAME_TEMPLATE = '{}_checkpoint.pt' #'{}_checkpoint.pth.tar'
     _SPLITS = ('train', 'val', 'test')
@@ -153,10 +183,9 @@ class Trainer(object):
             weight_decay=self.args.weight_decay,
             nesterov=True
         )
-
         set_random_seed(self.args.seed)
-        # print(self.args)
         self.performance_meters = self._set_performance_meters()
+        self.early_stopping = self._set_early_stopping()
         self.reporter = self.args.reporter
         self.device = self._set_device()
         self.model = self._set_model(**model_kwargs)
@@ -197,12 +226,7 @@ class Trainer(object):
         # sort by key
         state = dict(sorted(state.items()))
         mlflow.log_dict(state, 'state/config.json')
-        info = dict(
-            loss_fn_class=self.cross_entropy_loss.__class__.__name__,
-            loss_fn_minmax=self.mse_loss.__class__.__name__
-        )
         mlflow.log_text(' '.join(sys.argv), 'state/command.txt')
-        mlflow.log_dict(info, 'state/info.json')
         # hyper parameters
         params = model_params | optimizer_params
         params |= dict(
@@ -259,6 +283,14 @@ class Trainer(object):
             for split in self._SPLITS
         }
         return eval_dict
+
+    def _set_early_stopping(self):
+        early_stopping = None
+        if self.args.early_stopping:
+            min_delta = self.args.early_stopping_min_delta
+            patience = self.args.early_stopping_patience
+            early_stopping = EarlyStopping(patience=patience, min_delta=min_delta)
+        return early_stopping
 
     def _set_model(self, **kwargs):
         print("Loading model {}".format(self.args.architecture))
@@ -430,8 +462,9 @@ class Trainer(object):
                               evaluator=cam_computer.evaluator,
                               multi_contour_eval=self.args.multi_contour_eval,
                               log=True)
-            mlflow_metrics |= { f'{split}_{metric}':value  for metric, value in metrics.items() }
+            mlflow_metrics |= { f'{split}_{metric}':value for metric, value in metrics.items() }
         mlflow.log_metrics(mlflow_metrics, step=epoch)
+        return metrics
 
 
     def _torch_save_model(self, filename):
@@ -535,13 +568,19 @@ def main(args):
             train_performance = trainer.train(epoch, split='train')
             trainer.report_train(train_performance, epoch, split='train')
             last_epoch = (epoch == (trainer.args.epochs - 1))
-            trainer.evaluate(epoch, split='val', save_xai=last_epoch, save_cams=last_epoch, log=last_epoch)
+            val_metrics = trainer.evaluate(epoch, split='val', save_xai=last_epoch, save_cams=last_epoch, log=last_epoch)
             if trainer.lr_scheduler is not None:
                 trainer.lr_scheduler.step()
             # trainer.print_performances()
             trainer.report(epoch, split='val')
             trainer.epoch += 1
             trainer.save_checkpoint(epoch, split='val')
+            if trainer.early_stopping is not None:
+                val_loss = val_metrics['loss']
+                trainer.early_stopping(val_loss)
+                if trainer.early_stopping.early_stop:
+                    print(f'Training stopped early after {trainer.epoch} epochs')
+                    break
     else:
         print("===========================================================")
         print("Final epoch evaluation on val set ...")
@@ -560,6 +599,11 @@ def main(args):
     print(f"Run Name: {run.info.run_name}")
     print("===========================================================")
     # MLFlow logging
+    if trainer.args.train:
+        info = {'epochs_planned': trainer.args.epochs, 'epochs_trained': trainer.epoch}
+        if trainer.early_stopping is not None:
+            info |= {'early_stop': str(trainer.early_stopping.early_stop).lower()}
+        mlflow.log_dict(info, 'state/training.json')
     mlflow.pytorch.log_model(trainer.model, 'model', pip_requirements='requirements.txt')
 
 

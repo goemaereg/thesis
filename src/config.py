@@ -189,6 +189,12 @@ def configure_parse(load_config=True):
                         choices=_ARCHITECTURE_TYPE_NAMES, help='model architecture type')
     parser.add_argument('--epochs', default=10, type=int,
                         help='number of total epochs to run')
+    parser.add_argument('--early_stopping', type=str2bool, nargs='?', const=True, default=True,
+                        help='stops training when validation loss is not improving for a number of epochs')
+    parser.add_argument('--early_stopping_min_delta', type=float, default=0.0,
+                        help='minimum difference between new loss and best loss for new loss to be considered as an improvement')
+    parser.add_argument('--early_stopping_patience', type=int, default=5,
+                        help='how many epochs to wait before stopping when loss is not improving')
     parser.add_argument('--pretrained', type=str2bool, nargs='?',
                         const=True, default=True,
                         help='Use pre-trained model.')

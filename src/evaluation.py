@@ -608,8 +608,10 @@ def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, evaluator
             path_img = os.path.join(data_root, image_id)
             img = cv2.imread(path_img) # color channels in BGR format
             orig_img_shape = image_sizes[image_id]
-            _cam = cv2.resize(cam, orig_img_shape, interpolation=cv2.INTER_CUBIC)
-            _cam_norm = normalize_scoremap(_cam)
+            # normalization and resizing already done when CAMs where saved
+            _cam_norm = cam
+            # _cam = cv2.resize(cam, orig_img_shape, interpolation=cv2.INTER_CUBIC)
+            # _cam_norm = normalize_scoremap(_cam)
             _cam_mask = _cam_norm >= opt_cam_thresh
             # assign minimal value to area outside segment mask so normalization is constrained to segment values
             _cam_heatmap = _cam_norm.copy()

@@ -76,7 +76,9 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
         images = x
         bg = images[-1] if background else np.zeros(images[-1].shape)
         cimg = np.zeros(bg.shape)
-        n_generated_instances = images.shape[0]
+        # cimg is a stacked array of instance images + background image
+        # background image doesn't count as instance
+        n_generated_instances = images.shape[0] - 1
         if overlapping:
             # leave out background
             _images = images[:-1]
@@ -200,21 +202,6 @@ def save_one_chunk(DATA_FOLDER_DIR, METADATA_FOLDER_DIR, MASKDATA_FOLDER_DIR,
         mask_path = os.path.join(MASKDATA_FOLDER_DIR, mask_id)
         img = Image.fromarray(heatmap)
         img.save(mask_path)
-
-        # bboxdata: save image with bounding box
-        # bbox_id = f'{image_basename}_bbox.png'
-        # bbox_path = os.path.join(MASKDATA_FOLDER_DIR, bbox_id)
-        # bbox_img = cimg.copy()
-        # d = 2
-        # for bbox in bbox_list:
-        #     xmin, ymin, xmax, ymax = bbox
-        #     # convert from xy notation to matrix notation
-        #     row0, row1, col0, col1 = ymin, ymax, xmin, xmax
-        #     bbox_mask = np.zeros(heatmap.shape) > 0
-        #     bbox_mask[row0:row1 + 1, col0:col1 + 1] = True
-        #     bbox_mask[row0+d:row1-d, col0+d:col1-d] = False
-        #     bbox_img[bbox_mask] = 1.0
-        # mpimg.imsave(bbox_path, bbox_img)
 
     # metadata: write image paths
     image_ids_path = os.path.join(METADATA_FOLDER_DIR, 'image_ids.txt')
