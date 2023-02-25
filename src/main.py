@@ -429,7 +429,7 @@ class Trainer(object):
         self.performance_meters[split]['loss'].update(loss)
         accuracy = self._compute_accuracy(loader=self.loaders[split])
         self.performance_meters[split]['classification'].update(accuracy)
-        mlflow_metrics = { f'{split}_loss': loss, f'{split}_accuracy': accuracy}
+        eval_metrics = { 'loss': loss, 'accuracy': accuracy}
         if self.args.wsol:
             metadata_root = os.path.join(self.args.metadata_root, split)
             cam_computer = CAMComputer(
@@ -462,9 +462,10 @@ class Trainer(object):
                               evaluator=cam_computer.evaluator,
                               multi_contour_eval=self.args.multi_contour_eval,
                               log=True)
-            mlflow_metrics |= { f'{split}_{metric}':value for metric, value in metrics.items() }
+            eval_metrics |= metrics
+        mlflow_metrics = {f'{split}_{metric}':value for metric, value in eval_metrics.items()}
         mlflow.log_metrics(mlflow_metrics, step=epoch)
-        return metrics
+        return eval_metrics
 
 
     def _torch_save_model(self, filename):

@@ -350,10 +350,12 @@ class BoxEvaluator(LocalizationEvaluator):
         metrics = {}
         box_acc_iou = {}
         max_box_acc_iou = []
+        max_box_acc_threshold = []
         for _THRESHOLD in self.iou_threshold_list:
             box_acc_iou[_THRESHOLD] = self.num_correct[_THRESHOLD] * 1. / float(self.cnt)
             max_box_acc_iou.append(box_acc_iou[_THRESHOLD].max())
             cam_threshold_optimal = self.cam_threshold_list[box_acc_iou[_THRESHOLD].argmax()]
+            max_box_acc_threshold.append(cam_threshold_optimal)
             if self.log:
                 box_acc = {
                     'iou_threshold': _THRESHOLD,
@@ -377,11 +379,14 @@ class BoxEvaluator(LocalizationEvaluator):
                 mlflow.log_figure(fig, log_path)
 
         if self.metric == 'MaxBoxAcc':
-            metrics |= {self.metric: max_box_acc_iou[self.iou_threshold_list.index(50)]}
+            index_iou_50 = self.iou_threshold_list.index(50)
+            metrics |= {self.metric: max_box_acc_iou[index_iou_50]}
+            metrics |= {'optimal_threshold': max_box_acc_threshold[index_iou_50]}
         else:
             metrics |= {self.metric: np.average(max_box_acc_iou)}
         for index, _THRESHOLD in enumerate(self.iou_threshold_list):
             metrics |= {f'{self.metric}_IOU_{_THRESHOLD}': max_box_acc_iou[index]}
+            metrics |= {f'optimal_threshold_IOU_{_THRESHOLD}': max_box_acc_threshold[index]}
 
         return metrics
 

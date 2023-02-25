@@ -26,6 +26,8 @@ import os
 import tqdm
 from wsol.cam_method.utils.model_targets import ClassifierOutputTarget
 from wsol.cam_method import CAM, GradCAM, ScoreCAM
+import torch
+from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
 
 
 _IMAGENET_MEAN = [0.485, .456, .406]
@@ -52,6 +54,44 @@ def get_cam_algorithm(model, cam_method, device):
     use_cuda = ('cuda' in device)
     cam_args = dict(model=model, target_layers=target_layers, use_cuda=use_cuda)
     return cam_methods[cam_method], cam_args
+
+
+class PerformanceTimer:
+    def __init__(self, device):
+        self.device = device
+        self.reset()
+
+    def reset(self):
+        self.warm_up()
+        self.timings = []
+        self.starter = torch.cuda.Event(enable_timing=True)
+        self.ender = torch.cuda.Event(enable_timing=True)
+
+    def warm_up(self):
+        if 'cuda' not in self.device:
+            return
+        model = mobilenet_v2(weights=MobileNet_V2_Weights)
+        model.to(self.device)
+        with torch.no_grad():
+            dummy_input = torch.randn(1, 3, 224, 224, dtype=torch.float).to(self.device)
+            for _ in range(10):
+                _ = model(dummy_input)
+        # wait for gpu-cpu sync
+        torch.cuda.synchronize()
+
+    def start_timer(self):
+        self.starter.record()
+
+    def stop_timer(self):
+        self.ender.record()
+        # wait for gpu sync
+        if 'cuda' in self.device:
+            torch.cuda.synchronize()
+        curr_time = self.starter.elapsed_time(self.ender)
+        self.timings.append(curr_time)
+
+    def get_total_time(self):
+        return np.sum(self.timings)
 
 
 class CAMComputer(object):
@@ -88,7 +128,7 @@ class CAMComputer(object):
     def compute_and_evaluate_cams(self, save_cams=False):
         # print("Computing and evaluating cams.")
         metrics = {}
-
+        timer = PerformanceTimer(self.device)
         tq0 = tqdm.tqdm(self.loader, total=len(self.loader), desc='evaluate cams batches')
         for images, targets, image_ids in tq0:
             image_size = images.shape[2:]
@@ -100,7 +140,9 @@ class CAMComputer(object):
             # recreate different CAM objects in a loop.
             output_targets = [ClassifierOutputTarget(target.item()) for target in targets]
             with self.cam_algorithm(**self.cam_args) as cam_method:
+                timer.start_timer()
                 cams = cam_method(images, output_targets).astype('float')
+                timer.stop_timer()
             # cams = t2n(cams)
             cams_it = zip(cams, image_ids)
             for cam, image_id in cams_it:
@@ -115,4 +157,5 @@ class CAMComputer(object):
                     np.save(cam_path, cam_normalized)
                 self.evaluator.accumulate(cam_normalized, image_id)
         metrics |= self.evaluator.compute()
+        metrics |= {'cam_method_runtime': timer.get_total_time()}
         return metrics
