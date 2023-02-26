@@ -192,5 +192,4 @@ class CAMComputer(object):
                 self.evaluator.accumulate(cam_normalized, image_id)
         metrics |= self.evaluator.compute()
         metrics |= {timer_cam.name: timer_cam.get_total_elapsed_ms()}
-        print(timer_cam)
         return metrics
