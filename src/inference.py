@@ -117,6 +117,9 @@ class Timer:
         self.total_ns += self.value_ns
         self._gc_enable()
 
+    def __str__(self):
+        return f'Timer({self.__dict__}))'
+
 
 class CAMComputer(object):
     def __init__(self, model, loader, metadata_root, mask_root, scoremap_root, cam_method,
@@ -182,5 +185,6 @@ class CAMComputer(object):
                     np.save(cam_path, cam_normalized)
                 self.evaluator.accumulate(cam_normalized, image_id)
         metrics |= self.evaluator.compute()
-        metrics |= {timer_cam.name: timer_cam.total_ns / 1e6} # log runtime in milliseconds
+        metrics |= {timer_cam.name: timer_cam.total_ns}
+        print(timer_cam)
         return metrics
