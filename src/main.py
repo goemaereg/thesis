@@ -128,6 +128,7 @@ class EarlyStopping():
         self.counter = 0
         self.best_loss = None
         self.early_stop = False
+
     def __call__(self, val_loss):
         if self.best_loss == None:
             self.best_loss = val_loss
@@ -393,22 +394,8 @@ class Trainer(object):
         with open(log_path, 'wb') as f:
             pickle.dump(self.performance_meters, f)
 
-    def _compute_loss(self, loader):
+    def _compute_loss_accuracy(self, loader):
         total_loss = 0.0
-        num_images = 0
-        with torch.no_grad():
-            for images, targets, image_ids in loader:
-                images = images.to(self.device) #.cuda()
-                targets = targets.to(self.device) #.cuda()
-                output_dict = self.model(images)
-                logits = output_dict['logits']
-                loss = self.cross_entropy_loss(logits, targets)
-                total_loss += loss.item() * images.size(0)
-                num_images += images.size(0)
-        loss_average = total_loss / float(num_images)
-        return loss_average
-
-    def _compute_accuracy(self, loader):
         num_correct = 0
         num_images = 0
         with torch.no_grad():
@@ -416,20 +403,31 @@ class Trainer(object):
                 images = images.to(self.device) #.cuda()
                 targets = targets.to(self.device) #.cuda()
                 output_dict = self.model(images)
-                pred = output_dict['logits'].argmax(dim=1)
-                num_correct += (pred == targets).sum().item()
+                logits = output_dict['logits']
+                preds = logits.argmax(dim=1)
+                loss = self.cross_entropy_loss(logits, targets)
+                total_loss += loss.item() * images.size(0)
+                num_correct += (preds == targets).sum().item()
                 num_images += images.size(0)
-            classification_acc = num_correct / float(num_images) # * 100
-        return classification_acc
+        loss_average = total_loss / float(num_images)
+        classification_acc = num_correct / float(num_images)  # * 100
+        return loss_average, classification_acc
 
-    def evaluate(self, epoch, split, save_xai=False, save_cams=False, log=False):
+    def evaluate_classification(self, epoch, split):
         # print("Evaluate epoch {}, split {}".format(epoch, split))
         self.model.eval()
-        loss = self._compute_loss(loader=self.loaders[split])
+        loss, accuracy = self._compute_loss_accuracy(loader=self.loaders[split])
         self.performance_meters[split]['loss'].update(loss)
-        accuracy = self._compute_accuracy(loader=self.loaders[split])
         self.performance_meters[split]['classification'].update(accuracy)
         eval_metrics = { 'loss': loss, 'accuracy': accuracy}
+        mlflow_metrics = {f'{split}_{metric}':value for metric, value in eval_metrics.items()}
+        mlflow.log_metrics(mlflow_metrics, step=epoch)
+        return eval_metrics
+
+    def evaluate_wsol(self, epoch, split, save_xai=False, save_cams=False, log=False):
+        # print("Evaluate epoch {}, split {}".format(epoch, split))
+        eval_metrics = {}
+        self.model.eval()
         if self.args.wsol:
             metadata_root = os.path.join(self.args.metadata_root, split)
             cam_computer = CAMComputer(
@@ -468,6 +466,10 @@ class Trainer(object):
         mlflow.log_metrics(mlflow_metrics, step=epoch)
         return eval_metrics
 
+    def evaluate(self, epoch, split, save_xai=False, save_cams=False, log=False):
+        metrics_class = self.evaluate_classification(epoch, split)
+        metrics_wsol = self.evaluate_wsol(epoch, split, save_xai, save_cams, log)
+        return metrics_class | metrics_wsol
 
     def _torch_save_model(self, filename):
         meters_state_dict = {
@@ -564,25 +566,28 @@ def main(args):
         last_epoch = trainer.epoch - 1
         trainer.set_lr_scheduler(trainer.optimizer, last_epoch)
         epochs_range = range(trainer.epoch, trainer.args.epochs, 1)
+        early_stop = False
         tq0 = tqdm.tqdm(epochs_range, total=len(epochs_range), desc='training epochs')
         for epoch in tq0:
             # trainer.adjust_learning_rate(epoch)
             train_performance = trainer.train(epoch, split='train')
             trainer.report_train(train_performance, epoch, split='train')
-            last_epoch = (epoch == (trainer.args.epochs - 1))
-            val_metrics = trainer.evaluate(epoch, split='val', save_xai=last_epoch, save_cams=last_epoch, log=last_epoch)
+            val_metrics = trainer.evaluate_classification(epoch, split='val')
+            if trainer.early_stopping is not None:
+                val_loss = val_metrics['loss']
+                trainer.early_stopping(val_loss)
+                early_stop = trainer.early_stopping.early_stop
+            last_epoch = (epoch == (trainer.args.epochs - 1)) or early_stop
+            trainer.evaluate_wsol(epoch, split='val', save_xai=last_epoch, save_cams=last_epoch, log=last_epoch)
             if trainer.lr_scheduler is not None:
                 trainer.lr_scheduler.step()
             # trainer.print_performances()
             trainer.report(epoch, split='val')
             trainer.epoch += 1
             trainer.save_checkpoint(epoch, split='val')
-            if trainer.early_stopping is not None:
-                val_loss = val_metrics['loss']
-                trainer.early_stopping(val_loss)
-                if trainer.early_stopping.early_stop:
-                    print(f'Training stopped early after {trainer.epoch} epochs')
-                    break
+            if early_stop:
+                print(f'Training stopped early after {trainer.epoch} epochs')
+                break
     else:
         print("===========================================================")
         print("Final epoch evaluation on val set ...")

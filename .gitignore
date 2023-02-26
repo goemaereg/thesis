@@ -13,6 +13,7 @@ data/maskdata/
 data/metadata/SYNTHETIC_v0/
 mlruns/
 models/
+models_v0/
 notebook/mlruns/
 other/
 pytorch/
