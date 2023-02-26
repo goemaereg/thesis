@@ -173,6 +173,7 @@ class CAMComputer(object):
                 # cam_resized = cv2.resize(cam, image_size,
                 #                          interpolation=cv2.INTER_CUBIC)
                 # cam_normalized = normalize_scoremap(cam_resized)
+                # already resized to 224x224 and normalized during CAM computation
                 cam_normalized = cam
                 if self.split in ('val', 'test') and save_cams:
                     cam_path = os.path.join(self.scoremap_root, image_id)

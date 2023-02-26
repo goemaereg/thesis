@@ -615,7 +615,3 @@ if __name__ == '__main__':
         with Logger(args.log_path):
             main(args)
         mlflow.log_artifact(args.log_path)
-
-
-
-
