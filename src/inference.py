@@ -27,7 +27,8 @@ import tqdm
 from wsol.cam_method.utils.model_targets import ClassifierOutputTarget
 from wsol.cam_method import CAM, GradCAM, ScoreCAM
 import torch
-from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
+from torchvision.models import mobilenet_v2
+import time, gc
 
 
 _IMAGENET_MEAN = [0.485, .456, .406]
@@ -56,42 +57,53 @@ def get_cam_algorithm(model, cam_method, device):
     return cam_methods[cam_method], cam_args
 
 
-class PerformanceTimer:
-    def __init__(self, device):
+class Timer:
+    def __init__(self, device, gc_disable=True):
         self.device = device
-        self.reset()
-
-    def reset(self):
-        self.warm_up()
-        self.timings = []
-        self.starter = torch.cuda.Event(enable_timing=True)
-        self.ender = torch.cuda.Event(enable_timing=True)
+        self.gc_disable = gc_disable
+        self.counters_ns = []
+        if 'cuda' in device:
+            self.starter = torch.cuda.Event(enable_timing=True)
+            self.ender = torch.cuda.Event(enable_timing=True)
+            self.warm_up()
+        else:
+            self.counter_start = None
+            self.counter_stop = None
 
     def warm_up(self):
         if 'cuda' not in self.device:
             return
-        model = mobilenet_v2(weights=MobileNet_V2_Weights)
+        model = mobilenet_v2(weights=None)
         model.to(self.device)
         with torch.no_grad():
             dummy_input = torch.randn(1, 3, 224, 224, dtype=torch.float).to(self.device)
             for _ in range(10):
                 _ = model(dummy_input)
-        # wait for gpu-cpu sync
-        torch.cuda.synchronize()
+        torch.cuda.synchronize() # wait for warm up to complete actions on GPU
 
-    def start_timer(self):
-        self.starter.record()
-
-    def stop_timer(self):
-        self.ender.record()
+    def start(self):
+        if self.gc_disable:
+            gc.disable()
+        if 'cuda' in self.device:
+            self.starter.record()
+        else:
+            self.counter_start = time.monotonic_ns()
+    def stop(self):
         # wait for gpu sync
         if 'cuda' in self.device:
             torch.cuda.synchronize()
-        curr_time = self.starter.elapsed_time(self.ender)
-        self.timings.append(curr_time)
+            self.ender.record()
+            time_ms = self.starter.elapsed_time(self.ender) # milliseconds
+            self.counters_ns.append(time_ms * 1e6)
+        else:
+            self.counter_stop = time.monotonic_ns()
+            time_ns = self.counter_stop - self.counter_start
+            self.counters_ns.append(time_ns)
+        if self.gc_disable:
+            gc.enable()
 
     def get_total_time(self):
-        return np.sum(self.timings)
+        return np.sum(self.counters_ns)
 
 
 class CAMComputer(object):
@@ -128,7 +140,7 @@ class CAMComputer(object):
     def compute_and_evaluate_cams(self, save_cams=False):
         # print("Computing and evaluating cams.")
         metrics = {}
-        timer = PerformanceTimer(self.device)
+        timer = Timer(self.device)
         tq0 = tqdm.tqdm(self.loader, total=len(self.loader), desc='evaluate cams batches')
         for images, targets, image_ids in tq0:
             image_size = images.shape[2:]
@@ -140,9 +152,9 @@ class CAMComputer(object):
             # recreate different CAM objects in a loop.
             output_targets = [ClassifierOutputTarget(target.item()) for target in targets]
             with self.cam_algorithm(**self.cam_args) as cam_method:
-                timer.start_timer()
+                timer.start()
                 cams = cam_method(images, output_targets).astype('float')
-                timer.stop_timer()
+                timer.stop()
             # cams = t2n(cams)
             cams_it = zip(cams, image_ids)
             for cam, image_id in cams_it:
