@@ -4,18 +4,17 @@ from .utils.svd_on_activations import get_2d_projection
 
 
 class GradCAMElementWise(BaseCAM):
-    def __init__(self, model, target_layers, use_cuda=False,
+    def __init__(self, model, target_layers, device='cuda',
                  reshape_transform=None):
         super(
             GradCAMElementWise,
             self).__init__(
             model,
             target_layers,
-            use_cuda,
+            device,
             reshape_transform)
 
-    def get_cam_image(self,
-                      input_tensor,
+    def get_cam_image(self, input_tensor,
                       target_layer,
                       target_category,
                       activations,

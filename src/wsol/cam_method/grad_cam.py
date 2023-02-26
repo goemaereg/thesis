@@ -3,14 +3,14 @@ from .base_cam import BaseCAM
 
 
 class GradCAM(BaseCAM):
-    def __init__(self, model, target_layers, use_cuda=False,
+    def __init__(self, model, target_layers, device='cuda',
                  reshape_transform=None):
         super(
             GradCAM,
             self).__init__(
             model,
             target_layers,
-            use_cuda=use_cuda,
+            device=device,
             reshape_transform=reshape_transform)
 
     def get_cam_weights(self,

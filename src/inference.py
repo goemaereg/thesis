@@ -52,8 +52,7 @@ def get_cam_algorithm(model, cam_method, device):
         target_layers = [model.layer4]
     if target_layers is None:
         raise NotImplementedError
-    use_cuda = ('cuda' in device)
-    cam_args = dict(model=model, target_layers=target_layers, use_cuda=use_cuda)
+    cam_args = dict(model=model, target_layers=target_layers, device=device)
     return cam_methods[cam_method], cam_args
 
 
@@ -77,15 +76,19 @@ class Timer:
     def __init__(self, device, name):
         self.device = device
         self.name = name
-        self.value_ns = None
-        self.total_ns = 0
         if 'cuda' in device:
-            self.starter = torch.cuda.Event(enable_timing=True)
-            self.ender = torch.cuda.Event(enable_timing=True)
+            self.elapsed_ms = 0.0
+            self.total_elapsed_ms = 0.0
             self.warm_up()
         else:
-            self.counter_start = None
-            self.counter_stop = None
+            self.elapsed_ns = 0
+            self.total_elapsed_ns = 0.0
+
+    def get_total_elapsed_ms(self):
+        if 'cuda' in self.device:
+            return self.total_elapsed_ms
+        else:
+            return self.total_elapsed_ns / 1e6
 
     def warm_up(self):
         if 'cuda' not in self.device:
@@ -101,20 +104,23 @@ class Timer:
     def start(self):
         self._gc_disable()
         if 'cuda' in self.device:
+            self.starter = torch.cuda.Event(enable_timing=True)
             self.starter.record()
         else:
             self.counter_start = time.monotonic_ns()
     def stop(self):
         # wait for gpu sync
         if 'cuda' in self.device:
-            torch.cuda.synchronize()
+            self.ender = torch.cuda.Event(enable_timing=True)
             self.ender.record()
-            time_ms = self.starter.elapsed_time(self.ender) # milliseconds
-            self.value_ns = time_ms * 1e6
+            self.ender.wait()
+            self.ender.synchronize()
+            torch.cuda.synchronize()
+            self.elapsed_ms = self.starter.elapsed_time(self.ender)
+            self.total_elapsed_ms += self.elapsed_ms
         else:
             self.counter_stop = time.monotonic_ns()
-            self.value_ns = self.counter_stop - self.counter_start
-        self.total_ns += self.value_ns
+            self.elapsed_ns = self.counter_stop - self.counter_start
         self._gc_enable()
 
     def __str__(self):
@@ -185,6 +191,6 @@ class CAMComputer(object):
                     np.save(cam_path, cam_normalized)
                 self.evaluator.accumulate(cam_normalized, image_id)
         metrics |= self.evaluator.compute()
-        metrics |= {timer_cam.name: timer_cam.total_ns}
+        metrics |= {timer_cam.name: timer_cam.get_total_elapsed_ms()}
         print(timer_cam)
         return metrics

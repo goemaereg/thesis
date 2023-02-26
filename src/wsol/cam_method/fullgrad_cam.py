@@ -9,7 +9,7 @@ from .utils.image import scale_accross_batch_and_channels, scale_cam_image
 
 
 class FullGrad(BaseCAM):
-    def __init__(self, model, target_layers, use_cuda=False,
+    def __init__(self, model, target_layers, device='cuda',
                  reshape_transform=None):
         if len(target_layers) > 0:
             print(
@@ -27,7 +27,7 @@ class FullGrad(BaseCAM):
             self).__init__(
             model,
             target_layers,
-            use_cuda,
+            device,
             reshape_transform,
             compute_input_gradient=True)
         self.bias_data = [self.get_bias_data(
@@ -66,7 +66,7 @@ class FullGrad(BaseCAM):
         for bias, grads in zip(self.bias_data, grads_list):
             bias = bias[None, :, None, None]
             # In the paper they take the absolute value,
-            # but possibily taking only the positive gradients will work
+            # but possibly taking only the positive gradients will work
             # better.
             bias_grad = np.abs(bias * grads)
             result = scale_accross_batch_and_channels(

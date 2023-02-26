@@ -3,12 +3,12 @@ from .base_cam import BaseCAM
 
 
 class CAM(BaseCAM):
-    def __init__(self, model, target_layers, use_cuda=False,
+    def __init__(self, model, target_layers, device='cuda',
                  reshape_transform=None):
         super(CAM,self).__init__(
             model,
             target_layers,
-            use_cuda=use_cuda,
+            device=device,
             reshape_transform=reshape_transform,
             uses_gradients=False)
 

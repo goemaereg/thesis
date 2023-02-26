@@ -10,6 +10,7 @@ __pycache__/
 backup
 data/dataset/
 data/maskdata/
+data/metadata/SYNTHETIC_v0/
 mlruns/
 models/
 notebook/mlruns/
