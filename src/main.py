@@ -451,7 +451,8 @@ class Trainer(object):
             )
             metrics = cam_computer.compute_and_evaluate_cams(save_cams=save_cams)
             for metric, value in metrics.items():
-                self.performance_meters[split][metric].update(value)
+                if metric in self.performance_meters[split]:
+                   self.performance_meters[split][metric].update(value)
             if self.args.xai and save_xai:
                 metadata = configure_metadata(metadata_root)
                 xai_save_cams(xai_root=self.args.xai_root,

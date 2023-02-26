@@ -58,10 +58,27 @@ def get_cam_algorithm(model, cam_method, device):
 
 
 class Timer:
-    def __init__(self, device, gc_disable=True):
+    _gc_disable_count = 0
+
+    @classmethod
+    def _gc_disable(cls):
+        if cls._gc_disable_count == 0:
+            gc.disable()
+        cls._gc_disable_count += 1
+
+    @classmethod
+    def _gc_enable(cls):
+        cls._gc_disable_count -= 1
+        if cls._gc_disable_count < 0:
+            raise ValueError
+        if cls._gc_disable_count == 0:
+            gc.enable()
+
+    def __init__(self, device, name):
         self.device = device
-        self.gc_disable = gc_disable
-        self.counter_ns = None
+        self.name = name
+        self.value_ns = None
+        self.total_ns = 0
         if 'cuda' in device:
             self.starter = torch.cuda.Event(enable_timing=True)
             self.ender = torch.cuda.Event(enable_timing=True)
@@ -82,8 +99,7 @@ class Timer:
         torch.cuda.synchronize() # wait for warm up to complete actions on GPU
 
     def start(self):
-        if self.gc_disable:
-            gc.disable()
+        self._gc_disable()
         if 'cuda' in self.device:
             self.starter.record()
         else:
@@ -94,12 +110,12 @@ class Timer:
             torch.cuda.synchronize()
             self.ender.record()
             time_ms = self.starter.elapsed_time(self.ender) # milliseconds
-            self.counter_ns = time_ms * 1e6
+            self.value_ns = time_ms * 1e6
         else:
             self.counter_stop = time.monotonic_ns()
-            self.counter_ns = self.counter_stop - self.counter_start
-        if self.gc_disable:
-            gc.enable()
+            self.value_ns = self.counter_stop - self.counter_start
+        self.total_ns += self.value_ns
+        self._gc_enable()
 
 
 class CAMComputer(object):
@@ -136,8 +152,7 @@ class CAMComputer(object):
     def compute_and_evaluate_cams(self, save_cams=False):
         # print("Computing and evaluating cams.")
         metrics = {}
-        runtime_ns = 0
-        timer = Timer(self.device)
+        timer_cam = Timer(self.device, 'runtime_cam')
         tq0 = tqdm.tqdm(self.loader, total=len(self.loader), desc='evaluate cams batches')
         for images, targets, image_ids in tq0:
             image_size = images.shape[2:]
@@ -149,10 +164,9 @@ class CAMComputer(object):
             # recreate different CAM objects in a loop.
             output_targets = [ClassifierOutputTarget(target.item()) for target in targets]
             with self.cam_algorithm(**self.cam_args) as cam_method:
-                timer.start()
+                timer_cam.start()
                 cams = cam_method(images, output_targets).astype('float')
-                timer.stop()
-                runtime_ns += timer.counter_ns
+                timer_cam.stop()
             # cams = t2n(cams)
             cams_it = zip(cams, image_ids)
             for cam, image_id in cams_it:
@@ -167,5 +181,5 @@ class CAMComputer(object):
                     np.save(cam_path, cam_normalized)
                 self.evaluator.accumulate(cam_normalized, image_id)
         metrics |= self.evaluator.compute()
-        metrics |= {'cam_method_runtime': runtime_ns / 1e6} # log runtime in milliseconds
+        metrics |= {timer_cam.name: timer_cam.total_ns / 1e6} # log runtime in milliseconds
         return metrics
