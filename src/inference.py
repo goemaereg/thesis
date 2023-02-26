@@ -61,7 +61,7 @@ class Timer:
     def __init__(self, device, gc_disable=True):
         self.device = device
         self.gc_disable = gc_disable
-        self.counters_ns = []
+        self.counter_ns = None
         if 'cuda' in device:
             self.starter = torch.cuda.Event(enable_timing=True)
             self.ender = torch.cuda.Event(enable_timing=True)
@@ -94,16 +94,12 @@ class Timer:
             torch.cuda.synchronize()
             self.ender.record()
             time_ms = self.starter.elapsed_time(self.ender) # milliseconds
-            self.counters_ns.append(time_ms * 1e6)
+            self.counter_ns = time_ms * 1e6
         else:
             self.counter_stop = time.monotonic_ns()
-            time_ns = self.counter_stop - self.counter_start
-            self.counters_ns.append(time_ns)
+            self.counter_ns = self.counter_stop - self.counter_start
         if self.gc_disable:
             gc.enable()
-
-    def get_total_time(self):
-        return np.sum(self.counters_ns)
 
 
 class CAMComputer(object):
@@ -140,6 +136,7 @@ class CAMComputer(object):
     def compute_and_evaluate_cams(self, save_cams=False):
         # print("Computing and evaluating cams.")
         metrics = {}
+        runtime_ns = 0
         timer = Timer(self.device)
         tq0 = tqdm.tqdm(self.loader, total=len(self.loader), desc='evaluate cams batches')
         for images, targets, image_ids in tq0:
@@ -155,6 +152,7 @@ class CAMComputer(object):
                 timer.start()
                 cams = cam_method(images, output_targets).astype('float')
                 timer.stop()
+                runtime_ns += timer.counter_ns
             # cams = t2n(cams)
             cams_it = zip(cams, image_ids)
             for cam, image_id in cams_it:
@@ -169,5 +167,5 @@ class CAMComputer(object):
                     np.save(cam_path, cam_normalized)
                 self.evaluator.accumulate(cam_normalized, image_id)
         metrics |= self.evaluator.compute()
-        metrics |= {'cam_method_runtime': timer.get_total_time()}
+        metrics |= {'cam_method_runtime': runtime_ns / 1e6} # log runtime in milliseconds
         return metrics
