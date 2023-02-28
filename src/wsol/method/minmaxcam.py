@@ -51,13 +51,13 @@ class ResNetCamFreezer(ModelFreezer):
                                self.model.avgpool]
     def _freeze_features(self):
         for layer in self.feature_layers:
-            for param in layer.params():
+            for param in layer.parameters():
                 param.requires_grad = False
         for param in self.model.fc.parameters():
             param.requires_grad = True
     def _unfreeze_features(self):
         for layer in self.feature_layers:
-            for param in layer.params():
+            for param in layer.parameters():
                 param.requires_grad = True
         for param in self.model.fc.parameters():
             param.requires_grad = True
