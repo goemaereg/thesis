@@ -1,0 +1,43 @@
+\usepackage{graphicx}
+\graphicspath{{./images/}}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage{boxedminipage}
+\usepackage[big, pagestyles]{titlesec}
+\usepackage{wrapfig}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{amssymb}	
+\usepackage{glossaries}
+\usepackage{amsmath}
+\usepackage[font=small,labelfont=bf,textfont=it]{caption}
+\linespread{1.3}
+\setlength{\parindent}{0pt} \setlength{\parskip}{8pt plus 2pt minus 1pt}
+\usepackage{eso-pic}
+\usepackage[utf8]{inputenc}
+\usepackage{eso-pic}
+\usepackage{pdfpages}
+
+\setcounter{tocdepth}{1}
+
+\newcommand\BackgroundPic{%
+\put(0,0){%
+\parbox[b][\paperheight]{\paperwidth}{%
+\vfill
+\centering
+\includegraphics[width=\paperwidth,height=\paperheight]{frontpage}%
+\vfill
+}}}
+
+\usepackage[
+	title={This is the title.},
+	author={I'm the author},
+	adviser={My adviser},  % If multiple, this should be comma separated
+	supervisor={My supervisor},
+	year={The year when I do my thesis},
+    major={My Major}  % Either "Computer Networks and Distributed Systems" or "Software Engineering" or "Data Science and Artificial Intelligence"
+	]{options_and_preamble/ua_idlab}
+
+\makenoidxglossaries
+
+\include{chapters/glossary}

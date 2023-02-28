@@ -1,0 +1,176 @@
+\NeedsTeXFormat{LaTeX2e}
+\newcommand{\UACCover@Pgkname}{ua_idlab}
+\ProvidesPackage{\UACCover@Pgkname}[2016/11/22 Cover for master thesis for the University of Antwerp.]
+\typeout{Package: `\UACCover@Pgkname' v1.0}
+% ------------------------------
+% required packages
+% ------------------------------
+% kvoptions for key value options support
+\RequirePackage{kvoptions}
+\RequirePackage{ifthen}
+\RequirePackage{etoolbox}
+
+% this package requires utf8 inputenc
+\def\UACCover@stop{\PackageWarningNoLine{\UACCover@Pgkname}
+  {This package won't work without loading\MessageBreak
+   `inputenc' or `inputenx' with the `utf8' option}%
+  \let\UACCover@Pgkname\@gobbletwo\endinput}
+\@ifpackageloaded{inputenx}
+  {\def\UACCover@tempa{inputenx}}
+  {\@ifpackageloaded{inputenc}{\def\UACCover@tempa{inputenc}}{\UACCover@stop}}
+\@ifpackagewith{\UACCover@tempa}{utf8}{}{\UACCover@stop}
+\@ifpackagewith{\UACCover@tempa}{utf8x}{\UACCover@stop}{}
+
+% ------------------------------
+% options
+% ------------------------------
+\SetupKeyvalOptions{
+	family=MCS,
+	prefix=MCS@
+}
+
+\DeclareStringOption[title not set]{title} % Title of the work
+\DeclareStringOption[author not set]{author}
+\DeclareStringOption[adviser not set]{adviser}
+\DeclareStringOption[supervisor not set]{supervisor}
+\DeclareStringOption[year not set]{year}
+\DeclareStringOption[major not set]{major}
+
+%\DeclareBoolOption[false]{setPageNumberToOne}
+\DeclareBoolOption[false]{setCoverPageNumberToMinusOne}
+
+% ------------------------------
+% process options
+% ------------------------------
+\ProcessKeyvalOptions*
+
+\def\labelsenglish{
+	\gdef\@labelAdviser{Adviser}%
+	\gdef\@labelSupvervisor{Supervisor}%
+	\gdef\@labelUniversity{~\newline University of Antwerp}%
+	\gdef\@labelDept{Faculty of Science}%
+}
+
+\labelsenglish
+
+% ------------------------------		
+% helping commands
+% ------------------------------
+% - \UACCover@framed
+% - \UACCover@TBlabel
+% - \UACCover@TBlist
+% ------------------------------
+\def\UACCover@framed{\global\let\@UACCover@framed=\fbox}
+\let\@UACCover@framed\relax
+
+\newcommand{\UACCover@TBlabel}[1]{\textbf{#1}\hfil}
+
+\newenvironment{UACCover@TBlist}{%
+  \list{}{\labelwidth 20mm \leftmargin -2mm % alt: 35/60 mm
+          \rightmargin 20mm \let\makelabel\UACCover@TBlabel}%
+}{\endlist}
+
+% ------------------------------
+% usable commands
+% ------------------------------
+% - \Coverpage
+% ------------------------------
+\newcommand{\Coverpage}{%
+  \cleardoublepage
+  \ifthenelse{\boolean{MCS@setCoverPageNumberToMinusOne}}{\setcounter{page}{-1}}{}
+\begingroup
+	\newcommand{\UACCover@isTwoColumn}{false}
+	\if@twocolumn \renewcommand{\UACCover@isTwoColumn}{true} \onecolumn \fi
+  \sf
+  \pagestyle{empty}%
+  \thispagestyle{empty}%
+  \fontfamily{ppl}\selectfont
+  %
+  \@normalsize \@setsize\normalsize{13.6pt}\xipt\@xipt
+  %
+  \frenchspacing    % better for abbreviations
+  \parskip=0pt\parindent=0pt\null
+  %
+  % Starts at the top left corner
+  %
+  \hsize=154mm       %% A4: 210mm - 2*28mm
+  \columnwidth=\hsize \linewidth=\hsize
+  %
+  \dimen0=0pt
+  \advance\dimen0-\oddsidemargin
+  \advance\dimen0 2.6mm %% 
+  \advance\dimen0 4.5mm %% 
+ \hbox to 0pt{\kern\dimen0\vbox to\topskip{%
+  \dimen0=-1in
+  \advance\dimen0-\topmargin
+  \advance\dimen0-\headheight
+  \advance\dimen0-\headsep
+  \vskip\dimen0\relax
+  %
+  \hspace{-25mm}
+  \vbox to 20mm {\color{white} 
+  Submitted in fulfillment of the requirements for the degree of \\ \textbf{Master of Science in Computer Science: \\ \MCS@major}}
+  \vskip 20mm\relax %%%
+
+  \vskip -4mm\relax
+    \fboxsep=0pt
+    \@UACCover@framed{
+    \hspace{-25mm}
+      \hbox to 100mm{\hfil
+        \vbox to 60mm{\hsize=150mm\parindent=0pt
+        \vskip 25mm plus 30mm minus 7.5mm
+          \begin{flushleft}\@setsize\LARGE{22pt}\xviipt\@xviipt %%\LARGE
+            \textbf{\MCS@title}
+          \end{flushleft}%
+          \vskip 40mm plus 10mm minus 7.5mm
+          \begin{flushleft}\@setsize\large{14pt}\xiipt\@xiipt %%\large
+            \MCS@author
+          \end{flushleft}%
+        \vskip 17.5mm plus 35mm minus 12.5mm
+        }
+      \hfil
+      }
+    }
+  \vskip 100mm %%%%%
+
+  \vbox to 15mm{%
+    \vfill}%
+  \vbox to 45mm{%
+    \begin{UACCover@TBlist}%
+			\provideboolean{first}
+			\setboolean{first}{true}
+			\@for\next:=\MCS@adviser\do{%
+				\ifthenelse{\boolean{first}}%
+					{\item[\@labelAdviser:] \next}%
+					{\item \next}%
+					\setboolean{first}{false}%
+			}
+			\setboolean{first}{true}
+			\@for\next:=\MCS@supervisor\do{%
+				\ifthenelse{\boolean{first}}%
+					{\item[\@labelSupvervisor:] \next}%
+					{\item \next}%
+					\setboolean{first}{false}%
+			}
+
+    \end{UACCover@TBlist}%
+    \vfill}%
+  \vskip 2mm
+  \hspace{69mm}
+  \includegraphics[scale=0.31]{images/idlab-logo.pdf}
+  \vskip 0mm
+  \hspace{-25mm}
+  \vbox  {\color{black} 
+  Faculty of Science \\ \MCS@year}
+  %\vskip 20mm\relax
+
+ \vss}\hss}%
+  %
+  \thispagestyle{empty}%
+  \cleardoublepage % if twoside add a blank page after cover
+  % set counter to start at 1 after the clear(double)page
+  %\ifthenelse{\boolean{MCS@setPageNumberToOne}}{\setcounter{page}{1}}{}
+  \newcommand{\UACCover@true}{true}
+  \ifthenelse{\equal{\UACCover@isTwoColumn}{\UACCover@true}}{\twocolumn}{}
+\endgroup
+}

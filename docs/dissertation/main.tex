@@ -1,0 +1,46 @@
+\documentclass[a4paper,oneside,12pt]{book}
+
+\input{options_and_preamble/preamble}
+
+\begin{document}
+
+\input{options_and_preamble/frontpage}\clearpage
+
+\pagenumbering{roman} \setcounter{page}{1} % to start with roman page numbering
+
+\cleardoublepage
+
+\tableofcontents 
+
+\input{chapters/acknowledgements}\clearpage
+\input{chapters/samenvatting}\clearpage
+\input{chapters/summary}\clearpage
+
+% Print list of abbreviations, list of tables and list of figures
+\printnoidxglossary[nopostdot,nonumberlist,title=List of Abbreviations] 
+\listoftables 
+\listoffigures 
+
+
+\clearpage \pagenumbering{arabic}
+\setcounter{page}{1}
+\clearpage
+\setlength{\textheight}{9in}
+
+%start of main document
+\input{chapters/introduction}
+\input{chapters/background}
+\input{chapters/chapter1}
+\input{chapters/chapter2}
+\input{chapters/chapter3}
+\input{chapters/conclusion}
+
+\clearpage
+
+\nocite{*}
+\bibliographystyle{unsrt}
+\phantomsection
+\addcontentsline{toc}{chapter}{Bibliography}
+\bibliography{chapters/bibliography} 
+
+\end{document}
