@@ -81,8 +81,7 @@ class MinMaxCAMMethod(BaseMethod):
 
     def regularization_loss(self, images, labels):
         # Compute CAMs from B(I) with I=input image
-        result_orig = self.model(images, labels,
-                                 return_cam=True, clone_cam=False)
+        result_orig = self.model(images, labels, return_cam=True)
         cams = result_orig['cams']
         # cams = t2n(cams)
         cams = cams.unsqueeze(1)

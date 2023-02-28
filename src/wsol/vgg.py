@@ -111,7 +111,7 @@ class VggCam(nn.Module):
         self.fc = nn.Linear(1024, num_classes)
         initialize_weights(self.modules(), init_mode='he')
 
-    def forward(self, x, labels=None, return_cam=False, clone_cam=True):
+    def forward(self, x, labels=None, return_cam=False):
         features = self.features(x)
         conv6 = self.conv6(features)
         conv6_relu = self.conv6_relu(conv6)
@@ -126,8 +126,6 @@ class VggCam(nn.Module):
         }
         if return_cam:
             feature_maps = conv6_relu
-            if clone_cam:
-                feature_maps = feature_maps.detach().clone()
             cam_weights = self.fc.weight[labels]
             cams = (cam_weights.view(*feature_maps.shape[:2], 1, 1) *
                     feature_maps).nansum(1, keepdim=False)
