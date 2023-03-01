@@ -24,7 +24,7 @@ class ScoreCAM(BaseCAM):
                         grads):
         # input_tensor: shape (batch, channels, H, W)
         with torch.no_grad():
-            upsample = torch.nn.UpsamplingBilinear2d(
+            do_upsample = torch.nn.UpsamplingBilinear2d(
                 size=input_tensor.shape[-2:])
             # activation_tensor : shape(image batch size, activation channels, H, W)
             activation_tensor = torch.from_numpy(activations).to(self.device)
@@ -50,14 +50,15 @@ class ScoreCAM(BaseCAM):
             for target, in_tensor, act_tensor in it_inputs:
                 # compute upsampled activations here to reduce memory requirements by factor of input batch size
                 # act_tensor : shape (activation channels, H, W)
-                upsampled = upsample(act_tensor[None, :, :, :]).squeeze(dim=0)
+                upsampled = do_upsample(act_tensor[None, :, :, :]).squeeze(dim=0)
                 maxs = upsampled.view(upsampled.size(0), -1).max(dim=-1)[0]
                 mins = upsampled.view(upsampled.size(0), -1).min(dim=-1)[0]
                 # maxs, mins: shape(activation channels, 1, 1)
                 maxs, mins = maxs[:, None, None], mins[:, None, None]
                 # upsampled: shape(activation channels, H, W)
                 act_tensor = (upsampled - mins) / (maxs - mins)
-
+                # replaces nan values with 0.0 where maxs == mins (can happen for channels without activations)
+                act_tensor = torch.nan_to_num(act_tensor)
                 # compute input * activation here to reduce memory requirements by factor of input batch size
                 # input tensor: shape(RGB channels, H, W) -> shape(1, RGB channels, H, W)
                 # upsampled: shape(activation channels, H, W) -> shape(activation channels, 1, H, W)
