@@ -618,5 +618,8 @@ if __name__ == '__main__':
     args = get_configs()
     with mlflow.start_run() as run:
         with Logger(args.log_path):
-            main(args)
+            try:
+                main(args)
+            except Exception as e:
+                print(f'Exception: {e}')
         mlflow.log_artifact(args.log_path)
