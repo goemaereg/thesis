@@ -78,6 +78,9 @@ class BaseCAM:
         else:
             with torch.no_grad():
                 result = self.activations_and_grads(input_tensor)
+        # release registered forward hook handles
+        self.activations_and_grads.release()
+
         outputs = result['logits']
         if targets is None:
             target_categories = np.argmax(outputs.cpu().data.numpy(), axis=-1)
