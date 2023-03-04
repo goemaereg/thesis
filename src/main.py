@@ -211,7 +211,8 @@ class Trainer(object):
             num_val_sample_per_class=self.args.num_val_sample_per_class,
             class_set_size=class_set_size,
             batch_set_size=batch_set_size,
-            train_augment=self.args.train_augment
+            train_augment=self.args.train_augment,
+            dataset_name=self.args.dataset_name
         )
         method_args = vars(self.args) | {'model': self.model, 'device': self.device, 'optimizer': self.optimizer}
         self.wsol_method = wsol_methods[self.args.wsol_method](**method_args)

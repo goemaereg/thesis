@@ -13,7 +13,7 @@
                 "containerPath": "/project"
             }],
             "image": "pytorch/pytorch",
-            "command": "sleep 36000"
+            "command": "sleep 86400"
         },
         "scheduling": {
             "interactive": true

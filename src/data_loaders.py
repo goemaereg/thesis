@@ -21,7 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import munch
 import numpy as np
+import tarfile
 import os
+import io
 from PIL import Image
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
@@ -205,6 +207,36 @@ class WSOLImageLabelDataset(Dataset):
         return len(self.image_ids)
 
 
+class WSOLImageLabelTarDataset(Dataset):
+    def __init__(self, tar_path, metadata_root, transform):
+        self.tar_path = tar_path
+        self.tar_file = tarfile.open(name=tar_path, mode='r')
+        self.metadata = configure_metadata(metadata_root)
+        self.image_ids = get_image_ids(self.metadata, proxy=False)
+        self.image_labels = get_class_labels(self.metadata)
+        self.transform = transform
+
+    def __getitem__(self, idx):
+        # example image_id: train/n01440764/n01440764_10026.JPEG
+        image_id = self.image_ids[idx]
+        image_label = self.image_labels[image_id]
+        id_parts = image_id.split('/')
+        class_id = id_parts[1]
+        image_filename = id_parts[2]
+        # extract <class_id>.tar file
+        class_tarfname = f'{class_id}.tar'
+        tar = tarfile.open(fileobj=self.tar_file.extractfile(class_tarfname))
+        buf = tar.extractfile(image_filename).read()
+        tar.close()
+        with io.BytesIO(buf) as bio:
+            image = Image.open(bio).convert('RGB')
+        image = self.transform(image)
+        return image, image_label, image_id
+
+    def __len__(self):
+        return len(self.image_ids)
+
+
 class MiniBatchSampler(Sampler[int]):
     def __init__(self, image_label_dataset,
                  class_set_size=5,
@@ -235,7 +267,7 @@ class MiniBatchSampler(Sampler[int]):
 def get_data_loader(data_roots, metadata_root, batch_size, workers,
                     resize_size, crop_size, proxy_training_set,
                     num_val_sample_per_class=0, batch_set_size=None,
-                    class_set_size=None, train_augment=True):
+                    class_set_size=None, train_augment=True, dataset_name='SYNTHETIC'):
     dataset_transforms = dict(
         train=transforms.Compose([
             transforms.Resize((resize_size, resize_size)),
@@ -262,14 +294,21 @@ def get_data_loader(data_roots, metadata_root, batch_size, workers,
         ])
     loaders = {}
     for split in _SPLITS:
-        dataset = WSOLImageLabelDataset(
-            data_root=data_roots[split],
-            metadata_root=os.path.join(metadata_root, split),
-            transform=dataset_transforms[split],
-            proxy=proxy_training_set and split == 'train',
-            num_sample_per_class=(num_val_sample_per_class
-                                  if split == 'val' else 0)
-        )
+        if dataset_name == 'ILSVRC' and split == 'train':
+            dataset = WSOLImageLabelTarDataset(
+                tar_path = os.path.join(data_roots[split], 'ILSVRC2012_img_train.tar'),
+                metadata_root=os.path.join(metadata_root, split),
+                transform=dataset_transforms[split]
+            )
+        else:
+            dataset = WSOLImageLabelDataset(
+                data_root=data_roots[split],
+                metadata_root=os.path.join(metadata_root, split),
+                transform=dataset_transforms[split],
+                proxy=proxy_training_set and split == 'train',
+                num_sample_per_class=(num_val_sample_per_class
+                                      if split == 'val' else 0)
+            )
         # default case: if batch_size > 1 then automatic batch loading
         shuffle = split == 'train'
         batch_sampler = None

@@ -24,8 +24,10 @@ class ScoreCAM(BaseCAM):
                         grads):
         # input_tensor: shape (batch, channels, H, W)
         with torch.no_grad():
+            # TODO: test with do_upsample.to(device) !!
+            # TODO: test with Batch = 1
             do_upsample = torch.nn.UpsamplingBilinear2d(
-                size=input_tensor.shape[-2:])
+                size=input_tensor.shape[-2:]) # Todo: deprecated -> use interpolate
             # activation_tensor : shape(image batch size, activation channels, H, W)
             activation_tensor = torch.from_numpy(activations).to(self.device)
             # # activation tensor: shape (batch, activation channels, H, W)
