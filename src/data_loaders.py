@@ -334,8 +334,8 @@ def get_data_loader(data_roots, metadata_root, batch_size, workers,
     loaders = {}
     for split in _SPLITS:
         if dataset_name == 'ILSVRC' and split == 'train':
-            dataset = WSOLImageLabelTarDataset(
-                tar_path = os.path.join(data_roots[split], 'ILSVRC2012_img_train.tar'),
+            dataset = WSOLImageLabelLmdbDataset(
+                lmdb_path = os.path.join(data_roots[split], 'lmdb_train.lmdb'),
                 metadata_root=os.path.join(metadata_root, split),
                 transform=dataset_transforms[split]
             )
