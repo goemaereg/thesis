@@ -138,3 +138,4 @@ websocket-client==1.4.2
 Werkzeug==2.2.2
 widgetsnbextension==4.0.3
 zipp==3.11.0
+lmdb==1.4.0

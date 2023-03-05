@@ -22,6 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 import munch
 import numpy as np
 import tarfile
+import lmdb
+import pickle
 import os
 import io
 from PIL import Image
@@ -237,6 +239,42 @@ class WSOLImageLabelTarDataset(Dataset):
         return len(self.image_ids)
 
 
+class WSOLImageLabelLmdbDataset(Dataset):
+    environments = dict()
+    def __init__(self, lmdb_path, metadata_root, transform):
+        self.lmdb_path = lmdb_path
+        if lmdb_path not in self.environments:
+            self.environments[lmdb_path] = lmdb.open(lmdb_path, subdir=os.path.isdir(lmdb_path),
+                                                     readonly=True, lock=False,
+                                                     readahead=False, meminit=False)
+        with self.environments[lmdb_path].begin(write=False) as txn:
+            self.length = pickle.loads(txn.get(b'__len__'))
+        self.metadata = configure_metadata(metadata_root)
+        self.image_ids = get_image_ids(self.metadata, proxy=False)
+        self.image_labels = get_class_labels(self.metadata)
+        self.transform = transform
+
+    def __getitem__(self, idx):
+        image, target = None, None
+        # example image_id: train/n01440764/n01440764_10026.JPEG
+        image_id = self.image_ids[idx]
+        image_label = self.image_labels[image_id]
+        env = self.environments[self.lmdb_path]
+        with env.begin(write=False) as txn:
+            key = u'{}'.format(image_id).encode('ascii')
+            byteflow = txn.get(key)
+            print('hello')
+        image_buffer = pickle.loads(byteflow)
+        with io.BytesIO(image_buffer) as bio:
+            image = Image.open(bio).convert('RGB')
+        if self.transform is not None:
+            image = self.transform(image)
+        return image, image_label, image_id
+
+    def __len__(self):
+        return self.length
+
+
 class MiniBatchSampler(Sampler[int]):
     def __init__(self, image_label_dataset,
                  class_set_size=5,
@@ -249,6 +287,7 @@ class MiniBatchSampler(Sampler[int]):
         self.batch_set_size = batch_set_size
         batch_size = self.class_set_size * self.batch_set_size
         self.batch_num = int((len(self.labels) + batch_size - 1) // batch_size)
+
     def __iter__(self) -> Iterator[List[int]]:
         for _ in range(self.batch_num):
             label_set = np.random.permutation(
