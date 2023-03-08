@@ -1,5 +1,6 @@
 import requests
 import argparse
+import json
 
 CERT = '/Users/goemaereg/.certs/login_decrypted_ilabt_imec_be_s0175908@ua.ac.be.pem'
 URI = 'https://gpulab.ilabt.imec.be/api/gpulab/v3.0'
@@ -15,6 +16,7 @@ owner = {
     "userEmail": "Geert.Goemaere@student.uantwerpen.be",
     "projectUrn": "urn:publicid:IDN+ilabt.imec.be+project+stu-weak-multi-local"
 }
+
 job = {
     "name": "pytorch",
     "description": "Used to run pytorch jobs",
@@ -43,30 +45,42 @@ job = {
         "scheduling": {
             "interactive": False,
             "restartable": False,
-            "minDuration": "1 day",
-            "maxDuration": "2 days"
+            "minDuration": "4 days",
+            "maxDuration": "1 week"
         }
     }
 }
 
-def main():
+
+def dict_merge(dct, merge_dct):
+    for k, v in merge_dct.items():
+        if (k in dct and isinstance(dct[k], dict) and isinstance(merge_dct[k], dict)):  #noqa
+            dict_merge(dct[k], merge_dct[k])
+        else:
+            dct[k] = merge_dct[k]
+    return dct
+
+def main(job):
     parser = argparse.ArgumentParser()
     parser.add_argument('-e', '--experiment_name', type=str, required=True)
     parser.add_argument('-r', '--run_name', type=str, required=True)
     parser.add_argument('-c', '--config_file', type=str, required=True)
+    parser.add_argument('-j', '--job', type=str, required=False, default='jobs/job_default.json')
     args = parser.parse_args()
-
+    job_overlay = {}
+    with open(args.job, 'r') as fp:
+        job_overlay = json.load(fp)
     env = dict(EXPERIMENT_NAME=args.experiment_name,
                RUN_NAME=args.run_name,
                CONFIG_FILE=args.config_file) 
 
+    job = dict_merge(job, job_overlay)
     job['request']['docker']['environment'] = env
-
     r = requests.post(url, json=job, cert=cert)
     print(r.status_code)
     print(r.text)
 
 
 if __name__ == '__main__':
-    main()
+    main(job)
 

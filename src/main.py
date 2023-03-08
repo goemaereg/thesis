@@ -428,41 +428,42 @@ class Trainer(object):
     def evaluate_wsol(self, epoch, split, save_xai=False, save_cams=False, log=False):
         # print("Evaluate epoch {}, split {}".format(epoch, split))
         eval_metrics = {}
+        if self.args.wsol == False:
+            return {}
         self.model.eval()
-        if self.args.wsol:
-            metadata_root = os.path.join(self.args.metadata_root, split)
-            cam_computer = CAMComputer(
-                model=self.model,
-                loader=self.loaders[split],
-                metadata_root=metadata_root,
-                mask_root=self.args.mask_root,
-                scoremap_root=self.args.scoremap_root,
-                cam_method=self.args.wsol_method,
-                iou_threshold_list=self.args.iou_threshold_list,
-                dataset_name=self.args.dataset_name,
-                split=split,
-                cam_curve_interval=self.args.cam_curve_interval,
-                multi_contour_eval=self.args.multi_contour_eval,
-                multi_gt_eval=self.args.multi_gt_eval,
-                device = self.device,
-                bbox_metric=self.args.bbox_metric,
-                log=log
-            )
-            metrics = cam_computer.compute_and_evaluate_cams(save_cams=save_cams)
-            for metric, value in metrics.items():
-                if metric in self.performance_meters[split]:
-                   self.performance_meters[split][metric].update(value)
-            if self.args.xai and save_xai:
-                metadata = configure_metadata(metadata_root)
-                xai_save_cams(xai_root=self.args.xai_root,
-                              split=split,
-                              metadata=metadata,
-                              data_root=self.args.data_paths[split],
-                              scoremap_root=self.args.scoremap_root,
-                              evaluator=cam_computer.evaluator,
-                              multi_contour_eval=self.args.multi_contour_eval,
-                              log=True)
-            eval_metrics |= metrics
+        metadata_root = os.path.join(self.args.metadata_root, split)
+        cam_computer = CAMComputer(
+            model=self.model,
+            loader=self.loaders[split],
+            metadata_root=metadata_root,
+            mask_root=self.args.mask_root,
+            scoremap_root=self.args.scoremap_root,
+            cam_method=self.args.wsol_method,
+            iou_threshold_list=self.args.iou_threshold_list,
+            dataset_name=self.args.dataset_name,
+            split=split,
+            cam_curve_interval=self.args.cam_curve_interval,
+            multi_contour_eval=self.args.multi_contour_eval,
+            multi_gt_eval=self.args.multi_gt_eval,
+            device = self.device,
+            bbox_metric=self.args.bbox_metric,
+            log=log
+        )
+        metrics = cam_computer.compute_and_evaluate_cams(save_cams=save_cams)
+        for metric, value in metrics.items():
+            if metric in self.performance_meters[split]:
+               self.performance_meters[split][metric].update(value)
+        if self.args.xai and save_xai:
+            metadata = configure_metadata(metadata_root)
+            xai_save_cams(xai_root=self.args.xai_root,
+                          split=split,
+                          metadata=metadata,
+                          data_root=self.args.data_paths[split],
+                          scoremap_root=self.args.scoremap_root,
+                          evaluator=cam_computer.evaluator,
+                          multi_contour_eval=self.args.multi_contour_eval,
+                          log=True)
+        eval_metrics |= metrics
         mlflow_metrics = {f'{split}_{metric}':value for metric, value in eval_metrics.items()}
         mlflow.log_metrics(mlflow_metrics, step=epoch)
         return eval_metrics

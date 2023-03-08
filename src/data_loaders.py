@@ -263,7 +263,6 @@ class WSOLImageLabelLmdbDataset(Dataset):
         with env.begin(write=False) as txn:
             key = u'{}'.format(image_id).encode('ascii')
             byteflow = txn.get(key)
-            print('hello')
         image_buffer = pickle.loads(byteflow)
         with io.BytesIO(image_buffer) as bio:
             image = Image.open(bio).convert('RGB')

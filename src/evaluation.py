@@ -175,9 +175,10 @@ def compute_bboxes_from_scoremaps(scoremap, scoremap_threshold_list,
 
 
 class CamDataset(torchdata.Dataset):
-    def __init__(self, scoremap_path, image_ids):
+    def __init__(self, scoremap_path, split, image_ids):
         self.scoremap_path = scoremap_path
         self.image_ids = image_ids
+        self.length = len(os.listdir(os.path.join(scoremap_path, split)))
 
     def _load_cam(self, image_id):
         scoremap_file = os.path.join(self.scoremap_path, image_id + '.npy')
@@ -189,7 +190,7 @@ class CamDataset(torchdata.Dataset):
         return cam, image_id
 
     def __len__(self):
-        return len(self.image_ids)
+        return self.length
 
 
 class LocalizationEvaluator(object):
@@ -570,9 +571,9 @@ class MultiEvaluator():
         return self.box_evaluator.compute_optimal_cam_threshold(iou_threshold)
 
 
-def _get_cam_loader(image_ids, scoremap_path):
+def _get_cam_loader(image_ids, scoremap_path, split):
     return torchdata.DataLoader(
-        CamDataset(scoremap_path, image_ids),
+        CamDataset(scoremap_path, split, image_ids),
         batch_size=128,
         shuffle=False,
         num_workers=0,
@@ -603,7 +604,7 @@ def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, evaluator
     image_ids = get_image_ids(metadata)
     image_sizes = get_image_sizes(metadata)
     gt_bbox_dict = get_bounding_boxes(metadata)
-    cam_loader = _get_cam_loader(image_ids, scoremap_root)
+    cam_loader = _get_cam_loader(image_ids, scoremap_root, split)
     tq0 = tqdm.tqdm(cam_loader, total=len(cam_loader), desc='xai_cam_batches')
     for cams, image_ids in tq0:
         cams = t2n(cams)
