@@ -3,7 +3,7 @@
         "resources": {
             "cpus": 8,
             "gpus": 1,
-            "cpuMemoryGb": 64,
+            "cpuMemoryGb": 128,
             "gpuModel": [ "V100" ]
         },
         "docker": {

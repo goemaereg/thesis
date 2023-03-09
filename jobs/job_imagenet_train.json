@@ -22,8 +22,8 @@
         "scheduling": {
             "interactive": false,
             "restartable": false,
-            "minDuration": "1 day",
-            "maxDuration": "2 days"
+            "minDuration": "4 day",
+            "maxDuration": "1 week"
         }
     }
 }

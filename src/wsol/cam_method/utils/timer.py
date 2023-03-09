@@ -86,6 +86,7 @@ class Timer:
         else:
             self.counter_stop = time.monotonic_ns()
             self.elapsed_ns = self.counter_stop - self.counter_start
+            self.total_elapsed_ns += self.elapsed_ns
         self._gc_enable()
 
     def __str__(self):

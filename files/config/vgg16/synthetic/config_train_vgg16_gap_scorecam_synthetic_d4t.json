@@ -4,7 +4,7 @@
   "adl_threshold": 0.9,
   "architecture": "vgg16",
   "architecture_type": "cam",
-  "batch_size": 16,
+  "batch_size": 64,
   "bbox_metric": "MaxBoxAccV3",
   "cam_curve_interval": 0.01,
   "config": "files/config/vgg16/synthetic/config_train_vgg16_gap_scorecam_synthetic_d4t.json",

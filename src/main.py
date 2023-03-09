@@ -427,7 +427,6 @@ class Trainer(object):
 
     def evaluate_wsol(self, epoch, split, save_xai=False, save_cams=False, log=False):
         # print("Evaluate epoch {}, split {}".format(epoch, split))
-        eval_metrics = {}
         if self.args.wsol == False:
             return {}
         self.model.eval()
@@ -453,6 +452,8 @@ class Trainer(object):
         for metric, value in metrics.items():
             if metric in self.performance_meters[split]:
                self.performance_meters[split][metric].update(value)
+        mlflow_metrics = {f'{split}_{metric}':value for metric, value in metrics.items()}
+        mlflow.log_metrics(mlflow_metrics, step=epoch)
         if self.args.xai and save_xai:
             metadata = configure_metadata(metadata_root)
             xai_save_cams(xai_root=self.args.xai_root,
@@ -463,10 +464,7 @@ class Trainer(object):
                           evaluator=cam_computer.evaluator,
                           multi_contour_eval=self.args.multi_contour_eval,
                           log=True)
-        eval_metrics |= metrics
-        mlflow_metrics = {f'{split}_{metric}':value for metric, value in eval_metrics.items()}
-        mlflow.log_metrics(mlflow_metrics, step=epoch)
-        return eval_metrics
+        return metrics
 
     def evaluate(self, epoch, split, save_xai=False, save_cams=False, log=False):
         metrics_class = self.evaluate_classification(epoch, split)
