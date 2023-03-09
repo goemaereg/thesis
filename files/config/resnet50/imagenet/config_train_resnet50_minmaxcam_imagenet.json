@@ -35,7 +35,7 @@
   "lr_scheduler_steplr_stepsize": 30,
   "mask_root": "data/maskdata",
   "metadata_root": "data/metadata",
-  "minmaxcam_batch_set_size": 12,
+  "minmaxcam_batch_set_size": 10,
   "minmaxcam_class_set_size": 5,
   "minmaxcam_crr_weight": 1,
   "minmaxcam_frr_weight": 10,
@@ -58,7 +58,7 @@
   "train": true,
   "train_augment": true,
   "weight_decay": 1e-4,
-  "workers": 8,
+  "workers": 4,
   "wsol_method": "minmaxcam",
   "xai": true
 }

@@ -112,7 +112,7 @@ class CAMComputer(object):
                 # already resized to 224x224 and normalized during CAM computation
                 cam_normalized = cam
                 if self.split in ('val', 'test') and save_cams:
-                    cam_path = os.path.join(self.scoremap_root, image_id)
+                    cam_path = os.path.join(self.scoremap_root, self.split, os.path.basename(image_id))
                     if not os.path.exists(os.path.dirname(cam_path)):
                         os.makedirs(os.path.dirname(cam_path))
                     np.save(cam_path, cam_normalized)
