@@ -1,9 +1,9 @@
 {
     "request": {
         "resources": {
-            "cpus": 16,
-            "gpus": 2,
-            "cpuMemoryGb": 128,
+            "cpus": 4,
+            "gpus": 1,
+            "cpuMemoryGb": 64,
             "gpuModel": [ "V100" ]
         },
         "docker": {

@@ -578,7 +578,8 @@ def main(args):
                 trainer.early_stopping(val_loss)
                 early_stop = trainer.early_stopping.early_stop
             last_epoch = (epoch == (trainer.args.epochs - 1)) or early_stop
-            trainer.evaluate_wsol(epoch, split='val', save_xai=last_epoch, save_cams=last_epoch, log=last_epoch)
+            save = last_epoch and trainer.args.dataset_name != 'ILSVRC'
+            trainer.evaluate_wsol(epoch, split='val', save_xai=save, save_cams=save, log=last_epoch)
             if trainer.lr_scheduler is not None:
                 trainer.lr_scheduler.step()
             # trainer.print_performances()
@@ -588,7 +589,7 @@ def main(args):
             if early_stop:
                 print(f'Training stopped early after {trainer.epoch} epochs')
                 break
-    else:
+    elif trainer.args.dataset_name != 'ILSVRC':
         print("===========================================================")
         print("Final epoch evaluation on val set ...")
         trainer.evaluate(trainer.args.epochs, split='val', save_xai=True, save_cams=True, log=True)

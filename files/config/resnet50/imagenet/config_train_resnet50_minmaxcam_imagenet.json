@@ -7,7 +7,7 @@
   "batch_size": 512,
   "bbox_metric": "MaxBoxAccV3",
   "cam_curve_interval": 0.01,
-  "config": "files/config/resnet50/imagenet/config_train_resnet50_cam_imagenet.json",
+  "config": "files/config/resnet50/imagenet/config_train_resnet50_minmaxcam_imagenet.json",
   "crop_size": 224,
   "cutmix_beta": 1.0,
   "cutmix_prob": 1.0,
@@ -20,7 +20,7 @@
   "early_stopping_patience": 5,
   "epochs": 100,
   "eval_checkpoint_type": "last",
-  "experiment_name": "resnet50_cam_imagenet",
+  "experiment_name": "resnet50_minmaxcam_imagenet",
   "has_drop_rate": 0.5,
   "has_grid_size": 4,
   "iou_threshold_list": [
@@ -55,10 +55,10 @@
   "spg_threshold_2l": 0.05,
   "spg_threshold_3h": 0.7,
   "spg_threshold_3l": 0.1,
-  "train": false,
+  "train": true,
   "train_augment": true,
   "weight_decay": 1e-4,
-  "workers": 4,
-  "wsol_method": "cam",
+  "workers": 8,
+  "wsol_method": "minmaxcam",
   "xai": true
 }
