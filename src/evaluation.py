@@ -177,11 +177,12 @@ def compute_bboxes_from_scoremaps(scoremap, scoremap_threshold_list,
 class CamDataset(torchdata.Dataset):
     def __init__(self, scoremap_path, split, image_ids):
         self.scoremap_path = scoremap_path
+        self.split = split
         self.image_ids = image_ids
         self.length = len(os.listdir(os.path.join(scoremap_path, split)))
 
     def _load_cam(self, image_id):
-        scoremap_file = os.path.join(self.scoremap_path, image_id + '.npy')
+        scoremap_file = os.path.join(self.scoremap_path, self.split, os.path.basename(image_id) + '.npy')
         return np.load(scoremap_file)
 
     def __getitem__(self, index):
