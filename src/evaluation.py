@@ -631,7 +631,7 @@ def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, evaluator
             # mask out area outside segment mask
             heatmap[np.logical_not(_cam_mask)] = (0, 0, 0)
             cam_annotated = heatmap * 0.3 + img * 0.5
-            cam_path = os.path.join(xai_root, image_id)
+            cam_path = os.path.join(xai_root, split, os.path.basename(image_id))
             if not os.path.exists(os.path.dirname(cam_path)):
                 os.makedirs(os.path.dirname(cam_path))
             cv2.imwrite(cam_path, cam_annotated)
@@ -662,8 +662,8 @@ def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, evaluator
                         color = (0, 0, 255) # Red color in BGR
                         img_ann = cv2.rectangle(img_ann, start, end, color, thickness)
 
-            img_ann_id = f'{image_id.split(".")[0]}_ann.png'
-            img_ann_path = os.path.join(xai_root, img_ann_id)
+            img_ann_id = f'{os.path.basename(image_id).split(".")[0]}_ann.png'
+            img_ann_path = os.path.join(xai_root, split, img_ann_id)
             if not os.path.exists(os.path.dirname(img_ann_path)):
                 os.makedirs(os.path.dirname(img_ann_path))
             cv2.imwrite(img_ann_path, img_ann)
