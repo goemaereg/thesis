@@ -446,7 +446,8 @@ class Trainer(object):
             multi_gt_eval=self.args.multi_gt_eval,
             device = self.device,
             bbox_metric=self.args.bbox_metric,
-            log=log
+            scoremap_storage_limit=self.args.scoremap_storage_limit,
+            log=log,
         )
         metrics = cam_computer.compute_and_evaluate_cams(save_cams=save_cams)
         for metric, value in metrics.items():

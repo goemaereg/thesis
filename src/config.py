@@ -154,6 +154,8 @@ def configure_parse(load_config=True):
     parser.add_argument('--scoremap_folder', type=str,
                         default='scoremaps',
                         help="The root folder for score maps to be evaluated.")
+    parser.add_argument('--scoremap_storage_limit', type=int, default=200,
+                        help="The maximum number of scoremaps that are saved for validation or test set.")
     parser.add_argument('--xai_folder', type=str, default='xai', help='xai folder')
     parser.add_argument('--override_cache', type=str2bool, nargs='?',
                         const=True, default=False)

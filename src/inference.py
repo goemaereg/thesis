@@ -58,12 +58,13 @@ class CAMComputer(object):
     def __init__(self, model, loader, metadata_root, mask_root, scoremap_root, cam_method,
                  iou_threshold_list, dataset_name, split,
                  multi_contour_eval, multi_gt_eval=False, cam_curve_interval=.001,
-                 bbox_metric='MaxBoxAccV2', device='cpu', log=False):
+                 bbox_metric='MaxBoxAccV2', device='cpu', scoremap_storage_limit=200, log=False):
         self.model = model
         self.model.eval()
         self.cam_algorithm, self.cam_args = get_cam_algorithm(model, cam_method, device)
         self.loader = loader
         self.scoremap_root = scoremap_root
+        self.scoremap_storage_limit = scoremap_storage_limit
         self.split = split
         self.device = device
         self.log=log
@@ -87,6 +88,7 @@ class CAMComputer(object):
 
     def compute_and_evaluate_cams(self, save_cams=False):
         # print("Computing and evaluating cams.")
+        cams_stored = 0
         metrics = {}
         timer_cam = Timer.create_or_get_timer(self.device, 'runtime_cam', warm_up=True)
         tq0 = tqdm.tqdm(self.loader, total=len(self.loader), desc='evaluate cams batches')
@@ -112,10 +114,12 @@ class CAMComputer(object):
                 # already resized to 224x224 and normalized during CAM computation
                 cam_normalized = cam
                 if self.split in ('val', 'test') and save_cams:
-                    cam_path = os.path.join(self.scoremap_root, self.split, os.path.basename(image_id))
-                    if not os.path.exists(os.path.dirname(cam_path)):
-                        os.makedirs(os.path.dirname(cam_path))
-                    np.save(cam_path, cam_normalized)
+                    if cams_stored < self.scoremap_storage_limit:
+                        cam_path = os.path.join(self.scoremap_root, self.split, os.path.basename(image_id))
+                        if not os.path.exists(os.path.dirname(cam_path)):
+                            os.makedirs(os.path.dirname(cam_path))
+                        np.save(cam_path, cam_normalized)
+                        cams_stored += 1
                 self.evaluator.accumulate(cam_normalized, image_id)
         metrics |= self.evaluator.compute()
         metrics |= {name: timer.get_total_elapsed_ms() for name, timer in Timer.timers.items()}
