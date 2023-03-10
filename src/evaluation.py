@@ -178,16 +178,24 @@ class CamDataset(torchdata.Dataset):
     def __init__(self, scoremap_path, split, image_ids):
         self.scoremap_path = scoremap_path
         self.split = split
-        self.image_ids = image_ids
-        self.length = len(os.listdir(os.path.join(scoremap_path, split)))
+        metadata = {}
+        with open(os.path.join(scoremap_path, split, 'scoremap_metadata.txt'), 'r') as fp:
+            for line in fp.readlines():
+                image_id, cam_id = line.strip('\n').split(',')
+                metadata[image_id] = cam_id
+        metadata = dict(sorted(metadata.items()))
+        self.image_ids = list(metadata.keys())
+        self.cam_ids = list(metadata.values())
+        self.length = len(self.image_ids)
 
-    def _load_cam(self, image_id):
-        scoremap_file = os.path.join(self.scoremap_path, self.split, os.path.basename(image_id) + '.npy')
+    def _load_cam(self, cam_id):
+        scoremap_file = os.path.join(self.scoremap_path, cam_id)
         return np.load(scoremap_file)
 
     def __getitem__(self, index):
         image_id = self.image_ids[index]
-        cam = self._load_cam(image_id)
+        cam_id = self.cam_ids[index]
+        cam = self._load_cam(cam_id)
         return cam, image_id
 
     def __len__(self):

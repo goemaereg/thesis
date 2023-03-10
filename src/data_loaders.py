@@ -206,7 +206,7 @@ class WSOLImageLabelDataset(Dataset):
         return image, image_label, image_id
 
     def __len__(self):
-        return len(self.image_ids)
+        return 4#len(self.image_ids)
 
 
 class WSOLImageLabelTarDataset(Dataset):
@@ -333,6 +333,7 @@ def get_data_loader(data_roots, metadata_root, batch_size, workers,
     loaders = {}
     for split in _SPLITS:
         if dataset_name == 'ILSVRC' and split == 'train':
+            continue
             dataset = WSOLImageLabelLmdbDataset(
                 lmdb_path = os.path.join(data_roots[split], 'lmdb_train.lmdb'),
                 metadata_root=os.path.join(metadata_root, split),

@@ -88,7 +88,7 @@ class CAMComputer(object):
 
     def compute_and_evaluate_cams(self, save_cams=False):
         # print("Computing and evaluating cams.")
-        cams_stored = 0
+        cams_metadata = {}
         metrics = {}
         timer_cam = Timer.create_or_get_timer(self.device, 'runtime_cam', warm_up=True)
         tq0 = tqdm.tqdm(self.loader, total=len(self.loader), desc='evaluate cams batches')
@@ -114,14 +114,22 @@ class CAMComputer(object):
                 # already resized to 224x224 and normalized during CAM computation
                 cam_normalized = cam
                 if self.split in ('val', 'test') and save_cams:
-                    if cams_stored < self.scoremap_storage_limit:
-                        cam_path = os.path.join(self.scoremap_root, self.split, os.path.basename(image_id))
+                    if len(cams_metadata) < self.scoremap_storage_limit:
+                        cam_id = os.path.join(self.split, f'{os.path.basename(image_id)}.npy')
+                        cam_path = os.path.join(self.scoremap_root, cam_id)
                         if not os.path.exists(os.path.dirname(cam_path)):
                             os.makedirs(os.path.dirname(cam_path))
                         np.save(cam_path, cam_normalized)
-                        cams_stored += 1
+                        cams_metadata[image_id] = cam_id
                 self.evaluator.accumulate(cam_normalized, image_id)
         metrics |= self.evaluator.compute()
         metrics |= {name: timer.get_total_elapsed_ms() for name, timer in Timer.timers.items()}
         Timer.reset()
+        # write scoremap metadata
+        # format: image_id,cam_id
+        if len(cams_metadata) > 0:
+            metadata =  dict(sorted(cams_metadata.items()))
+            lines = [f'{image_id},{cam_id}' for image_id, cam_id in metadata.items()]
+            with open(os.path.join(self.scoremap_root, self.split, 'scoremap_metadata.txt'), 'w') as fp:
+                fp.writelines('\n'.join(lines))
         return metrics
