@@ -21,6 +21,7 @@
 \listoftables 
 \listoffigures 
 
+%Why is \acrshort{WSOL} used?
 
 \clearpage \pagenumbering{arabic}
 \setcounter{page}{1}
@@ -29,15 +30,13 @@
 
 %start of main document
 \input{chapters/introduction}
-\input{chapters/background}
-\input{chapters/chapter1}
-\input{chapters/chapter2}
-\input{chapters/chapter3}
+\input{chapters/related_work}
+\input{chapters/methodology}
+\input{chapters/experiments}
+\input{chapters/discussion}
 \input{chapters/conclusion}
 
-\clearpage
-
-\nocite{*}
+\clearpage\nocite{*}
 \bibliographystyle{unsrt}
 \phantomsection
 \addcontentsline{toc}{chapter}{Bibliography}
