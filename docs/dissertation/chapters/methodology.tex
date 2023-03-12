@@ -1,1 +1,71 @@
 \chapter{Methodology}
+
+\section{General localization approach}
+\begin{itemize}
+    \item Based on WSOL CAM methods.
+    \item explain localization pipeline
+    \item  \begin{itemize}
+        \item classification training to learn discriminative features
+        \item features scoremap computation (CAM)
+        \item localization based on thresholded CAM
+        \item evaluation of localization accuracy 
+    \end{itemize}
+\end{itemize}
+
+\section{Setup}
+
+\subsection{Networks}
+\begin{itemize}
+    \item VGG16 (used in most papers)
+    \item ResNet50 (used in MinMaxCAM, more recent than VGG16)=
+\end{itemize}
+
+\subsection{Datasets}
+\subsubsection{synthetic dataset}
+Propose to use synthetic dataset to limit computational requirements and have control over image structure and ground truth data.
+
+Dataset inspiration in paper: Quantifying Explainability of Saliency Methods in Deep Neural Networks with a Synthetic Dataset (Erico Tjoa, Guan Cuntai)
+
+\begin{itemize}
+    \item Easier to interprete
+    \item Use segmentation masks for fine-grained localization evaluation
+    \item Image size 512x512 large enough for chosen network architectures
+\end{itemize}
+
+\subsubsection{ImageNet-1k} 
+\begin{itemize}
+    \item Used in most CAM papers (e.g. CAM, MinMaxCAM, Grad-CAM, ScoreCAM)
+    \item Datasets with single category GT and multiple instances per image available for object localization task (ILSVRC 2012)
+\end{itemize}
+
+\subsection{CAM WSOL methods}
+Explain each method and the reason why they are used.
+\begin{itemize}
+    \item CAM: baseline method
+    \item MinMaxCAM: regularization of common object regions and background
+    \item GradCAM: Generalization of CAM that doesn’t require a GAP layer in the architecture
+    \item ScoreCAM: Shows more focus on object instances. Also seems to do a better job in capturing the features of multiple instances in the explanation map than GradCAM.
+\end{itemize}
+
+\section{Evaluation metrics}
+\begin{itemize}
+    \item MaxBoxAccV3: modified version of MaxBoxAccV2 (Choe et al.,2020b) to support multiple instance WSOL
+    \item PxAP (pixel average precision) when ground truth segmentation masks are available.
+\end{itemize}
+
+\section{Localization improvement: Iterative bounding box extraction}
+\begin{itemize} 
+    \item Feed image to model and compute feature activation maps (CAMS)
+    \item Extract bounding boxes from binarized CAMS
+    \item Mask bounding box areas in image (e.g. with noise, zero values) 
+    \item Repeat until some stop criterion
+\end{itemize}
+Variant: Mask image with binarized CAMs.
+
+Possible stop criteria: 
+\begin{itemize}
+    \item No new bounding boxes are found
+    \item Predefined minimum CAM threshold is reached
+    \item Predefined drop in classification score is reached
+    \item Predefined number of iterations is reached.
+\end{itemize}
