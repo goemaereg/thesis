@@ -14,7 +14,8 @@ Work of the evaluation paper:
 - unified protocol and metrics 
 Reason about results on datasets (refs.)
 
-Show that GradCAM++ paper (Grad-CAM++: Improved Visual Explanations for Deep Convolutional Networks) defines an IOU metric to measure location accuracy on the PASCAL VOC 2012 dataset.
+Discuss that GradCAM++ paper (Grad-CAM++: Improved Visual Explanations for Deep Convolutional Networks) defines an IOU metric to measure location accuracy on the PASCAL VOC 2012 dataset.
+Discuss that WSOL evaluation paper defines metrics based on ILSVRC paper.
 
 Reason that both evaluation paper and GradCAM paper use multi-instance datasets (imagenet, pascal voc) but that the used metrics don't measure how many instances are accurately localized. GradCAM++ IOU metric computes IOU of the area of explanation map pixels inside and ouside GT bounding boxes which is inaccurate and doesn't discrimiate between different instances. WSOL evaluation paper uses different pixel-level metrics and bounding-box level metrics which is more accurate, but doesn't provide multi-instance aware metrics.
 \end{verbatim}
