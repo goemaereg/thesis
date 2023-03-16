@@ -82,7 +82,7 @@ def get_architecture_type(architecture_type, wsol_method):
     #         architecture_type = wsol_method
     #     else:
     #         architecture_type = 'vanilla'
-    if architecture_type == 'vanilla' and wsol_method not in ('gradcam', 'scorecam'):
+    if architecture_type == 'vanilla' and wsol_method not in ('gradcam', 'gradcam++', 'scorecam'):
         raise ValueError
     return architecture_type
 
