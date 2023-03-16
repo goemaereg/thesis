@@ -25,7 +25,7 @@ from evaluation import configure_metadata
 import os
 import tqdm
 from wsol.cam_method.utils.model_targets import ClassifierOutputTarget
-from wsol.cam_method import CAM, GradCAM, ScoreCAM
+from wsol.cam_method import CAM, GradCAM, GradCAMPlusPlus, ScoreCAM
 from wsol.cam_method.utils.timer import Timer
 
 
@@ -36,6 +36,7 @@ _RESIZE_LENGTH = 224
 cam_methods = {
     'cam': CAM,
     'gradcam': GradCAM,
+    'gradcam++': GradCAMPlusPlus,
     'scorecam': ScoreCAM,
     'minmaxcam': CAM
 }
