@@ -4,7 +4,7 @@
   "adl_threshold": 0.9,
   "architecture": "resnet50",
   "architecture_type": "cam",
-  "batch_size": 512,
+  "batch_size": 128,
   "bbox_metric": "MaxBoxAccV3",
   "cam_curve_interval": 0.01,
   "config": "files/config/resnet50/imagenet/config_train_resnet50_gradcam_imagenet.json",
