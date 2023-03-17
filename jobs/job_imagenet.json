@@ -2,8 +2,8 @@
     "request": {
         "resources": {
             "cpus": 4,
-            "gpus": 2,
-            "cpuMemoryGb": 64,
+            "gpus": 1,
+            "cpuMemoryGb": 32,
             "gpuModel": [ "V100" ]
         },
         "docker": {
@@ -22,8 +22,8 @@
         "scheduling": {
             "interactive": false,
             "restartable": false,
-            "minDuration": "4 days",
-            "maxDuration": "1 week"
+            "minDuration": "8 hours",
+            "maxDuration": "1 day"
         }
     }
 }
