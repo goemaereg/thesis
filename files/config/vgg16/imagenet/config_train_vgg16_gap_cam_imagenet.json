@@ -4,7 +4,7 @@
   "adl_threshold": 0.9,
   "architecture": "vgg16",
   "architecture_type": "cam",
-  "batch_size": 512,
+  "batch_size": 256,
   "bbox_metric": "MaxBoxAccV3",
   "cam_curve_interval": 0.01,
   "config": "files/config/vgg16/imagenet/config_train_vgg16_gap_cam_imagenet.json",
@@ -58,7 +58,7 @@
   "train": true,
   "train_augment": true,
   "weight_decay": 1e-4,
-  "workers": 16,
+  "workers": 8,
   "wsol_method": "cam",
   "xai": true
 }
