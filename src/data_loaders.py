@@ -30,6 +30,7 @@ from PIL import Image
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from torchvision import transforms
+import torchvision.transforms.functional as TF
 from torch.utils.data import Sampler
 from typing import Iterator, List
 
@@ -40,7 +41,6 @@ _SPLITS = ('train', 'val', 'test')
 
 def mch(**kwargs):
     return munch.Munch(dict(**kwargs))
-
 
 def configure_metadata(metadata_root):
     metadata = mch()
@@ -89,8 +89,7 @@ def get_class_labels(metadata):
             class_labels[image_id] = int(class_label_string)
     return class_labels
 
-
-def get_bounding_boxes(metadata):
+def get_bounding_boxes_from_file(path):
     """
     localization.txt (for bounding box) has the structure
 
@@ -104,15 +103,19 @@ def get_bounding_boxes(metadata):
     One image may contain multiple boxes (multiple boxes for the same path).
     """
     boxes = {}
-    with open(metadata.localization) as f:
+    with open(path) as f:
         for line in f.readlines():
-            image_id, x0s, x1s, y0s, y1s = line.strip('\n').split(',')
-            x0, x1, y0, y1 = int(x0s), int(x1s), int(y0s), int(y1s)
+            image_id, x0s, y0s, x1s, y1s = line.strip('\n').split(',')
+            x0, y0, x1, y1 = int(x0s), int(y0s), int(x1s), int(y1s)
             if image_id in boxes:
-                boxes[image_id].append((x0, x1, y0, y1))
+                boxes[image_id].append((x0, y0, x1, y1))
             else:
-                boxes[image_id] = [(x0, x1, y0, y1)]
+                boxes[image_id] = [(x0, y0, x1, y1)]
     return boxes
+
+
+def get_bounding_boxes(metadata):
+    return get_bounding_boxes_from_file(metadata.localization)
 
 
 def get_mask_paths(metadata):
@@ -165,7 +168,7 @@ def get_image_sizes(metadata):
 
 class WSOLImageLabelDataset(Dataset):
     def __init__(self, data_root, metadata_root, transform, proxy,
-                 num_sample_per_class=0):
+                 num_sample_per_class=0, bboxes_path=None, mask_bboxes=None):
         self.data_root = data_root
         self.metadata = configure_metadata(metadata_root)
         self.transform = transform
@@ -173,6 +176,10 @@ class WSOLImageLabelDataset(Dataset):
         self.image_labels = get_class_labels(self.metadata)
         self.num_sample_per_class = num_sample_per_class
         self._adjust_samples_per_class()
+        self.mask_bboxes = mask_bboxes
+        self.computed_bboxes = {}
+        if bboxes_path is not None and os.path.exists(bboxes_path):
+            self.computed_bboxes = get_bounding_boxes_from_file(bboxes_path)
 
     def _adjust_samples_per_class(self):
         if self.num_sample_per_class == 0:
@@ -203,6 +210,17 @@ class WSOLImageLabelDataset(Dataset):
         image = Image.open(os.path.join(self.data_root, image_id))
         image = image.convert('RGB')
         image = self.transform(image)
+        bboxes = None
+        if self.mask_bboxes and image_id in self.computed_bboxes:
+            bboxes = self.computed_bboxes[image_id]
+            for bbox in bboxes:
+                # convert box(x0,y0,x1,y1) coordinates to array(i,j) semantics
+                x0, y0, x1, y1 = bbox
+                w = x1 - x0
+                h = y1 - y0
+                i, j = y0, x0
+                v = 0 # erasing value
+                image = TF.erase(image, i, j, h, w, v, inplace=True)
         return image, image_label, image_id
 
     def __len__(self):
@@ -301,6 +319,21 @@ class MiniBatchSampler(Sampler[int]):
     def __len__(self) -> int:
         return self.batch_num
 
+def get_eval_loader(split, data_root, metadata_root, batch_size, workers,
+                    resize_size, bboxes_path=None, mask_bboxes=False):
+    dataset_transforms = transforms.Compose([
+        transforms.Resize((resize_size, resize_size)),
+        transforms.ToTensor(),
+        transforms.Normalize(_IMAGE_MEAN_VALUE, _IMAGE_STD_VALUE)
+    ])
+    dataset = WSOLImageLabelDataset(
+        data_root=data_root,
+        metadata_root=os.path.join(metadata_root, split),
+        transform=dataset_transforms,
+        proxy=False,
+        bboxes_path=bboxes_path,
+        mask_bboxes=mask_bboxes)
+    return DataLoader(dataset, batch_size=batch_size, num_workers=workers)
 
 def get_data_loader(data_roots, metadata_root, batch_size, workers,
                     resize_size, crop_size, proxy_training_set,

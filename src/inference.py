@@ -20,14 +20,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
 import numpy as np
+from data_loaders import get_eval_loader
 from evaluation import BoxEvaluator, MaskEvaluator, MultiEvaluator
-from evaluation import configure_metadata
+from evaluation import configure_metadata, normalize_scoremap
 import os
 import tqdm
 from wsol.cam_method.utils.model_targets import ClassifierOutputTarget
 from wsol.cam_method import CAM, GradCAM, GradCAMPlusPlus, ScoreCAM
 from wsol.cam_method.utils.timer import Timer
-
+import cv2
 
 _IMAGENET_MEAN = [0.485, .456, .406]
 _IMAGENET_STDDEV = [.229, .224, .225]
@@ -56,81 +57,114 @@ def get_cam_algorithm(model, cam_method, device):
 
 
 class CAMComputer(object):
-    def __init__(self, model, loader, metadata_root, mask_root, scoremap_root, cam_method,
-                 iou_threshold_list, dataset_name, split,
-                 multi_contour_eval, multi_gt_eval=False, cam_curve_interval=.001,
-                 bbox_metric='MaxBoxAccV2', device='cpu', scoremap_storage_limit=200, log=False):
-        self.model = model
-        self.model.eval()
-        self.cam_algorithm, self.cam_args = get_cam_algorithm(model, cam_method, device)
-        self.loader = loader
-        self.scoremap_root = scoremap_root
-        self.scoremap_storage_limit = scoremap_storage_limit
-        self.split = split
-        self.device = device
-        self.log=log
-        metadata = configure_metadata(metadata_root)
-        cam_threshold_list = list(np.arange(0, 1, cam_curve_interval))
-        self.evaluator = {"OpenImages": MaskEvaluator,
-                          "CUB": BoxEvaluator,
-                          "ILSVRC": BoxEvaluator,
-                          "SYNTHETIC": MultiEvaluator
-                          }[dataset_name](metadata=metadata,
-                                          dataset_name=dataset_name,
-                                          split=split,
-                                          cam_threshold_list=cam_threshold_list,
-                                          iou_threshold_list=iou_threshold_list,
-                                          mask_root=mask_root,
-                                          multi_contour_eval=multi_contour_eval,
-                                          multi_gt_eval=multi_gt_eval,
-                                          metric=bbox_metric,
-                                          log=log)
+    @staticmethod
+    def get_evaluators(**args):
+        dataset_name = args.get('dataset_name', 'SYNTHETIC')
+        return {
+            "ILSVRC": (BoxEvaluator(**args), None),
+            "SYNTHETIC": (BoxEvaluator(**args), MaskEvaluator(**args))
+        }[dataset_name]
 
+    def __init__(self, model, device, split, config, loader, log=False):
+        self.model = model
+        self.device = device
+        self.split = split
+        self.config = config
+        self.model.eval()
+        self.cam_algorithm, self.cam_args = get_cam_algorithm(model, config.wsol_method, device)
+        self.loader = loader
+        self.data_root = self.config.data_paths[split]
+        self.metadata_root = self.config.metadata_root
+        self.scoremap_root = config.scoremap_root
+        self.scoremap_storage_limit = config.scoremap_storage_limit
+        self.bbox_iter = config.bbox_iter
+        self.bbox_iter_max = max(1, config.bbox_iter_max if config.bbox_iter else 1)
+        self.log = log
+        self.bboxes_meta_path = os.path.join(self.scoremap_root, self.split, 'bboxes_metadata.txt')
+
+        metadata = configure_metadata(os.path.join(config.metadata_root, split))
+        cam_threshold_list = list(np.arange(0, 1, config.cam_curve_interval))
+        eval_args = dict(
+            metadata=metadata,
+            dataset_name=config.dataset_name,
+            split=split,
+            cam_threshold_list=cam_threshold_list,
+            iou_threshold_list=config.iou_threshold_list,
+            mask_root=config.mask_root,
+            multi_contour_eval=config.multi_contour_eval,
+            multi_gt_eval=config.multi_gt_eval,
+            metric=config.bbox_metric,
+            log=log)
+        self.box_evaluator, self.mask_evaluator = self.get_evaluators(**eval_args)
 
     def compute_and_evaluate_cams(self, save_cams=False):
         # print("Computing and evaluating cams.")
         cams_metadata = {}
         metrics = {}
+        contexts = {}
+        optimal_threshold_index = 0
         timer_cam = Timer.create_or_get_timer(self.device, 'runtime_cam', warm_up=True)
-        tq0 = tqdm.tqdm(self.loader, total=len(self.loader), desc='evaluate cams batches')
-        for images, targets, image_ids in tq0:
-            image_size = images.shape[2:]
-            # images =  images.to(self.device) #.cuda()
-            # result = self.model(images, targets, return_cam=True)
-            # cams = result['cams'].detach().clone()
-
-            # Using the with statement ensures the context is freed, and you can
-            # recreate different CAM objects in a loop.
-            output_targets = [ClassifierOutputTarget(target.item()) for target in targets]
-            with self.cam_algorithm(**self.cam_args) as cam_method:
-                timer_cam.start()
-                cams = cam_method(images, output_targets).astype('float')
-                timer_cam.stop()
-            # cams = t2n(cams)
-            cams_it = zip(cams, image_ids)
-            for cam, image_id in cams_it:
-                # cam_resized = cv2.resize(cam, image_size,
-                #                          interpolation=cv2.INTER_CUBIC)
-                # cam_normalized = normalize_scoremap(cam_resized)
-                # already resized to 224x224 and normalized during CAM computation
-                cam_normalized = cam
-                if self.split in ('val', 'test') and save_cams:
-                    if len(cams_metadata) < self.scoremap_storage_limit:
-                        cam_id = os.path.join(self.split, f'{os.path.basename(image_id)}.npy')
-                        cam_path = os.path.join(self.scoremap_root, cam_id)
-                        if not os.path.exists(os.path.dirname(cam_path)):
-                            os.makedirs(os.path.dirname(cam_path))
-                        np.save(cam_path, cam_normalized)
-                        cams_metadata[image_id] = cam_id
-                self.evaluator.accumulate(cam_normalized, image_id)
-        metrics |= self.evaluator.compute()
-        metrics |= {name: timer.get_total_elapsed_ms() for name, timer in Timer.timers.items()}
+        tq0 = tqdm.tqdm(range(self.bbox_iter_max), total=self.bbox_iter_max, desc='iterative bbox extraction')
+        for iter_index in tq0:
+            mask_bboxes = iter_index > 0
+            loader = get_eval_loader(
+                self.split, self.data_root, self.metadata_root, self.config.batch_size, self.config.workers,
+                    self.config.crop_size, bboxes_path=self.bboxes_meta_path, mask_bboxes=mask_bboxes)
+            tq1 = tqdm.tqdm(loader, total=len(loader), desc='evaluate cams batches')
+            for images, targets, image_ids in tq1:
+                image_size = images.shape[2:]
+                # Using the with statement ensures the context is freed, and you can
+                # recreate different CAM objects in a loop.
+                output_targets = [ClassifierOutputTarget(target.item()) for target in targets]
+                with self.cam_algorithm(**self.cam_args) as cam_method:
+                    timer_cam.start()
+                    cams = cam_method(images, output_targets).astype('float')
+                    timer_cam.stop()
+                # cams = t2n(cams)
+                cams_it = zip(cams, image_ids, images)
+                for cam, image_id, image in cams_it:
+                    # cam is already resized to 224x224 and normalized during CAM computation
+                    if self.split in ('val', 'test') and save_cams and iter_index == 0:
+                        if len(cams_metadata) < self.scoremap_storage_limit:
+                            cam_id = os.path.join(self.split, f'{os.path.basename(image_id)}.npy')
+                            cam_path = os.path.join(self.scoremap_root, cam_id)
+                            if not os.path.exists(os.path.dirname(cam_path)):
+                                os.makedirs(os.path.dirname(cam_path))
+                            np.save(cam_path, cam)
+                            cams_metadata[image_id] = cam_id
+                    if self.mask_evaluator and iter_index == 0:
+                        self.mask_evaluator.accumulate(cam, image_id)
+                    if self.box_evaluator:
+                        context = contexts[image_id] if image_id in contexts else None
+                        context = self.box_evaluator.accumulate_bboxes(cam, image_id, context)
+                        contexts[image_id] = context
+                        self.box_evaluator.accumulate_boxacc(context)
+            if self.box_evaluator:
+                metrics |= self.box_evaluator.compute()
+                _, optimal_threshold_index = self.box_evaluator.compute_optimal_cam_threshold(50)
+                self.box_evaluator.reset()
+            if self.mask_evaluator and iter_index == 0:
+                metrics |= self.mask_evaluator.compute()
+            metrics |= {name: timer.get_total_elapsed_ms() for name, timer in Timer.timers.items()}
+            # write scoremap metadata
+            # format: image_id,cam_id
+            if len(cams_metadata) > 0 and iter_index == 0:
+                metadata = dict(sorted(cams_metadata.items()))
+                lines = [f'{image_id},{cam_id}' for image_id, cam_id in metadata.items()]
+                scoremap_meta_path = os.path.join(self.scoremap_root, self.split, 'scoremap_metadata.txt')
+                if not os.path.exists(os.path.dirname(scoremap_meta_path)):
+                    os.makedirs(os.path.dirname(scoremap_meta_path))
+                with open(scoremap_meta_path, 'w') as fp:
+                    fp.writelines('\n'.join(lines))
+            # write bboxes metadata
+            if not os.path.exists(os.path.dirname(self.bboxes_meta_path)):
+                os.makedirs(os.path.dirname(self.bboxes_meta_path))
+            with open(self.bboxes_meta_path, 'w') as fp:
+                for image_id, context in contexts.items():
+                    bboxes = context['thresh_boxes'][optimal_threshold_index]
+                    for bbox in bboxes:
+                        x0,y0,x1,y1 = bbox
+                        line = f'{image_id},{x0},{y0},{x1},{y1}\n'
+                        fp.write(line)
         Timer.reset()
-        # write scoremap metadata
-        # format: image_id,cam_id
-        if len(cams_metadata) > 0:
-            metadata =  dict(sorted(cams_metadata.items()))
-            lines = [f'{image_id},{cam_id}' for image_id, cam_id in metadata.items()]
-            with open(os.path.join(self.scoremap_root, self.split, 'scoremap_metadata.txt'), 'w') as fp:
-                fp.writelines('\n'.join(lines))
         return metrics

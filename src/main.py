@@ -431,23 +431,12 @@ class Trainer(object):
         if self.args.wsol == False:
             return {}
         self.model.eval()
-        metadata_root = os.path.join(self.args.metadata_root, split)
         cam_computer = CAMComputer(
             model=self.model,
-            loader=self.loaders[split],
-            metadata_root=metadata_root,
-            mask_root=self.args.mask_root,
-            scoremap_root=self.args.scoremap_root,
-            cam_method=self.args.wsol_method,
-            iou_threshold_list=self.args.iou_threshold_list,
-            dataset_name=self.args.dataset_name,
+            device=self.device,
             split=split,
-            cam_curve_interval=self.args.cam_curve_interval,
-            multi_contour_eval=self.args.multi_contour_eval,
-            multi_gt_eval=self.args.multi_gt_eval,
-            device = self.device,
-            bbox_metric=self.args.bbox_metric,
-            scoremap_storage_limit=self.args.scoremap_storage_limit,
+            config=self.args,
+            loader=self.loaders[split],
             log=log,
         )
         metrics = cam_computer.compute_and_evaluate_cams(save_cams=save_cams)
@@ -457,13 +446,14 @@ class Trainer(object):
         mlflow_metrics = {f'{split}_{metric}':value for metric, value in metrics.items()}
         mlflow.log_metrics(mlflow_metrics, step=epoch)
         if self.args.xai and save_xai:
+            metadata_root = os.path.join(self.args.metadata_root, split)
             metadata = configure_metadata(metadata_root)
             xai_save_cams(xai_root=self.args.xai_root,
                           split=split,
                           metadata=metadata,
                           data_root=self.args.data_paths[split],
                           scoremap_root=self.args.scoremap_root,
-                          evaluator=cam_computer.evaluator,
+                          evaluator=cam_computer.box_evaluator,
                           multi_contour_eval=self.args.multi_contour_eval,
                           log=True)
         return metrics

@@ -217,6 +217,10 @@ def configure_parse(load_config=True):
                         choices=('best', 'last'))
     parser.add_argument('--bbox_metric', type=str, default=_BBOX_METRIC_DEFAULT,
                         choices=_BBOX_METRIC_NAMES)
+    parser.add_argument('--bbox_iter', type=str2bool, nargs='?',
+                        const=True, default=False, help='Iterative bounding box extraction')
+    parser.add_argument('--bbox_iter_max', type=int, default=2,
+                        help='Maximum iterations of bounding box extraction')
     # Common hyperparameters
     parser.add_argument('--batch_size', default=64, type=int,
                         help='Mini-batch size (default: 64), this is the total'
