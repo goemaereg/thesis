@@ -453,7 +453,7 @@ class Trainer(object):
                           metadata=metadata,
                           data_root=self.args.data_paths[split],
                           scoremap_root=self.args.scoremap_root,
-                          evaluator=cam_computer.box_evaluator,
+                          box_evaluator=cam_computer.box_evaluator,
                           multi_contour_eval=self.args.multi_contour_eval,
                           log=True)
         return metrics

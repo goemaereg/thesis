@@ -81,6 +81,7 @@ class CAMComputer(object):
         self.bbox_iter_max = max(1, config.bbox_iter_max if config.bbox_iter else 1)
         self.log = log
         self.bboxes_meta_path = os.path.join(self.scoremap_root, self.split, 'bboxes_metadata.txt')
+        self.optimal_thresholds_path = os.path.join(self.scoremap_root, self.split, 'optimal_thresholds.npy')
 
         metadata = configure_metadata(os.path.join(config.metadata_root, split))
         cam_threshold_list = list(np.arange(0, 1, config.cam_curve_interval))
@@ -102,10 +103,11 @@ class CAMComputer(object):
         cams_metadata = {}
         metrics = {}
         contexts = {}
-        optimal_threshold_index = 0
+        optimal_threshold_list = []
         timer_cam = Timer.create_or_get_timer(self.device, 'runtime_cam', warm_up=True)
         tq0 = tqdm.tqdm(range(self.bbox_iter_max), total=self.bbox_iter_max, desc='iterative bbox extraction')
         for iter_index in tq0:
+            optimal_threshold_index = 0
             mask_bboxes = iter_index > 0
             loader = get_eval_loader(
                 self.split, self.data_root, self.metadata_root, self.config.batch_size, self.config.workers,
@@ -130,11 +132,17 @@ class CAMComputer(object):
                             cam_path = os.path.join(self.scoremap_root, cam_id)
                             if not os.path.exists(os.path.dirname(cam_path)):
                                 os.makedirs(os.path.dirname(cam_path))
-                            cam_saved = cam
+                            cam_list = []
                             if os.path.exists(cam_path):
-                                cam_loaded = np.load(cam_path)
-                                cam_saved = np.clip(cam_loaded + cam_saved, 0, 1)
-                            np.save(cam_path, cam_saved)
+                                cam_stack = np.load(cam_path)
+                                # unstack saved cams
+                                cam_list = [c for c in cam_stack]
+                            # add new cam to cam list
+                            cam_list.append(cam)
+                            # stack with new cam
+                            cam_stack = np.stack(cam_list, axis=0)
+                            # cam_saved = np.clip(cam_loaded + cam_saved, 0, 1)
+                            np.save(cam_path, cam_stack)
                             cams_metadata[image_id] = cam_id
                     if self.mask_evaluator and iter_index == 0:
                         self.mask_evaluator.accumulate(cam, image_id)
@@ -145,7 +153,8 @@ class CAMComputer(object):
                         self.box_evaluator.accumulate_boxacc(context)
             if self.box_evaluator:
                 metrics |= self.box_evaluator.compute()
-                _, optimal_threshold_index = self.box_evaluator.compute_optimal_cam_threshold(50)
+                optimal_threshold, optimal_threshold_index = self.box_evaluator.compute_optimal_cam_threshold(50)
+                optimal_threshold_list.append(optimal_threshold)
                 self.box_evaluator.reset()
             if self.mask_evaluator and iter_index == 0:
                 metrics |= self.mask_evaluator.compute()
@@ -170,5 +179,9 @@ class CAMComputer(object):
                         x0,y0,x1,y1 = bbox
                         line = f'{image_id},{x0},{y0},{x1},{y1}\n'
                         fp.write(line)
+            # write optimal threshold list
+            if not os.path.exists(os.path.dirname(self.optimal_thresholds_path)):
+                os.makedirs(os.path.dirname(self.optimal_thresholds_path))
+            np.save(self.optimal_thresholds_path, np.asarray(optimal_threshold_list))
         Timer.reset()
         return metrics

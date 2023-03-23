@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import argparse
 import cv2
+import math
 import numpy as np
 import os
 import torch.utils.data as torchdata
@@ -280,7 +281,6 @@ class BoxEvaluator(LocalizationEvaluator):
         self.original_bboxes = get_bounding_boxes(self.metadata)
         self.image_sizes = get_image_sizes(self.metadata)
         self.gt_bboxes = self._load_resized_boxes(self.original_bboxes)
-        self.locked_opt_threshold_index = None #lock-in on first optimal threshold computed
         self.reset()
 
     def reset(self):
@@ -464,8 +464,6 @@ class BoxEvaluator(LocalizationEvaluator):
                 max_box_acc_iou.append(box_acc_iou[IOU_THRESHOLD].max())
                 cam_threshold_optimal_index = box_acc_iou[IOU_THRESHOLD].argmax()
                 cam_threshold_optimal = self.cam_threshold_list[cam_threshold_optimal_index]
-                if self.locked_opt_threshold_index is None and metric == 'MaxBoxAccV3' and IOU_THRESHOLD == 50:
-                    self.locked_opt_threshold_index = cam_threshold_optimal_index
                 max_box_acc_threshold.append(cam_threshold_optimal)
                 if self.log:
                     box_acc = {
@@ -508,7 +506,8 @@ class BoxEvaluator(LocalizationEvaluator):
             optimal cam threshold t = max<t> BoxAcc(t, iou_threshold)
             index of optimal threshold in list of cam thresholds
         """
-        optimal_threshold_index = self.locked_opt_threshold_index
+        box_acc_iou = self.num_correct_v3[iou_threshold] * 1. / float(self.cnt_v3)
+        optimal_threshold_index = box_acc_iou.argmax()
         optimal_threshold = self.cam_threshold_list[optimal_threshold_index]
         return optimal_threshold, optimal_threshold_index
 
@@ -715,12 +714,9 @@ def scale_bounding_boxes(bboxes_dict, image_sizes, orig_shape):
         for image_id, bboxes in bboxes_dict.items() }
     return resized_bboxes
 
-def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, evaluator, multi_contour_eval, log=False):
-    has_opt_cam_thresh = not isinstance(evaluator, MaskEvaluator)
-    # dummy init to get rid of pycharm warning that this variable can be accessed before assignment
-    opt_cam_thresh = 0
-    if has_opt_cam_thresh:
-        opt_cam_thresh, opt_cam_thresh_index = evaluator.compute_optimal_cam_threshold(50)
+def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, box_evaluator, multi_contour_eval, log=False):
+    optimal_thresholds_path = os.path.join(scoremap_root, split, 'optimal_thresholds.npy')
+    thresholds = np.load(optimal_thresholds_path)
     image_ids = get_image_ids(metadata)
     image_sizes = get_image_sizes(metadata)
     gt_bbox_dict = get_bounding_boxes(metadata)
@@ -731,26 +727,29 @@ def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, evaluator
     for cams, image_ids in tq0:
         cams = t2n(cams)
         cams_it = zip(cams, image_ids)
-        for cam, image_id in cams_it:
+        for cam_stack, image_id in cams_it:
             # render image overlayed with CAM heatmap
             path_img = os.path.join(data_root, image_id)
+            # load image
             img = cv2.imread(path_img) # color channels in BGR format
             orig_img_shape = image_sizes[image_id]
+            # load optimal thresholds
             # resize saved cam from 224x224 to original image size
-            _cam = cv2.resize(cam, orig_img_shape, interpolation=cv2.INTER_CUBIC)
-            _cam_norm = normalize_scoremap(_cam)
-            _cam_mask = _cam_norm >= opt_cam_thresh
-            # assign minimal value to area outside segment mask so normalization is constrained to segment values
-            _cam_heatmap = _cam_norm.copy()
-            _cam_heatmap[np.logical_not(_cam_mask)] = 0.0 # np.amin(_cam_norm[_cam_mask])
+            cam_stack = np.stack(
+                [cv2.resize(cam, orig_img_shape, interpolation=cv2.INTER_CUBIC) for cam in cam_stack], axis=0)
             # normalize
-            _cam_heatmap = normalize_scoremap(_cam_heatmap)
+            cam_stack = np.stack([normalize_scoremap(cam) for cam in cam_stack], axis=0)
+            cam_mask_stack = np.stack([cam >= thresh for cam, thresh in zip(cam_stack, thresholds)], axis=0)
+            # assign minimal value to area outside segment mask so normalization is constrained to segment values
+            cam_stack_heatmap = cam_stack.copy()
+            # mask out area outside binarized scoremap
+            cam_stack_heatmap[np.logical_not(cam_mask_stack)] = 0.0
+            # merge heatmap stack into single layer heatmap
+            cam_heatmap = np.clip(np.sum(cam_stack_heatmap, axis=0), 0, 1)
+            cam_grey = (cam_heatmap * 255).astype('uint8')
+            heatmap = cv2.applyColorMap(cam_grey, cv2.COLORMAP_JET)
             # mask out area outside segment mask
-            _cam_heatmap[np.logical_not(_cam_mask)] = 0.0
-            _cam_grey = (_cam_heatmap * 255).astype('uint8')
-            heatmap = cv2.applyColorMap(_cam_grey, cv2.COLORMAP_JET)
-            # mask out area outside segment mask
-            heatmap[np.logical_not(_cam_mask)] = (0, 0, 0)
+            # heatmap[np.logical_not(_cam_mask)] = (0, 0, 0)
             cam_annotated = heatmap * 0.3 + img * 0.5
             cam_path = os.path.join(xai_root, split, os.path.basename(image_id))
             if not os.path.exists(os.path.dirname(cam_path)):
@@ -762,23 +761,25 @@ def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, evaluator
             # render image with annotations and CAM overlay
             # CAM overlay
             # _cam_mask = _cam_norm > 0
-            segment = np.zeros(shape=img.shape)
-            segment[_cam_mask] = (0, 0, 255)  # BGR
+            segment = np.zeros(shape=img.shape, dtype=np.uint8)
+            for index, (cam_mask, thresh) in enumerate(zip(cam_mask_stack[::-1], thresholds[::-1])):
+                color_weight = 1.0 - (cam_stack.shape[0] - index - 1) * 0.1
+                color_red = math.floor(color_weight * 255)
+                segment[cam_mask] = (0, 0, color_red)  # BGR
             img_ann = segment * 0.3 + img * 0.5
             # estimated and GT bboxes overlay
-            if has_opt_cam_thresh:
-                gt_bbox_list = gt_bbox_dict[image_id]
-                est_bbox_list = est_bbox_dict[image_id]
-                if (len(gt_bbox_list) + len(est_bbox_list)) > 0:
-                    thickness = 2  # Pixels
-                    for bbox in gt_bbox_list:
-                        start, end = bbox[:2], bbox[2:]
-                        color = (0, 255, 0) # Green color in BGR
-                        img_ann = cv2.rectangle(img_ann, start, end, color, thickness)
-                    for bbox in est_bbox_list:
-                        start, end = bbox[:2], bbox[2:]
-                        color = (0, 0, 255) # Red color in BGR
-                        img_ann = cv2.rectangle(img_ann, start, end, color, thickness)
+            gt_bbox_list = gt_bbox_dict[image_id]
+            est_bbox_list = est_bbox_dict[image_id]
+            if (len(gt_bbox_list) + len(est_bbox_list)) > 0:
+                thickness = 2  # Pixels
+                for bbox in gt_bbox_list:
+                    start, end = bbox[:2], bbox[2:]
+                    color = (0, 255, 0) # Green color in BGR
+                    img_ann = cv2.rectangle(img_ann, start, end, color, thickness)
+                for bbox in est_bbox_list:
+                    start, end = bbox[:2], bbox[2:]
+                    color = (0, 0, 255) # Red color in BGR
+                    img_ann = cv2.rectangle(img_ann, start, end, color, thickness)
 
             img_ann_id = f'{os.path.basename(image_id).split(".")[0]}_ann.png'
             img_ann_path = os.path.join(xai_root, split, img_ann_id)
