@@ -488,6 +488,7 @@ class BoxEvaluator(LocalizationEvaluator):
                     if not os.path.exists(os.path.dirname(log_path)):
                         os.makedirs(os.path.dirname(log_path))
                     mlflow.log_figure(fig, log_path)
+                    plt.close('all')
 
             if metric == 'MaxBoxAcc':
                 index_iou_50 = self.iou_threshold_list.index(50)
@@ -662,6 +663,7 @@ class MaskEvaluator(LocalizationEvaluator):
             if not os.path.exists(os.path.dirname(log_path)):
                 os.makedirs(os.path.dirname(log_path))
             mlflow.log_figure(fig, log_path)
+            plt.close('all')
 
         return {self.metric: auc}
 

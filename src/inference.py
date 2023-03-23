@@ -124,13 +124,17 @@ class CAMComputer(object):
                 cams_it = zip(cams, image_ids, images)
                 for cam, image_id, image in cams_it:
                     # cam is already resized to 224x224 and normalized during CAM computation
-                    if self.split in ('val', 'test') and save_cams and iter_index == 0:
-                        if len(cams_metadata) < self.scoremap_storage_limit:
+                    if self.split in ('val', 'test') and save_cams:
+                        if len(cams_metadata) < self.scoremap_storage_limit or image_id in cams_metadata:
                             cam_id = os.path.join(self.split, f'{os.path.basename(image_id)}.npy')
                             cam_path = os.path.join(self.scoremap_root, cam_id)
                             if not os.path.exists(os.path.dirname(cam_path)):
                                 os.makedirs(os.path.dirname(cam_path))
-                            np.save(cam_path, cam)
+                            cam_saved = cam
+                            if os.path.exists(cam_path):
+                                cam_loaded = np.load(cam_path)
+                                cam_saved = np.clip(cam_loaded + cam_saved, 0, 1)
+                            np.save(cam_path, cam_saved)
                             cams_metadata[image_id] = cam_id
                     if self.mask_evaluator and iter_index == 0:
                         self.mask_evaluator.accumulate(cam, image_id)
