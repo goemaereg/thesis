@@ -154,8 +154,8 @@ def configure_parse(load_config=True):
     parser.add_argument('--scoremap_folder', type=str,
                         default='scoremaps',
                         help="The root folder for score maps to be evaluated.")
-    parser.add_argument('--scoremap_storage_limit', type=int, default=200,
-                        help="The maximum number of scoremaps that are saved for validation or test set.")
+    # parser.add_argument('--scoremap_storage_limit', type=int, default=200,
+    #                     help="The maximum number of scoremaps that are saved for validation or test set.")
     parser.add_argument('--xai_folder', type=str, default='xai', help='xai folder')
     parser.add_argument('--override_cache', type=str2bool, nargs='?',
                         const=True, default=False)
@@ -284,7 +284,7 @@ def configure_parse(load_config=True):
     # see minmaxcam paper
     parser.add_argument('--minmaxcam_crr_weight', type=int, default=1,
                         help='MinMaxCam Common Region Regularization Weight'),
-    # tags
+    # dataset name suffix
     parser.add_argument('--dataset_name_suffix', type=str, default='',
                         help='Suffix = <tag1><tag2><tag3> used to partition SYNTHETIC dataset. '
                              'tag1 = <choice o (overlapping) | d (disjunct)'

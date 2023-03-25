@@ -439,12 +439,11 @@ class Trainer(object):
             loader=self.loaders[split],
             log=log,
         )
+        # this method takes care of mlflow metrics logging
         metrics = cam_computer.compute_and_evaluate_cams(save_cams=save_cams)
         for metric, value in metrics.items():
             if metric in self.performance_meters[split]:
                self.performance_meters[split][metric].update(value)
-        mlflow_metrics = {f'{split}_{metric}':value for metric, value in metrics.items()}
-        mlflow.log_metrics(mlflow_metrics, step=epoch)
         if self.args.xai and save_xai:
             metadata_root = os.path.join(self.args.metadata_root, split)
             metadata = configure_metadata(metadata_root)
@@ -453,8 +452,6 @@ class Trainer(object):
                           metadata=metadata,
                           data_root=self.args.data_paths[split],
                           scoremap_root=self.args.scoremap_root,
-                          box_evaluator=cam_computer.box_evaluator,
-                          multi_contour_eval=self.args.multi_contour_eval,
                           log=True)
         return metrics
 

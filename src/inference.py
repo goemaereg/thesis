@@ -21,10 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import numpy as np
 from data_loaders import get_eval_loader
-from evaluation import BoxEvaluator, MaskEvaluator, MultiEvaluator
+from evaluation import BoxEvaluator, MaskEvaluator
 from evaluation import configure_metadata, normalize_scoremap
 import os
 import tqdm
+import mlflow
 from wsol.cam_method.utils.model_targets import ClassifierOutputTarget
 from wsol.cam_method import CAM, GradCAM, GradCAMPlusPlus, ScoreCAM
 from wsol.cam_method.utils.timer import Timer
@@ -76,7 +77,6 @@ class CAMComputer(object):
         self.data_root = self.config.data_paths[split]
         self.metadata_root = self.config.metadata_root
         self.scoremap_root = config.scoremap_root
-        self.scoremap_storage_limit = config.scoremap_storage_limit
         self.bbox_iter = config.bbox_iter
         self.bbox_iter_max = max(1, config.bbox_iter_max if config.bbox_iter else 1)
         self.log = log
@@ -101,8 +101,8 @@ class CAMComputer(object):
     def compute_and_evaluate_cams(self, save_cams=False):
         # print("Computing and evaluating cams.")
         cams_metadata = {}
-        metrics = {}
         contexts = {}
+        metrics = {}
         optimal_threshold_list = []
         timer_cam = Timer.create_or_get_timer(self.device, 'runtime_cam', warm_up=True)
         tq0 = tqdm.tqdm(range(self.bbox_iter_max), total=self.bbox_iter_max, desc='iterative bbox extraction')
@@ -120,37 +120,36 @@ class CAMComputer(object):
                 output_targets = [ClassifierOutputTarget(target.item()) for target in targets]
                 with self.cam_algorithm(**self.cam_args) as cam_method:
                     timer_cam.start()
+                    # cam_method returns numpy array
                     cams = cam_method(images, output_targets).astype('float')
                     timer_cam.stop()
-                # cams = t2n(cams)
                 cams_it = zip(cams, image_ids, images)
                 for cam, image_id, image in cams_it:
-                    # cam is already resized to 224x224 and normalized during CAM computation
-                    if self.split in ('val', 'test') and save_cams:
-                        if len(cams_metadata) < self.scoremap_storage_limit or image_id in cams_metadata:
-                            cam_id = os.path.join(self.split, f'{os.path.basename(image_id)}.npy')
-                            cam_path = os.path.join(self.scoremap_root, cam_id)
-                            if not os.path.exists(os.path.dirname(cam_path)):
-                                os.makedirs(os.path.dirname(cam_path))
-                            cam_list = []
-                            if os.path.exists(cam_path):
-                                cam_stack = np.load(cam_path)
-                                # unstack saved cams
-                                cam_list = [c for c in cam_stack]
-                            # add new cam to cam list
-                            cam_list.append(cam)
-                            # stack with new cam
-                            cam_stack = np.stack(cam_list, axis=0)
-                            # cam_saved = np.clip(cam_loaded + cam_saved, 0, 1)
-                            np.save(cam_path, cam_stack)
-                            cams_metadata[image_id] = cam_id
-                    if self.mask_evaluator and iter_index == 0:
-                        self.mask_evaluator.accumulate(cam, image_id)
+                    # cam is already resized to 224x224 and normalized by cam_method call
+                    cam_id = os.path.join(self.split, f'{os.path.basename(image_id)}.npy')
+                    cam_path = os.path.join(self.scoremap_root, cam_id)
+                    if not os.path.exists(os.path.dirname(cam_path)):
+                        os.makedirs(os.path.dirname(cam_path))
+                    cam_list = []
+                    if os.path.exists(cam_path):
+                        cam_stack = np.load(cam_path)
+                        # unstack saved cams
+                        cam_list = [c for c in cam_stack]
+                    # add new cam to cam list
+                    cam_list.append(cam)
+                    # stack with new cam
+                    cam_stack = np.stack(cam_list, axis=0)
+                    np.save(cam_path, cam_stack)
+                    cams_metadata[image_id] = cam_id
                     if self.box_evaluator:
                         context = contexts[image_id] if image_id in contexts else None
                         context = self.box_evaluator.accumulate_bboxes(cam, image_id, context)
                         contexts[image_id] = context
                         self.box_evaluator.accumulate_boxacc(context)
+                    if self.mask_evaluator:
+                        # merge cams of previous iterations with current cam
+                        cam_merged = np.max(cam_stack, axis=0)
+                        self.mask_evaluator.accumulate(cam_merged, image_id)
             if self.box_evaluator:
                 metrics |= self.box_evaluator.compute()
                 optimal_threshold, optimal_threshold_index = self.box_evaluator.compute_optimal_cam_threshold(50)
@@ -158,7 +157,8 @@ class CAMComputer(object):
                 self.box_evaluator.reset()
             if self.mask_evaluator and iter_index == 0:
                 metrics |= self.mask_evaluator.compute()
-            metrics |= {name: timer.get_total_elapsed_ms() for name, timer in Timer.timers.items()}
+            mlflow_metrics = {f'{self.split}_{metric}': value for metric, value in metrics.items()}
+            mlflow.log_metrics(mlflow_metrics, step=iter_index)
             # write scoremap metadata
             # format: image_id,cam_id
             if len(cams_metadata) > 0 and iter_index == 0:
@@ -183,5 +183,8 @@ class CAMComputer(object):
             if not os.path.exists(os.path.dirname(self.optimal_thresholds_path)):
                 os.makedirs(os.path.dirname(self.optimal_thresholds_path))
             np.save(self.optimal_thresholds_path, np.asarray(optimal_threshold_list))
+        metric_timers = {name: timer.get_total_elapsed_ms() for name, timer in Timer.timers.items()}
+        mlflow.log_metrics(metric_timers)
         Timer.reset()
-        return metrics
+        # return most recent metrics (i.e. from last iteration)
+        return metrics | metric_timers
