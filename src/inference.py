@@ -155,7 +155,7 @@ class CAMComputer(object):
                 optimal_threshold, optimal_threshold_index = self.box_evaluator.compute_optimal_cam_threshold(50)
                 optimal_threshold_list.append(optimal_threshold)
                 self.box_evaluator.reset()
-            if self.mask_evaluator and iter_index == 0:
+            if self.mask_evaluator:
                 metrics |= self.mask_evaluator.compute()
             mlflow_metrics = {f'{self.split}_{metric}': value for metric, value in metrics.items()}
             mlflow.log_metrics(mlflow_metrics, step=iter_index)
