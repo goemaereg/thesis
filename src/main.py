@@ -234,7 +234,10 @@ class Trainer(object):
         params = model_params | optimizer_params
         params |= dict(
             epochs=self.args.epochs,
-            batch_size=self.args.batch_size
+            batch_size=self.args.batch_size,
+            bbox_iter_max = self.args.bbox_iter_max,
+            bbox_mask_strategy = self.args.bbox_mask_strategy,
+            bbox_merge_strategy = self.args.bbox_merge_strategy
         )
         mlflow.log_params(params)
         # tags
@@ -251,9 +254,7 @@ class Trainer(object):
             optimizer=self.optimizer.__class__.__name__,
             pretrained=self.args.pretrained,
             train=self.args.train,
-            train_augment=self.args.train_augment,
-            bbox_mask_strategy=self.args.bbox_mask_strategy,
-            bbox_merge_strategy=self.args.bbox_merge_strategy
+            train_augment=self.args.train_augment
         )
         mlflow.set_tags(tags)
 

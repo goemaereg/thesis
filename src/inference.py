@@ -82,7 +82,6 @@ class CAMComputer(object):
         self.log = log
         self.bboxes_meta_path = os.path.join(self.scoremap_root, self.split, 'bboxes_metadata.txt')
         self.optimal_thresholds_path = os.path.join(self.scoremap_root, self.split, 'optimal_thresholds.npy')
-        self.bbox_mask_strategy = config.bbox_mask_strategy
 
         metadata = configure_metadata(os.path.join(config.metadata_root, split))
         cam_threshold_list = list(np.arange(0, 1, config.cam_curve_interval))
@@ -95,6 +94,8 @@ class CAMComputer(object):
             mask_root=config.mask_root,
             multi_contour_eval=config.multi_contour_eval,
             multi_gt_eval=config.multi_gt_eval,
+            bbox_merge_strategy=config.bbox_merge_strategy,
+            bbox_merge_iou_threshold=config.bbox_merge_iou_threshold,
             log=log)
         self.box_evaluator, self.mask_evaluator = self.get_evaluators(**eval_args)
 

@@ -38,6 +38,7 @@ from util import check_scoremap_validity
 from util import check_box_convention
 from util import t2n
 from sklearn.metrics import ConfusionMatrixDisplay
+from typing import List
 
 _IMAGENET_MEAN = [0.485, .456, .406]
 _IMAGENET_STDDEV = [.229, .224, .225]
@@ -219,7 +220,7 @@ class LocalizationEvaluator(object):
 
     def __init__(self, metadata, dataset_name, split, cam_threshold_list,
                  iou_threshold_list, mask_root, multi_contour_eval, multi_gt_eval=False,
-                 log=False):
+                 bbox_merge_strategy='add', bbox_merge_iou_threshold=0.2, log=False):
         self.log=log
         self.metadata = metadata
         self.cam_threshold_list = cam_threshold_list
@@ -229,6 +230,8 @@ class LocalizationEvaluator(object):
         self.mask_root = mask_root
         self.multi_gt_eval = multi_gt_eval
         self.multi_contour_eval = multi_contour_eval
+        self.bbox_merge_strategy = bbox_merge_strategy
+        self.bbox_merge_iou_threshold = bbox_merge_iou_threshold
 
     def reset(self):
         raise NotImplementedError
@@ -346,6 +349,82 @@ class BoxEvaluator(LocalizationEvaluator):
             for image_id in self.image_ids}
         return resized_bbox
 
+    def unify(self, boxa, boxb):
+        a_x0, a_y0, a_x1, a_y1 = boxa
+        b_x0, b_y0, b_x1, b_y1 = boxb
+        x0 = min(a_x0, b_x0)
+        y0 = min(a_y0, b_y0)
+        x1 = max(a_x1, b_x1)
+        y1 = max(a_y1, b_y1)
+        return np.asarray([x0, y0, x1, y1])
+
+    def accumulate_bboxes(self, scoremap, image_id, context=None):
+        # Computes a set of estimated boxes per scoremap threshold
+        # Returns an array of threshold-related np.array objects containing estimated boxes
+        # boxes_at_thresholds: list of 100 arrays, one array for each threshold. array.shape = (nr of estimated boxes)
+        # thresh_boxes: List[np.ndarray(est_boxes_thresh0, 4), np.ndarray(est_boxes_thresh1, 4), ..., np.ndarray(est_boxes_thresh99, 4)]
+        # thresh_boxes_num: List[int, int, ..., int]
+        # thresh_boxes_areas: List[float, float, ..., float]
+        thresh_boxes, thresh_boxes_num, thresh_boxes_areas = compute_bboxes_from_scoremaps(
+            scoremap=scoremap,
+            scoremap_threshold_list=self.cam_threshold_list,
+            multi_contour_eval=self.multi_contour_eval)
+        if context is None or context['image_id'] != image_id:
+            context = dict(image_id=image_id,
+                           thresh_boxes=thresh_boxes,
+                           thresh_boxes_num=thresh_boxes_num,
+                           thresh_boxes_areas=thresh_boxes_areas)
+        else:
+            for i in range(len(thresh_boxes)):
+                if self.bbox_merge_strategy == 'add':
+                    context['thresh_boxes'][i] = np.concatenate([context['thresh_boxes'][i],
+                                                                 thresh_boxes[i]], axis=0)
+                    context['thresh_boxes_areas'][i] = np.concatenate([context['thresh_boxes_areas'][i],
+                                                                       thresh_boxes_areas[i]], axis=0)
+                    context['thresh_boxes_num'][i] += thresh_boxes_num[i]
+                else:
+                    # compute IOU
+                    # multiple_iou shape = (est_boxes_iter_accumulated, est_boxes_iter_now)
+                    multiple_iou = calculate_multiple_iou(
+                        np.concatenate(context['thresh_boxes'][i], axis=0),
+                        np.concatenate(thresh_boxes))
+                    # loop over newly computed boxes
+                    bboxes_index_add_list = []
+                    bboxes_index_unify_list = []
+                    bboxes_index_drop_list = []
+                    for _ in range(thresh_boxes_num[i]):
+                        # find largest IOU
+                        max_iou_index = np.unravel_index(np.argmax(multiple_iou), shape=multiple_iou.shape)
+                        max_iou = multiple_iou[max_iou_index]
+                        if max_iou < self.bbox_merge_iou_threshold:
+                            bboxes_index_add_list.append(max_iou_index[1])
+                        else:
+                            if self.bbox_merge_strategy == 'drop':
+                                bboxes_index_drop_list.append(max_iou_index[1])
+                            elif self.bbox_merge_strategy == 'unify':
+                                bboxes_index_unify_list.append(max_iou_index)
+                        # mark newly estimated bbox with max IOU as unavailable to other combinations
+                        multiple_iou[max_iou_index[0], :] = -1
+                        multiple_iou[:, max_iou_index[1]] = -1
+                    # unify
+                    for index_to, index_from in bboxes_index_unify_list:
+                        context['thresh_boxes'][i][index_to] = self.unify(
+                            context['thresh_boxes'][i][index_to],
+                            thresh_boxes[i][index_from]
+                        )
+                        # adding overlapping areas number comes with error (intersection counted twice)
+                        context['thresh_boxes_areas'][i][index_to] += thresh_boxes_areas[i][index_from]
+                    # add
+                    context['thresh_boxes'][i] = np.concatenate(
+                        [context['thresh_boxes'][i], thresh_boxes[i][bboxes_index_add_list]], axis=0)
+                    context['thresh_boxes_areas'][i] = np.concatenate(
+                        [context['thresh_boxes_areas'][i], thresh_boxes_areas[i][bboxes_index_add_list]], axis=0)
+                    context['thresh_boxes_num'][i] += len(bboxes_index_add_list)
+                    # drop: just don't add boxes in bboxes_index_drop_list
+        num_est_boxes = np.asarray(context['thresh_boxes_num'])
+        self.add_est_bbox(num_est_boxes)
+        return context
+
     def _accumulate_maxboxacc_v1_2(self, multiple_iou, number_of_box_list, metric):
         # Computes single best match (1 box) over sets of estimated and GT-boxes per cam threshold
         # Result is 1 match value (0 or 1) per cam threshold
@@ -400,8 +479,8 @@ class BoxEvaluator(LocalizationEvaluator):
                 max_iou_index = np.unravel_index(np.argmax(slice_multi_iou), shape=slice_multi_iou.shape)
                 gt_iou_max.append(slice_multi_iou[max_iou_index[0], max_iou_index[1]])
                 # mark max IOU as unavailable ('0') to other (est, gt) combinations in this slice
-                slice_multi_iou[max_iou_index[0], :] = 0
-                slice_multi_iou[:, max_iou_index[1]] = 0
+                slice_multi_iou[max_iou_index[0], :] = -1
+                slice_multi_iou[:, max_iou_index[1]] = -1
             sliced_multiple_iou.append(np.asarray(gt_iou_max))
             idx += nr_box
         multi_iou_per_threshold = np.asarray(sliced_multiple_iou)
@@ -415,31 +494,6 @@ class BoxEvaluator(LocalizationEvaluator):
             num_correct = np.sum(num_correct_multi, axis=1)
             self.counters['MaxBoxAccV3'].add_correct(IOU_THRESHOLD, num_correct)
         self.counters['MaxBoxAccV3'].add_target(num_gt_boxes)
-
-    def accumulate_bboxes(self, scoremap, image_id, context=None):
-        # Computes a set of estimated boxes per scoremap threshold
-        # Returns an array of threshold-related np.array objects containing estimated boxes
-        # boxes_at_thresholds: list of 100 arrays, one array for each threshold. array.shape = (nr of estimated boxes)
-        thresh_boxes, thresh_boxes_num, thresh_boxes_areas = compute_bboxes_from_scoremaps(
-            scoremap=scoremap,
-            scoremap_threshold_list=self.cam_threshold_list,
-            multi_contour_eval=self.multi_contour_eval)
-        if context is None or context['image_id'] != image_id:
-            context = dict(image_id=image_id,
-                           thresh_boxes=thresh_boxes,
-                           thresh_boxes_num=thresh_boxes_num,
-                           thresh_boxes_areas=thresh_boxes_areas)
-        else:
-            for i in range(len(thresh_boxes)):
-                context['thresh_boxes'][i] = np.concatenate([context['thresh_boxes'][i],
-                                                            thresh_boxes[i]], axis=0)
-                context['thresh_boxes_areas'][i] = np.concatenate([context['thresh_boxes_areas'][i],
-                                                                  thresh_boxes_areas[i]], axis=0)
-                context['thresh_boxes_num'][i] += thresh_boxes_num[i]
-        # TODO: merge bounding boxes
-        num_est_boxes = np.asarray(context['thresh_boxes_num'])
-        self.add_est_bbox(num_est_boxes)
-        return context
 
     def accumulate_boxacc(self, context):
         image_id = context['image_id']

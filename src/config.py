@@ -43,8 +43,8 @@ _BBOX_METRIC_NAMES = ('MaxBoxAcc', 'MaxBoxAccV2', 'MaxBoxAccV3')
 _BBOX_METRIC_DEFAULT = 'MaxBoxAccV2'
 _LR_SCHEDULER_NAMES = ('StepLR', "MultiStepLR")
 _LR_SCHEDULER_DEFAULT = 'StepLR'
-_BBOX_MERGE_STRATEGY = ('none', 'drop', 'unify')
-_BBOX_MERGE_DEFAULT = 'none'
+_BBOX_MERGE_STRATEGY = ('add', 'drop', 'unify')
+_BBOX_MERGE_DEFAULT = 'add'
 _BBOX_MASK_STRATEGY = ('zero', 'mean', 'random')
 _BBOX_MASK_DEFAULT = 'zero'
 
@@ -226,6 +226,7 @@ def configure_parse(load_config=True):
                         help='Maximum iterations of bounding box extraction')
     parser.add_argument('--bbox_merge_strategy', default=_BBOX_MERGE_DEFAULT,
                         choices=_BBOX_MERGE_STRATEGY, help='Bounding box overlap merge strategy.')
+    parser.add_argument('--bbox_merge_iou_threshold', type=float, default=0.2, help='Merge bounding boxes that exceed IOU threshold')
     parser.add_argument('--bbox_mask_strategy', default=_BBOX_MASK_DEFAULT,
                         choices=_BBOX_MASK_STRATEGY, help='Bounding box mask strategy.')
     # Common hyperparameters
