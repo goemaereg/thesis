@@ -227,7 +227,9 @@ class WSOLImageLabelDataset(Dataset):
                     v = torch.mean(image)
                     image = TF.erase(image, i, j, h, w, v, inplace=True)
                 elif self.bbox_mask_strategy == 'random':
-                    v = _IMAGE_STD_VALUE * np.random.randn(3, h, w) + _IMAGE_MEAN_VALUE
+                    v = np.random.randn(3, h, w)
+                    for i in range(len(_IMAGE_STD_VALUE)):
+                        v[i,:,:] = _IMAGE_STD_VALUE[i] * v[i,:,:] + _IMAGE_MEAN_VALUE[i]
                     v = torch.tensor(v)
                     image[..., i:i+h, j:j+w] = v
         return image, image_label, image_id
