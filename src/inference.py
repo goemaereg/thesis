@@ -95,7 +95,6 @@ class CAMComputer(object):
             mask_root=config.mask_root,
             multi_contour_eval=config.multi_contour_eval,
             multi_gt_eval=config.multi_gt_eval,
-            metric=config.bbox_metric,
             log=log)
         self.box_evaluator, self.mask_evaluator = self.get_evaluators(**eval_args)
 

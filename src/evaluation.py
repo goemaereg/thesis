@@ -217,10 +217,9 @@ class LocalizationEvaluator(object):
     localization performance.
     """
 
-    def __init__(self, metric, metadata, dataset_name, split, cam_threshold_list,
+    def __init__(self, metadata, dataset_name, split, cam_threshold_list,
                  iou_threshold_list, mask_root, multi_contour_eval, multi_gt_eval=False,
                  log=False):
-        self.metric = metric
         self.log=log
         self.metadata = metadata
         self.cam_threshold_list = cam_threshold_list
@@ -305,8 +304,8 @@ class BoxEvaluator(LocalizationEvaluator):
         recall = float(tp) / float(tp + fn)
         return precision, recall
 
-    def __init__(self, metric='MaxBoxAccV2', **kwargs):
-        super(BoxEvaluator, self).__init__(metric=metric, **kwargs)
+    def __init__(self, **kwargs):
+        super(BoxEvaluator, self).__init__(**kwargs)
         self.image_ids = get_image_ids(metadata=self.metadata)
         self.resize_length = _RESIZE_LENGTH
         self.original_bboxes = get_bounding_boxes(self.metadata)
@@ -626,8 +625,8 @@ def get_mask(mask_root, mask_paths, ignore_path):
 
 
 class MaskEvaluator(LocalizationEvaluator):
-    def __init__(self, metric='PxAP', **kwargs):
-        super(MaskEvaluator, self).__init__(metric='PxAP', **kwargs)
+    def __init__(self, **kwargs):
+        super(MaskEvaluator, self).__init__(**kwargs)
 
         # if self.dataset_name != "OpenImages":
         #     raise ValueError("Mask evaluation must be performed on OpenImages.")
@@ -727,7 +726,7 @@ class MaskEvaluator(LocalizationEvaluator):
             mlflow.log_figure(fig, log_path)
             plt.close('all')
 
-        return {self.metric: auc}
+        return {'PxAP': auc}
 
 
 def _get_cam_loader(image_ids, scoremap_path, split):
@@ -854,7 +853,7 @@ def get_evaluators(**args):
 def evaluate_wsol(xai_root, scoremap_root, data_root, metadata_root, mask_root,
                   iou_threshold_list, dataset_name, split,
                   multi_contour_eval, multi_gt_eval, cam_curve_interval=.01,
-                  bbox_metric='MaxBoxAccV2', xai=False):
+                  xai=False):
     """
     Compute WSOL performances of predicted heatmaps against ground truth
     boxes (CUB, ILSVRC) or masks (OpenImages). For boxes, we compute the
@@ -906,7 +905,6 @@ def evaluate_wsol(xai_root, scoremap_root, data_root, metadata_root, mask_root,
         mask_root=mask_root,
         multi_contour_eval=multi_contour_eval,
         multi_gt_eval=multi_gt_eval,
-        metric=bbox_metric,
         log=False)
 
     box_evaluator, mask_evaluator = get_evaluators(**eval_args)
