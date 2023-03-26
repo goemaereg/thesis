@@ -512,12 +512,21 @@ class BoxEvaluator(LocalizationEvaluator):
                     f'{metric}_box_recall_IOU_{IOU_THRESHOLD}': recall
                 }
                 if self.log:
+                    # plot confusion matrix
                     disp = ConfusionMatrixDisplay(cm).plot(cmap=plt.cm.Blues)
                     log_path = f'plots/{self.split}/{metric}_confusion_matrix_{IOU_THRESHOLD}.png'
                     if not os.path.exists(os.path.dirname(log_path)):
                         os.makedirs(os.path.dirname(log_path))
                     mlflow.log_figure(disp.figure_, log_path)
                     plt.close('all')
+                    # log confusion matrix
+                    tn, fp, fn, tp = cm.ravel()
+                    cm_dict = dict(tn=tn, fp=fp, fn=fn, tp=tp)
+                    log_path = f'data/{self.split}/{metric}_confusion_matrix_{IOU_THRESHOLD}.json'
+                    if not os.path.exists(os.path.dirname(log_path)):
+                        os.makedirs(os.path.dirname(log_path))
+                    mlflow.log_dict(cm_dict, log_path)
+                    # log box accuracy data
                     box_acc = {
                         'iou_threshold': IOU_THRESHOLD,
                         'cam_threshold_optimal': cam_threshold_optimal,
@@ -528,6 +537,7 @@ class BoxEvaluator(LocalizationEvaluator):
                     if not os.path.exists(os.path.dirname(log_path)):
                         os.makedirs(os.path.dirname(log_path))
                     mlflow.log_dict(box_acc, log_path)
+                    # plot BoxAcc(iou_threshold)
                     fig, ax = plt.subplots()
                     ax.plot(self.cam_threshold_list, box_acc_iou[IOU_THRESHOLD])
                     plt.title(f'{self.dataset_name} BoxAcc IOU={IOU_THRESHOLD}')
