@@ -111,7 +111,8 @@ class CAMComputer(object):
             mask_bboxes = iter_index > 0
             loader = get_eval_loader(
                 self.split, self.data_root, self.metadata_root, self.config.batch_size, self.config.workers,
-                    self.config.crop_size, bboxes_path=self.bboxes_meta_path, mask_bboxes=mask_bboxes)
+                self.config.crop_size,
+                bboxes_path=self.bboxes_meta_path, bbox_mask_strategy=self.config.bbox_mask_strategy)
             tq1 = tqdm.tqdm(loader, total=len(loader), desc='evaluate cams batches')
             for images, targets, image_ids in tq1:
                 image_size = images.shape[2:]

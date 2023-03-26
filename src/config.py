@@ -43,6 +43,10 @@ _BBOX_METRIC_NAMES = ('MaxBoxAcc', 'MaxBoxAccV2', 'MaxBoxAccV3')
 _BBOX_METRIC_DEFAULT = 'MaxBoxAccV2'
 _LR_SCHEDULER_NAMES = ('StepLR', "MultiStepLR")
 _LR_SCHEDULER_DEFAULT = 'StepLR'
+_BBOX_OVERLAP_MERGE_STRATEGY = ('none', 'drop', 'unify')
+_BBOX_OVERLAP_MERGE_DEFAULT = 'none'
+_BBOX_MASK_STRATEGY = ('zero', 'mean', 'random')
+_BBOX_MASK_DEFAULT = 'zero'
 
 def mch(**kwargs):
     return munch.Munch(dict(**kwargs))
@@ -126,6 +130,10 @@ def configure_reporter(args):
         os.makedirs(reporter_log_root)
     return reporter, reporter_log_root
 
+def configure_bbox_mask_strategy(args):
+    if args.bbox_mask_strategy == 'none':
+        return None
+    return args.bbox_mask_strategy
 
 def configure_pretrained_path(args):
     if type(args.pretrained_path) == str and len(args.pretrained_path) == 0:
@@ -221,6 +229,10 @@ def configure_parse(load_config=True):
                         const=True, default=False, help='Iterative bounding box extraction')
     parser.add_argument('--bbox_iter_max', type=int, default=2,
                         help='Maximum iterations of bounding box extraction')
+    parser.add_argument('--bbox_merge_strategy', default=_BBOX_OVERLAP_MERGE_DEFAULT,
+                        choices=_BBOX_OVERLAP_MERGE_STRATEGY, help='Bounding box overlap merge strategy.')
+    parser.add_argument('--bbox_mask_strategy', default=_BBOX_MASK_DEFAULT,
+                        choices=_BBOX_MASK_STRATEGY, help='Bounding box mask strategy.')
     # Common hyperparameters
     parser.add_argument('--batch_size', default=64, type=int,
                         help='Mini-batch size (default: 64), this is the total'
@@ -322,6 +334,7 @@ def get_configs():
     args.xai_root = os.path.join(args.log_folder, args.xai_folder)
     args.log_path = configure_log(args)
     configure_bbox_metric(args)
+    args.bbox_mask_strategy = configure_bbox_mask_strategy(args)
 
     args.architecture_type = get_architecture_type(args.architecture_type, args.wsol_method)
     args.data_paths = configure_data_paths(args, tags=tags_encoded)
