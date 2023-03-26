@@ -82,6 +82,7 @@ class CAMComputer(object):
         self.log = log
         self.bboxes_meta_path = os.path.join(self.scoremap_root, self.split, 'bboxes_metadata.txt')
         self.optimal_thresholds_path = os.path.join(self.scoremap_root, self.split, 'optimal_thresholds.npy')
+        self.bbox_mask_strategy = config.bbox_mask_strategy
 
         metadata = configure_metadata(os.path.join(config.metadata_root, split))
         cam_threshold_list = list(np.arange(0, 1, config.cam_curve_interval))
@@ -108,11 +109,11 @@ class CAMComputer(object):
         tq0 = tqdm.tqdm(range(self.bbox_iter_max), total=self.bbox_iter_max, desc='iterative bbox extraction')
         for iter_index in tq0:
             optimal_threshold_index = 0
-            mask_bboxes = iter_index > 0
+            bbox_mask_strategy = self.config.bbox_mask_strategy if iter_index > 0 else None
             loader = get_eval_loader(
                 self.split, self.data_root, self.metadata_root, self.config.batch_size, self.config.workers,
                 self.config.crop_size,
-                bboxes_path=self.bboxes_meta_path, bbox_mask_strategy=self.config.bbox_mask_strategy)
+                bboxes_path=self.bboxes_meta_path, bbox_mask_strategy=bbox_mask_strategy)
             tq1 = tqdm.tqdm(loader, total=len(loader), desc='evaluate cams batches')
             for images, targets, image_ids in tq1:
                 image_size = images.shape[2:]

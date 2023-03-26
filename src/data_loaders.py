@@ -27,6 +27,7 @@ import pickle
 import os
 import io
 from PIL import Image
+import torch
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from torchvision import transforms
@@ -167,8 +168,8 @@ def get_image_sizes(metadata):
 
 
 class WSOLImageLabelDataset(Dataset):
-    def __init__(self, data_root, metadata_root, transform, proxy,
-                 num_sample_per_class=0, bboxes_path=None, mask_bboxes=None):
+    def __init__(self, data_root, metadata_root, transform, proxy, num_sample_per_class=0, 
+                 bboxes_path=None, bbox_mask_strategy=None):
         self.data_root = data_root
         self.metadata = configure_metadata(metadata_root)
         self.transform = transform
@@ -176,7 +177,7 @@ class WSOLImageLabelDataset(Dataset):
         self.image_labels = get_class_labels(self.metadata)
         self.num_sample_per_class = num_sample_per_class
         self._adjust_samples_per_class()
-        self.mask_bboxes = mask_bboxes
+        self.bbox_mask_strategy = bbox_mask_strategy
         self.computed_bboxes = {}
         if bboxes_path is not None and os.path.exists(bboxes_path):
             self.computed_bboxes = get_bounding_boxes_from_file(bboxes_path)
@@ -211,7 +212,7 @@ class WSOLImageLabelDataset(Dataset):
         image = image.convert('RGB')
         image = self.transform(image)
         bboxes = None
-        if self.mask_bboxes and image_id in self.computed_bboxes:
+        if self.bbox_mask_strategy is not None and image_id in self.computed_bboxes:
             bboxes = self.computed_bboxes[image_id]
             for bbox in bboxes:
                 # convert box(x0,y0,x1,y1) coordinates to array(i,j) semantics
@@ -219,8 +220,16 @@ class WSOLImageLabelDataset(Dataset):
                 w = x1 - x0
                 h = y1 - y0
                 i, j = y0, x0
-                v = 0 # erasing value
-                image = TF.erase(image, i, j, h, w, v, inplace=True)
+                if self.bbox_mask_strategy == 'zero':
+                    v = 0 # erasing value
+                    image = TF.erase(image, i, j, h, w, v, inplace=True)
+                elif self.bbox_mask_strategy == 'mean':
+                    v = torch.mean(image)
+                    image = TF.erase(image, i, j, h, w, v, inplace=True)
+                elif self.bbox_mask_strategy == 'random':
+                    v = _IMAGE_STD_VALUE * np.random.randn(3, h, w) + _IMAGE_MEAN_VALUE
+                    v = torch.tensor(v)
+                    image[..., i:i+h, j:j+w] = v
         return image, image_label, image_id
 
     def __len__(self):
@@ -320,7 +329,7 @@ class MiniBatchSampler(Sampler[int]):
         return self.batch_num
 
 def get_eval_loader(split, data_root, metadata_root, batch_size, workers,
-                    resize_size, bboxes_path=None, mask_bboxes=False):
+                    resize_size, bboxes_path=None, bbox_mask_strategy=None):
     dataset_transforms = transforms.Compose([
         transforms.Resize((resize_size, resize_size)),
         transforms.ToTensor(),
@@ -332,7 +341,7 @@ def get_eval_loader(split, data_root, metadata_root, batch_size, workers,
         transform=dataset_transforms,
         proxy=False,
         bboxes_path=bboxes_path,
-        mask_bboxes=mask_bboxes)
+        bbox_mask_strategy=bbox_mask_strategy)
     return DataLoader(dataset, batch_size=batch_size, num_workers=workers)
 
 def get_data_loader(data_roots, metadata_root, batch_size, workers,

@@ -251,7 +251,9 @@ class Trainer(object):
             optimizer=self.optimizer.__class__.__name__,
             pretrained=self.args.pretrained,
             train=self.args.train,
-            train_augment=self.args.train_augment
+            train_augment=self.args.train_augment,
+            bbox_mask_strategy=self.args.bbox_mask_strategy,
+            bbox_merge_strategy=self.args.bbox_merge_strategy
         )
         mlflow.set_tags(tags)
 
