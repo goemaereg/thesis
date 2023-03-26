@@ -386,8 +386,7 @@ class BoxEvaluator(LocalizationEvaluator):
                     # compute IOU
                     # multiple_iou shape = (est_boxes_iter_accumulated, est_boxes_iter_now)
                     multiple_iou = calculate_multiple_iou(
-                        np.concatenate(context['thresh_boxes'][i], axis=0),
-                        np.concatenate(thresh_boxes))
+                        context['thresh_boxes'][i], thresh_boxes[i])
                     # loop over newly computed boxes
                     bboxes_index_add_list = []
                     bboxes_index_unify_list = []
