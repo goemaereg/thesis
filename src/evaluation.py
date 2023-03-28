@@ -268,6 +268,29 @@ class BoxCounters():
     def get_box_accuracy(self, iou_threshold):
         return self.num_correct[iou_threshold] * 1. / float(self.num_targets)
 
+def precision_recall_f1(confusion_matrix):
+    _, fp, fn, tp = confusion_matrix.ravel()
+    precision = float(tp) / float(tp + fp) if (tp + fp > 0) else 0.0
+    recall = float(tp) / float(tp + fn)
+    f1 = 0
+    if precision + recall > 0:
+        f1 = 2 * (precision * recall) / (precision + recall)
+    return precision, recall, f1
+
+def is_point_in_box(point, box):
+    """
+    Arguments:
+        point {list} -- list of float values (x,y)
+        bbox {list} -- bounding box of float_values [xmin, ymin, xmax, ymax]
+    Returns:
+        {boolean} -- true if the point is inside the bbox
+    """
+    return point[0] >= box[0] and point[0] <= box[2] and point[1] >= box[1] and point[1] <= box[3]
+
+def is_bbox_in_bbox(boxa, boxb):
+    return (is_point_in_box(boxa[:2], boxb) and is_point_in_box(boxa[2:], boxb)) or \
+           (is_point_in_box(boxb[:2], boxa) and is_point_in_box(boxb[2:], boxa))
+
 
 class BoxEvaluator(LocalizationEvaluator):
     """
@@ -300,12 +323,6 @@ class BoxEvaluator(LocalizationEvaluator):
         MaxBoxAccV3 averages the performance over IOU thresholds {0.3, 0.5, 0.7} to address different
         demands for localizaton fineness.
     """
-    @staticmethod
-    def precision_recall(confusion_matrix):
-        _, fp, fn, tp = confusion_matrix.ravel()
-        precision = float(tp) / float(tp + fp) if (tp + fp > 0) else 0.0
-        recall = float(tp) / float(tp + fn)
-        return precision, recall
 
     def __init__(self, **kwargs):
         super(BoxEvaluator, self).__init__(**kwargs)
@@ -349,7 +366,8 @@ class BoxEvaluator(LocalizationEvaluator):
             for image_id in self.image_ids}
         return resized_bbox
 
-    def unify(self, boxa, boxb):
+    @staticmethod
+    def unify(boxa, boxb):
         a_x0, a_y0, a_x1, a_y1 = boxa
         b_x0, b_y0, b_x1, b_y1 = boxb
         x0 = min(a_x0, b_x0)
@@ -395,13 +413,15 @@ class BoxEvaluator(LocalizationEvaluator):
                         # find largest IOU
                         max_iou_index = np.unravel_index(np.argmax(multiple_iou), shape=multiple_iou.shape)
                         max_iou = multiple_iou[max_iou_index]
-                        if max_iou < self.bbox_merge_iou_threshold:
-                            bboxes_index_add_list.append(max_iou_index[1])
-                        else:
+                        boxa = context['thresh_boxes'][i][max_iou_index[0]]
+                        boxb = thresh_boxes[i][max_iou_index[1]]
+                        if max_iou >= self.bbox_merge_iou_threshold or is_bbox_in_bbox(boxa, boxb):
                             if self.bbox_merge_strategy == 'drop':
                                 bboxes_index_drop_list.append(max_iou_index[1])
                             elif self.bbox_merge_strategy == 'unify':
                                 bboxes_index_unify_list.append(max_iou_index)
+                        else:
+                            bboxes_index_add_list.append(max_iou_index[1])
                         # mark newly estimated bbox with max IOU as unavailable to other combinations
                         multiple_iou[max_iou_index[0], :] = -1
                         multiple_iou[:, max_iou_index[1]] = -1
@@ -558,10 +578,11 @@ class BoxEvaluator(LocalizationEvaluator):
                 cam_threshold_optimal = self.cam_threshold_list[cam_threshold_optimal_index]
                 max_box_acc_threshold.append(cam_threshold_optimal)
                 cm = self.confusion_matrix(metric, iou_threshold=IOU_THRESHOLD, cam_threshold=cam_threshold_optimal)
-                precision, recall = self.precision_recall(cm)
+                precision, recall, f1 = precision_recall_f1(cm)
                 metrics |= {
-                    f'{metric}_box_precision_IOU_{IOU_THRESHOLD}': precision,
-                    f'{metric}_box_recall_IOU_{IOU_THRESHOLD}': recall
+                    f'{metric}_precision_IOU_{IOU_THRESHOLD}': precision,
+                    f'{metric}_recall_IOU_{IOU_THRESHOLD}': recall,
+                    f'{metric}_f1_IOU_{IOU_THRESHOLD}': f1
                 }
                 if self.log:
                     # plot confusion matrix
@@ -816,6 +837,7 @@ def scale_bounding_boxes(bboxes_dict, image_sizes, orig_shape):
 def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, log=False, files_max=400):
     optimal_thresholds_path = os.path.join(scoremap_root, split, 'optimal_thresholds.npy')
     thresholds = np.load(optimal_thresholds_path)
+    optimal_threshold = thresholds[-1]
     image_ids = get_image_ids(metadata)
     image_sizes = get_image_sizes(metadata)
     gt_bbox_dict = get_bounding_boxes(metadata)
@@ -824,12 +846,7 @@ def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, log=False
     cam_loader = _get_cam_loader(image_ids, scoremap_root, split)
     count = 0
     color_red = (0, 0, 255)  # BGR
-    color_blue = (255, 0, 0)  # BGR
     color_green = (0, 255, 0)  # BGR
-    color_blue_red = (255, 0, 255)  # BGR
-    color_blue_green = (255, 255, 0)  # BGR
-    color_green_red = (0, 255, 255)  # BGR
-    colors = [color_blue, color_red, color_green, color_blue_red, color_blue_green, color_green_red]
     tq0 = tqdm.tqdm(cam_loader, total=len(cam_loader), desc='xai_cam_batches')
     for cams, image_ids in tq0:
         cams = t2n(cams)
@@ -840,23 +857,21 @@ def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, log=False
             # load image
             img = cv2.imread(path_img) # color channels in BGR format
             orig_img_shape = image_sizes[image_id]
-            # load optimal thresholds
-            # resize saved cam from 224x224 to original image size
-            cam_stack = np.stack(
-                [cv2.resize(cam, orig_img_shape, interpolation=cv2.INTER_CUBIC) for cam in cam_stack], axis=0)
+            # merge cam stack
+            cam = np.max(cam_stack, axis=0)
+            # resize cam from 224x224 to original image size
+            cam = cv2.resize(cam, orig_img_shape, interpolation=cv2.INTER_CUBIC)
             # normalize
-            cam_stack = np.stack([normalize_scoremap(cam) for cam in cam_stack], axis=0)
-            cam_mask_stack = np.stack([cam >= thresh for cam, thresh in zip(cam_stack, thresholds)], axis=0)
+            cam = normalize_scoremap(cam)
+            # mask cam above optimal threshold
+            cam_mask = cam >= optimal_threshold
             # assign minimal value to area outside segment mask so normalization is constrained to segment values
-            cam_stack_heatmap = cam_stack.copy()
-            # mask out area outside binarized scoremap
-            cam_stack_heatmap[np.logical_not(cam_mask_stack)] = 0.0
-            # merge heatmap stack into single layer heatmap
-            cam_heatmap = np.clip(np.max(cam_stack_heatmap, axis=0), 0, 1)
+            cam_heatmap = cam.copy()
+            # zero out area outside masked scoremap
+            cam_heatmap[np.logical_not(cam_mask)] = 0.0
+            # transform to grey image
             cam_grey = (cam_heatmap * 255).astype('uint8')
             heatmap = cv2.applyColorMap(cam_grey, cv2.COLORMAP_JET)
-            # mask out area outside segment mask
-            # heatmap[np.logical_not(_cam_mask)] = (0, 0, 0)
             cam_annotated = heatmap * 0.3 + img * 0.5
             cam_path = os.path.join(xai_root, split, os.path.basename(image_id))
             if not os.path.exists(os.path.dirname(cam_path)):
@@ -867,11 +882,8 @@ def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, log=False
                 mlflow.log_artifact(cam_path, f'xai/{split}')
             # render image with annotations and CAM overlay
             # CAM overlay
-            # _cam_mask = _cam_norm > 0
             segment = np.zeros(shape=img.shape, dtype=np.uint8)
-            for index, (cam_mask, thresh) in enumerate(zip(cam_mask_stack[::-1], thresholds[::-1])):
-                color = colors[index]
-                segment[cam_mask] = color
+            segment[cam_mask] = color_red
             img_ann = segment * 0.3 + img * 0.5
             # estimated and GT bboxes overlay
             gt_bbox_list = gt_bbox_dict[image_id]

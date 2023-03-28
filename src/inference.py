@@ -109,6 +109,10 @@ class CAMComputer(object):
         timer_cam = Timer.create_or_get_timer(self.device, 'runtime_cam', warm_up=True)
         tq0 = tqdm.tqdm(range(self.bbox_iter_max), total=self.bbox_iter_max, desc='iterative bbox extraction')
         for iter_index in tq0:
+            if self.box_evaluator:
+                self.box_evaluator.reset()
+            if self.mask_evaluator:
+                self.mask_evaluator.reset()
             optimal_threshold_index = 0
             bbox_mask_strategy = self.config.bbox_mask_strategy if iter_index > 0 else None
             loader = get_eval_loader(
@@ -157,7 +161,6 @@ class CAMComputer(object):
                 metrics |= self.box_evaluator.compute()
                 optimal_threshold, optimal_threshold_index = self.box_evaluator.compute_optimal_cam_threshold(50)
                 optimal_threshold_list.append(optimal_threshold)
-                self.box_evaluator.reset()
             if self.mask_evaluator:
                 metrics |= self.mask_evaluator.compute()
             mlflow_metrics = {f'{self.split}_{metric}': value for metric, value in metrics.items()}
