@@ -61,10 +61,11 @@ class CAMComputer(object):
     @staticmethod
     def get_evaluators(**args):
         dataset_name = args.get('dataset_name', 'SYNTHETIC')
-        return {
-            "ILSVRC": (BoxEvaluator(**args), None),
-            "SYNTHETIC": (BoxEvaluator(**args), MaskEvaluator(**args))
+        evaluators = {
+            "ILSVRC": (BoxEvaluator, None),
+            "SYNTHETIC": (BoxEvaluator, MaskEvaluator)
         }[dataset_name]
+        return tuple(map(lambda x: x(**args) if x is not None else None, evaluators))
 
     def __init__(self, model, device, split, config, loader, log=False):
         self.model = model
