@@ -34,7 +34,6 @@ class ScoreCAM(BaseCAM):
                 BATCH_SIZE = self.batch_size
             else:
                 BATCH_SIZE = 64 #16
-            print(f'scorecam: BATCHSIZE = {BATCH_SIZE}')
             scores = []
             it_inputs = zip(targets, input_tensor, activation_tensor)# upsampled)
             for in_index, (target, in_tensor, act_tensor) in enumerate(it_inputs):
