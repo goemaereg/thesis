@@ -82,6 +82,7 @@ class BaseCAM:
         self.activations_and_grads.release()
 
         outputs = result['logits']
+        outputs_np = outputs.cpu().data.numpy()
         if targets is None:
             target_categories = np.argmax(outputs.cpu().data.numpy(), axis=-1)
             targets = [ClassifierOutputTarget(
@@ -105,7 +106,7 @@ class BaseCAM:
         cam_per_layer = self.compute_cam_per_layer(input_tensor,
                                                    targets,
                                                    eigen_smooth)
-        return self.aggregate_multi_layers(cam_per_layer)
+        return self.aggregate_multi_layers(cam_per_layer), outputs_np
 
     def get_target_width_height(self,
                                 input_tensor: torch.Tensor) -> Tuple[int, int]:

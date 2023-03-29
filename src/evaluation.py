@@ -200,7 +200,8 @@ class CamDataset(torchdata.Dataset):
     def __getitem__(self, index):
         image_id = self.image_ids[index]
         cam_id = self.cam_ids[index]
-        cam = self._load_cam(cam_id)
+        cam_stack = self._load_cam(cam_id)
+        cam = np.max(cam_stack, axis=0)
         return cam, image_id
 
     def __len__(self):
@@ -851,14 +852,12 @@ def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, log=False
     for cams, image_ids in tq0:
         cams = t2n(cams)
         cams_it = zip(cams, image_ids)
-        for cam_stack, image_id in cams_it:
+        for cam, image_id in cams_it:
             # render image overlayed with CAM heatmap
             path_img = os.path.join(data_root, image_id)
             # load image
             img = cv2.imread(path_img) # color channels in BGR format
             orig_img_shape = image_sizes[image_id]
-            # merge cam stack
-            cam = np.max(cam_stack, axis=0)
             # resize cam from 224x224 to original image size
             cam = cv2.resize(cam, orig_img_shape, interpolation=cv2.INTER_CUBIC)
             # normalize
@@ -984,8 +983,8 @@ def evaluate_wsol(xai_root, scoremap_root, data_root, metadata_root, mask_root,
                     box_evaluator.accumulate_boxacc(context)
             if mask_evaluator:
                 # merge scoremaps of different iterations
-                cam = np.max(cam_stack, axis=0)
-                mask_evaluator.accumulate(cam, image_id)
+                cam_merged = np.max(cam_stack, axis=0)
+                mask_evaluator.accumulate(cam_merged, image_id)
     metrics = {}
     if box_evaluator:
         metrics |= box_evaluator.compute()

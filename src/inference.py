@@ -29,6 +29,7 @@ import mlflow
 from wsol.cam_method.utils.model_targets import ClassifierOutputTarget
 from wsol.cam_method import CAM, GradCAM, GradCAMPlusPlus, ScoreCAM
 from wsol.cam_method.utils.timer import Timer
+from torch.nn.functional import softmax
 import cv2
 
 _IMAGENET_MEAN = [0.485, .456, .406]
@@ -109,6 +110,7 @@ class CAMComputer(object):
         timer_cam = Timer.create_or_get_timer(self.device, 'runtime_cam', warm_up=True)
         tq0 = tqdm.tqdm(range(self.bbox_iter_max), total=self.bbox_iter_max, desc='iterative bbox extraction')
         for iter_index in tq0:
+            iter_processed = 0
             if self.box_evaluator:
                 self.box_evaluator.reset()
             if self.mask_evaluator:
@@ -128,10 +130,21 @@ class CAMComputer(object):
                 with self.cam_algorithm(**self.cam_args) as cam_method:
                     timer_cam.start()
                     # cam_method returns numpy array
-                    cams = cam_method(images, output_targets).astype('float')
+                    cams, outputs = cam_method(images, output_targets)
+                    cams = cams.astype('float')
                     timer_cam.stop()
-                cams_it = zip(cams, image_ids, images)
-                for cam, image_id, image in cams_it:
+                cams_it = zip(cams, outputs, output_targets, image_ids, images)
+                for cam, output, output_target, image_id, image in cams_it:
+                    # softmax: extract prediction probability from logit scores
+                    y = np.exp(output - np.max(output)) # numerically stable version of softmax
+                    smax = y / np.sum(y)
+                    prob = output_target(smax)
+                    context = contexts[image_id] if image_id in contexts else None
+                    if context is not None and 'prob' in context:
+                        prev_prob = context['prob']
+                        if prob - prev_prob < -0.1:
+                            # prob of prediction decreased at least with 10% confidence
+                            continue
                     # cam is already resized to 224x224 and normalized by cam_method call
                     cam_id = os.path.join(self.split, f'{os.path.basename(image_id)}.npy')
                     cam_path = os.path.join(self.scoremap_root, cam_id)
@@ -140,29 +153,30 @@ class CAMComputer(object):
                     cam_list = []
                     if os.path.exists(cam_path):
                         cam_stack = np.load(cam_path)
-                        # unstack saved cams
                         cam_list = [c for c in cam_stack]
                     # add new cam to cam list
                     cam_list.append(cam)
-                    # stack with new cam
+                    # stack cams
                     cam_stack = np.stack(cam_list, axis=0)
                     np.save(cam_path, cam_stack)
                     cams_metadata[image_id] = cam_id
+                    bbox_context = {}
                     if self.box_evaluator:
-                        context = contexts[image_id] if image_id in contexts else None
-                        context = self.box_evaluator.accumulate_bboxes(cam, image_id, context)
-                        contexts[image_id] = context
-                        self.box_evaluator.accumulate_boxacc(context)
+                        bbox_context = self.box_evaluator.accumulate_bboxes(cam, image_id, context)
+                        self.box_evaluator.accumulate_boxacc(bbox_context)
                     if self.mask_evaluator:
                         # merge cams of previous iterations with current cam
                         cam_merged = np.max(cam_stack, axis=0)
                         self.mask_evaluator.accumulate(cam_merged, image_id)
+                    contexts[image_id] = {'image_id': image_id, 'prob': prob} | bbox_context
+                    iter_processed += 1
             if self.box_evaluator:
                 metrics |= self.box_evaluator.compute()
                 optimal_threshold, optimal_threshold_index = self.box_evaluator.compute_optimal_cam_threshold(50)
                 optimal_threshold_list.append(optimal_threshold)
             if self.mask_evaluator:
                 metrics |= self.mask_evaluator.compute()
+            metrics |= {'iter_processed': iter_processed}
             mlflow_metrics = {f'{self.split}_{metric}': value for metric, value in metrics.items()}
             mlflow.log_metrics(mlflow_metrics, step=iter_index)
             # write scoremap metadata
