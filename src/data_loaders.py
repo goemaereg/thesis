@@ -211,7 +211,6 @@ class WSOLImageLabelDataset(Dataset):
         image = Image.open(os.path.join(self.data_root, image_id))
         image = image.convert('RGB')
         image = self.transform(image)
-        bboxes = None
         if self.bbox_mask_strategy is not None and image_id in self.computed_bboxes:
             bboxes = self.computed_bboxes[image_id]
             for bbox in bboxes:

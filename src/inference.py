@@ -152,13 +152,14 @@ class CAMComputer(object):
                         os.makedirs(os.path.dirname(cam_path))
                     cam_list = []
                     if os.path.exists(cam_path):
-                        cam_stack = np.load(cam_path)
-                        cam_list = [c for c in cam_stack]
+                        cam_loaded = np.load(cam_path)
+                        cam_list = [cam_loaded]
                     # add new cam to cam list
                     cam_list.append(cam)
                     # stack cams
                     cam_stack = np.stack(cam_list, axis=0)
-                    np.save(cam_path, cam_stack)
+                    cam_merged = np.max(cam_stack, axis=0)
+                    np.save(cam_path, cam_merged)
                     cams_metadata[image_id] = cam_id
                     bbox_context = {}
                     if self.box_evaluator:
@@ -166,7 +167,6 @@ class CAMComputer(object):
                         self.box_evaluator.accumulate_boxacc(bbox_context)
                     if self.mask_evaluator:
                         # merge cams of previous iterations with current cam
-                        cam_merged = np.max(cam_stack, axis=0)
                         self.mask_evaluator.accumulate(cam_merged, image_id)
                     contexts[image_id] = {'image_id': image_id, 'prob': prob} | bbox_context
                     iter_processed += 1

@@ -200,8 +200,7 @@ class CamDataset(torchdata.Dataset):
     def __getitem__(self, index):
         image_id = self.image_ids[index]
         cam_id = self.cam_ids[index]
-        cam_stack = self._load_cam(cam_id)
-        cam = np.max(cam_stack, axis=0)
+        cam = self._load_cam(cam_id)
         return cam, image_id
 
     def __len__(self):
@@ -955,6 +954,10 @@ def evaluate_wsol(xai_root, scoremap_root, data_root, metadata_root, mask_root,
     metadata = configure_metadata(metadata_root)
     image_ids = get_image_ids(metadata)
     cam_threshold_list = list(np.arange(0, 1, cam_curve_interval))
+    est_bboxes = get_bounding_boxes_from_file(os.path.join(scoremap_root, split, 'bboxes_metadata.txt'))
+    optimal_thresholds_path = os.path.join(scoremap_root, split, 'optimal_thresholds.npy')
+    thresholds = np.load(optimal_thresholds_path)
+    optimal_threshold = thresholds[-1]
     # The length of the output of np.arange might not be numerically stable.
     # Better to use np.linspace
     # cam_threshold_list = np.linspace(0, 1, num=int(1/cam_curve_interval),
@@ -964,7 +967,7 @@ def evaluate_wsol(xai_root, scoremap_root, data_root, metadata_root, mask_root,
         metadata=metadata,
         dataset_name=dataset_name,
         split=split,
-        cam_threshold_list=cam_threshold_list,
+        cam_threshold_list=[optimal_threshold],
         iou_threshold_list=iou_threshold_list,
         mask_root=mask_root,
         multi_contour_eval=multi_contour_eval,
@@ -974,17 +977,21 @@ def evaluate_wsol(xai_root, scoremap_root, data_root, metadata_root, mask_root,
     box_evaluator, mask_evaluator = get_evaluators(**eval_args)
     cam_loader = _get_cam_loader(image_ids, scoremap_root, split)
     for cams, image_ids in cam_loader:
-        for cam_stack, image_id in zip(cams, image_ids):
-            cam_stack = t2n(cam_stack)
+        for cam, image_id in zip(cams, image_ids):
+            cam = t2n(cam)
             if box_evaluator:
-                context = None
-                for cam in cam_stack:
-                    context = box_evaluator.accumulate_bboxes(cam, image_id, context)
-                    box_evaluator.accumulate_boxacc(context)
+                bboxes = np.asarray(est_bboxes[image_id])
+                num_bboxes = len(bboxes)
+                # fake estimate: assume bbox area represents coutour area
+                areas = np.asarray([(b[2]-b[0])*[b[3]-b[1]] for b in bboxes])
+                context = dict(image_id=image_id,
+                               thresh_boxes=[bboxes],
+                               thresh_boxes_num=[num_bboxes],
+                               thresh_boxes_areas=[areas])
+                box_evaluator.accumulate_boxacc(context)
             if mask_evaluator:
                 # merge scoremaps of different iterations
-                cam_merged = np.max(cam_stack, axis=0)
-                mask_evaluator.accumulate(cam_merged, image_id)
+                mask_evaluator.accumulate(cam, image_id)
     metrics = {}
     if box_evaluator:
         metrics |= box_evaluator.compute()
