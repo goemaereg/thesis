@@ -235,10 +235,11 @@ class Trainer(object):
         params |= dict(
             epochs=self.args.epochs,
             batch_size=self.args.batch_size,
-            bbox_iter = self.args.bbox_iter,
-            bbox_iter_max = self.args.bbox_iter_max,
+            iter_max = self.args.iter_max,
+            iter_stop_prob_delta=self.args.iter_stop_prob_delta,
             bbox_mask_strategy = self.args.bbox_mask_strategy,
-            bbox_merge_strategy = self.args.bbox_merge_strategy
+            bbox_merge_strategy = self.args.bbox_merge_strategy,
+            bbox_merge_iou_threshold=self.args.bbox_merge_iou_threshold
         )
         mlflow.log_params(params)
         # tags

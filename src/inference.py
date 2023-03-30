@@ -79,8 +79,7 @@ class CAMComputer(object):
         self.data_root = self.config.data_paths[split]
         self.metadata_root = self.config.metadata_root
         self.scoremap_root = config.scoremap_root
-        self.bbox_iter = config.bbox_iter
-        self.bbox_iter_max = max(1, config.bbox_iter_max if config.bbox_iter else 1)
+        self.iter_max = max(1, config.iter_max)
         self.log = log
         self.bboxes_meta_path = os.path.join(self.scoremap_root, self.split, 'bboxes_metadata.txt')
         self.optimal_thresholds_path = os.path.join(self.scoremap_root, self.split, 'optimal_thresholds.npy')
@@ -108,7 +107,7 @@ class CAMComputer(object):
         metrics = {}
         optimal_threshold_list = []
         timer_cam = Timer.create_or_get_timer(self.device, 'runtime_cam', warm_up=True)
-        tq0 = tqdm.tqdm(range(self.bbox_iter_max), total=self.bbox_iter_max, desc='iterative bbox extraction')
+        tq0 = tqdm.tqdm(range(self.iter_max), total=self.iter_max, desc='iterative bbox extraction')
         for iter_index in tq0:
             iter_processed = 0
             if self.box_evaluator:
@@ -142,8 +141,8 @@ class CAMComputer(object):
                     context = contexts[image_id] if image_id in contexts else None
                     if context is not None and 'prob' in context:
                         prev_prob = context['prob']
-                        if prob - prev_prob < -0.1:
-                            # prob of prediction decreased at least with 10% confidence
+                        if prev_prob - prob >= self.config.iter_stop_prob_delta:
+                            # prob of prediction decreased at least with delta confidence
                             continue
                     # cam is already resized to 224x224 and normalized by cam_method call
                     cam_id = os.path.join(self.split, f'{os.path.basename(image_id)}.npy')
