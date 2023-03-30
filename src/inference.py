@@ -22,15 +22,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 import numpy as np
 from data_loaders import get_eval_loader
 from evaluation import BoxEvaluator, MaskEvaluator
-from evaluation import configure_metadata, normalize_scoremap
+from evaluation import configure_metadata
 import os
 import tqdm
 import mlflow
 from wsol.cam_method.utils.model_targets import ClassifierOutputTarget
 from wsol.cam_method import CAM, GradCAM, GradCAMPlusPlus, ScoreCAM
 from wsol.cam_method.utils.timer import Timer
-from torch.nn.functional import softmax
-import cv2
 
 _IMAGENET_MEAN = [0.485, .456, .406]
 _IMAGENET_STDDEV = [.229, .224, .225]
@@ -43,6 +41,7 @@ cam_methods = {
     'scorecam': ScoreCAM,
     'minmaxcam': CAM
 }
+
 
 def get_cam_algorithm(model, cam_method, device):
     target_layers = None
@@ -109,11 +108,11 @@ class CAMComputer(object):
         timer_cam = Timer.create_or_get_timer(self.device, 'runtime_cam', warm_up=True)
         tq0 = tqdm.tqdm(range(self.iter_max), total=self.iter_max, desc='iterative bbox extraction')
         for iter_index in tq0:
-            iter_processed = 0
             if self.box_evaluator:
                 self.box_evaluator.reset()
             if self.mask_evaluator:
                 self.mask_evaluator.reset()
+            num_skipped = 0
             optimal_threshold_index = 0
             bbox_mask_strategy = self.config.bbox_mask_strategy if iter_index > 0 else None
             loader = get_eval_loader(
@@ -122,7 +121,6 @@ class CAMComputer(object):
                 bboxes_path=self.bboxes_meta_path, bbox_mask_strategy=bbox_mask_strategy)
             tq1 = tqdm.tqdm(loader, total=len(loader), desc='evaluate cams batches')
             for images, targets, image_ids in tq1:
-                image_size = images.shape[2:]
                 # Using the with statement ensures the context is freed, and you can
                 # recreate different CAM objects in a loop.
                 output_targets = [ClassifierOutputTarget(target.item()) for target in targets]
@@ -134,48 +132,60 @@ class CAMComputer(object):
                     timer_cam.stop()
                 cams_it = zip(cams, outputs, output_targets, image_ids, images)
                 for cam, output, output_target, image_id, image in cams_it:
+                    context = contexts[image_id] if image_id in contexts else None
+                    # check whether this image is tagged as to be skipped
                     # softmax: extract prediction probability from logit scores
-                    y = np.exp(output - np.max(output)) # numerically stable version of softmax
+                    skip = False
+                    y = np.exp(output - np.max(output))  # numerically stable version of softmax
                     smax = y / np.sum(y)
                     prob = output_target(smax)
-                    context = contexts[image_id] if image_id in contexts else None
-                    if context is not None and 'prob' in context:
-                        prev_prob = context['prob']
-                        if prev_prob - prob >= self.config.iter_stop_prob_delta:
+                    if context is not None:
+                        if context['skip']:
+                            skip = True
+                        if 'prob' in context:
+                            prev_prob = context['prob']
                             # prob of prediction decreased at least with delta confidence
-                            continue
-                    # cam is already resized to 224x224 and normalized by cam_method call
-                    cam_id = os.path.join(self.split, f'{os.path.basename(image_id)}.npy')
-                    cam_path = os.path.join(self.scoremap_root, cam_id)
-                    if not os.path.exists(os.path.dirname(cam_path)):
-                        os.makedirs(os.path.dirname(cam_path))
-                    cam_list = []
-                    if os.path.exists(cam_path):
-                        cam_loaded = np.load(cam_path)
-                        cam_list = [cam_loaded]
-                    # add new cam to cam list
-                    cam_list.append(cam)
-                    # stack cams
-                    cam_stack = np.stack(cam_list, axis=0)
-                    cam_merged = np.max(cam_stack, axis=0)
-                    np.save(cam_path, cam_merged)
-                    cams_metadata[image_id] = cam_id
+                            if prev_prob - prob >= self.config.iter_stop_prob_delta:
+                                skip = True
+                                prob = prev_prob
+                    cam_merged = cam
+                    if not skip:
+                        # cam is already resized to 224x224 and normalized by cam_method call
+                        cam_id = os.path.join(self.split, f'{os.path.basename(image_id)}.npy')
+                        cam_path = os.path.join(self.scoremap_root, cam_id)
+                        if not os.path.exists(os.path.dirname(cam_path)):
+                            os.makedirs(os.path.dirname(cam_path))
+                        cam_list = []
+                        if os.path.exists(cam_path):
+                            cam_loaded = np.load(cam_path)
+                            cam_list = [cam_loaded]
+                        # add new cam to cam list
+                        cam_list.append(cam)
+                        # stack cams
+                        cam_stack = np.stack(cam_list, axis=0)
+                        cam_merged = np.max(cam_stack, axis=0)
+                        np.save(cam_path, cam_merged)
+                        cams_metadata[image_id] = cam_id
                     bbox_context = {}
                     if self.box_evaluator:
-                        bbox_context = self.box_evaluator.accumulate_bboxes(cam, image_id, context)
+                        if not skip:
+                            bbox_context = self.box_evaluator.accumulate_bboxes(cam, image_id, context)
+                        else:
+                            bbox_context = context
                         self.box_evaluator.accumulate_boxacc(bbox_context)
                     if self.mask_evaluator:
                         # merge cams of previous iterations with current cam
                         self.mask_evaluator.accumulate(cam_merged, image_id)
-                    contexts[image_id] = {'image_id': image_id, 'prob': prob} | bbox_context
-                    iter_processed += 1
+                    contexts[image_id] = bbox_context | {'image_id': image_id, 'prob': prob, 'skip': skip}
+                    if skip:
+                        num_skipped += 1
             if self.box_evaluator:
                 metrics |= self.box_evaluator.compute()
                 optimal_threshold, optimal_threshold_index = self.box_evaluator.compute_optimal_cam_threshold(50)
                 optimal_threshold_list.append(optimal_threshold)
             if self.mask_evaluator:
                 metrics |= self.mask_evaluator.compute()
-            metrics |= {'iter_processed': iter_processed}
+            metrics |= {'iter_skipped': num_skipped}
             mlflow_metrics = {f'{self.split}_{metric}': value for metric, value in metrics.items()}
             mlflow.log_metrics(mlflow_metrics, step=iter_index)
             # write scoremap metadata
@@ -195,7 +205,7 @@ class CAMComputer(object):
                 for image_id, context in contexts.items():
                     bboxes = context['thresh_boxes'][optimal_threshold_index]
                     for bbox in bboxes:
-                        x0,y0,x1,y1 = bbox
+                        x0, y0, x1, y1 = bbox
                         line = f'{image_id},{x0},{y0},{x1},{y1}\n'
                         fp.write(line)
             # write optimal threshold list
