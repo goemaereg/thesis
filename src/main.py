@@ -235,6 +235,7 @@ class Trainer(object):
         params |= dict(
             epochs=self.args.epochs,
             batch_size=self.args.batch_size,
+            bbox_iter = self.args.bbox_iter,
             bbox_iter_max = self.args.bbox_iter_max,
             bbox_mask_strategy = self.args.bbox_mask_strategy,
             bbox_merge_strategy = self.args.bbox_merge_strategy
