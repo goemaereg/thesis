@@ -140,8 +140,7 @@ class CAMComputer(object):
                     smax = y / np.sum(y)
                     prob = output_target(smax)
                     if context is not None:
-                        if context['skip']:
-                            skip = True
+                        skip = context.get('skip', False)
                         if 'prob' in context:
                             prev_prob = context['prob']
                             # prob of prediction decreased at least with delta confidence

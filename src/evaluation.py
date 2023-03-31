@@ -259,9 +259,14 @@ class BoxCounters():
         self.num_targets = 0
         self.num_correct = {iou_threshold: np.zeros(shape=len(self.cam_threshold_list))
              for iou_threshold in self.iou_threshold_list}
+        self.num_estimated = np.zeros(shape=len(self.cam_threshold_list))
 
     def add_correct(self, iou_threshold, count_per_threshold):
         self.num_correct[iou_threshold] += count_per_threshold
+
+    def add_estimated(self, count_per_threshold):
+        self.num_estimated += count_per_threshold
+
     def add_target(self, count):
         self.num_targets += count
 
@@ -341,22 +346,17 @@ class BoxEvaluator(LocalizationEvaluator):
         self.reset()
 
     def reset(self):
-        self.num_est_bboxes = np.zeros(shape=len(self.cam_threshold_list))
         for counter in self.counters.values():
             counter.reset()
 
     def confusion_matrix(self, metric, iou_threshold, cam_threshold):
         counter = self.counters[metric]
         cam_threshold_index = self.cam_threshold_list.index(cam_threshold)
-        num_est_bboxes = self.num_est_bboxes[cam_threshold_index]
         tp = counter.num_correct[iou_threshold][cam_threshold_index]
-        fp = num_est_bboxes - tp
+        fp = counter.num_estimated[cam_threshold_index] - tp
         fn = counter.num_targets - tp
         tn = 0
         return np.reshape(np.asarray((tn, fp, fn, tp)), newshape=(2,2))
-
-    def add_est_bbox(self, count_per_threshold):
-        self.num_est_bboxes += count_per_threshold
 
     def _load_resized_boxes(self, original_bboxes):
         resized_bbox = {image_id: [
@@ -440,8 +440,6 @@ class BoxEvaluator(LocalizationEvaluator):
                         [context['thresh_boxes_areas'][i], thresh_boxes_areas[i][bboxes_index_add_list]], axis=0)
                     context['thresh_boxes_num'][i] += len(bboxes_index_add_list)
                     # drop: just don't add boxes in bboxes_index_drop_list
-        num_est_boxes = np.asarray(context['thresh_boxes_num'])
-        self.add_est_bbox(num_est_boxes)
         return context
 
     def _accumulate_maxboxacc_v1_2(self, multiple_iou, number_of_box_list, metric):
@@ -472,6 +470,7 @@ class BoxEvaluator(LocalizationEvaluator):
                 np.where(np.asarray(sliced_multiple_iou) >= (IOU_THRESHOLD / 100))[0]
             num_correct[correct_threshold_indices] = 1
             self.counters[metric].add_correct(IOU_THRESHOLD, num_correct)
+        self.counters[metric].add_estimated(np.asarray(number_of_box_list))
         self.counters[metric].add_target(1)
 
     def _accumulate_maxboxacc_v3(self, multiple_iou, number_of_box_list):
@@ -512,6 +511,7 @@ class BoxEvaluator(LocalizationEvaluator):
             # reduce to a single score per threshold = true positives (matching GT boxes) per threshold
             num_correct = np.sum(num_correct_multi, axis=1)
             self.counters['MaxBoxAccV3'].add_correct(IOU_THRESHOLD, num_correct)
+        self.counters['MaxBoxAccV3'].add_estimated(np.asarray(number_of_box_list))
         self.counters['MaxBoxAccV3'].add_target(num_gt_boxes)
 
     def accumulate_boxacc(self, context):
