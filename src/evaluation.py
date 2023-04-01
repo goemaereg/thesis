@@ -122,6 +122,38 @@ def resize_bbox(box, image_size, resize_size):
     newbox_y1 = box_y1 * new_image_h / image_h
     return int(newbox_x0), int(newbox_y0), int(newbox_x1), int(newbox_y1)
 
+def is_point_in_box(point, box):
+    """
+    Arguments:
+        point {list} -- list of float values (x,y)
+        bbox {list} -- bounding box of float_values [xmin, ymin, xmax, ymax]
+    Returns:
+        {boolean} -- true if the point is inside the bbox
+    """
+    return point[0] >= box[0] and point[0] <= box[2] and point[1] >= box[1] and point[1] <= box[3]
+
+def is_bbox_in_bbox(boxa, boxb):
+    return (is_point_in_box(boxa[:2], boxb) and is_point_in_box(boxa[2:], boxb)) or \
+           (is_point_in_box(boxb[:2], boxa) and is_point_in_box(boxb[2:], boxa))
+
+def intersecting(boxa, boxb):
+    # num_a x num_b
+    min_x = np.maximum(boxa[0], boxb[0])
+    min_y = np.maximum(boxa[1], boxb[1])
+    max_x = np.minimum(boxa[2], boxb[2])
+    max_y = np.minimum(boxa[3], boxb[3])
+    area_intersect = (np.maximum(0, max_x - min_x + 1) * np.maximum(0, max_y - min_y + 1))
+    return area_intersect > 0
+
+def intersecting_bboxes_indices(bboxes):
+    num_boxes = len(bboxes)
+    intersecting_indices = []
+    for i in range(num_boxes):
+        for j in range(i + 1, num_boxes):
+            if intersecting(bboxes[i], bboxes[j]):
+                intersecting_indices.append((i, j))
+    return intersecting_indices
+
 def scoremap2bbox(threshold, scoremap_image, width, height):
     _, thr_gray_heatmap = cv2.threshold(
         src=scoremap_image,
@@ -149,6 +181,7 @@ def scoremap2bbox(threshold, scoremap_image, width, height):
         x1 = min(x1, width - 1)
         y1 = min(y1, height - 1)
         estimated_boxes.append([x0, y0, x1, y1])
+
     return np.asarray(estimated_boxes), len(contours), np.asarray(areas)
 
 def compute_bboxes_from_scoremaps(scoremap, scoremap_threshold_list,
@@ -285,21 +318,6 @@ def precision_recall_f1(confusion_matrix):
     recall = float(tp) / float(tp + fn)
     return precision, recall, f1_score(precision, recall)
 
-def is_point_in_box(point, box):
-    """
-    Arguments:
-        point {list} -- list of float values (x,y)
-        bbox {list} -- bounding box of float_values [xmin, ymin, xmax, ymax]
-    Returns:
-        {boolean} -- true if the point is inside the bbox
-    """
-    return point[0] >= box[0] and point[0] <= box[2] and point[1] >= box[1] and point[1] <= box[3]
-
-def is_bbox_in_bbox(boxa, boxb):
-    return (is_point_in_box(boxa[:2], boxb) and is_point_in_box(boxa[2:], boxb)) or \
-           (is_point_in_box(boxb[:2], boxa) and is_point_in_box(boxb[2:], boxa))
-
-
 class BoxEvaluator(LocalizationEvaluator):
     """
     A class used to evaluate location accuracy using bounding boxes.
@@ -390,6 +408,13 @@ class BoxEvaluator(LocalizationEvaluator):
             scoremap=scoremap,
             scoremap_threshold_list=self.cam_threshold_list,
             multi_contour_eval=self.multi_contour_eval)
+
+        # for i in range(40, len(thresh_boxes)): # start checking from threshold=0.4
+        #     # check for overlapping boxes
+        #     intersect_list = intersecting_bboxes_indices(thresh_boxes[i])
+        #     if len(intersect_list) > 0:
+        #         print(f'{image_id}: Intersecting bboxes at threshold {i/100}: {intersect_list}')
+
         if context is None or context['image_id'] != image_id:
             context = dict(image_id=image_id,
                            thresh_boxes=thresh_boxes,
