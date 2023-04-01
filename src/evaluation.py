@@ -273,14 +273,17 @@ class BoxCounters():
     def get_box_accuracy(self, iou_threshold):
         return self.num_correct[iou_threshold] * 1. / float(self.num_targets)
 
+def f1_score(precision, recall):
+    f1 = 0
+    if precision + recall > 0:
+        f1 = 2 * (precision * recall) / (precision + recall)
+    return f1
+
 def precision_recall_f1(confusion_matrix):
     _, fp, fn, tp = confusion_matrix.ravel()
     precision = float(tp) / float(tp + fp) if (tp + fp > 0) else 0.0
     recall = float(tp) / float(tp + fn)
-    f1 = 0
-    if precision + recall > 0:
-        f1 = 2 * (precision * recall) / (precision + recall)
-    return precision, recall, f1
+    return precision, recall, f1_score(precision, recall)
 
 def is_point_in_box(point, box):
     """
@@ -569,6 +572,9 @@ class BoxEvaluator(LocalizationEvaluator):
         metrics = {}
         for metric, counters in self.counters.items():
             box_acc_iou = {}
+            precision_iou = []
+            recall_iou = []
+            f1_iou = []
             max_box_acc_iou = []
             max_box_acc_threshold = []
             for IOU_THRESHOLD in self.iou_threshold_list:
@@ -579,6 +585,9 @@ class BoxEvaluator(LocalizationEvaluator):
                 max_box_acc_threshold.append(cam_threshold_optimal)
                 cm = self.confusion_matrix(metric, iou_threshold=IOU_THRESHOLD, cam_threshold=cam_threshold_optimal)
                 precision, recall, f1 = precision_recall_f1(cm)
+                precision_iou.append(precision)
+                recall_iou.append(recall)
+                f1_iou.append(f1)
                 metrics |= {
                     f'{metric}_precision_IOU_{IOU_THRESHOLD}': precision,
                     f'{metric}_recall_IOU_{IOU_THRESHOLD}': recall,
@@ -625,10 +634,23 @@ class BoxEvaluator(LocalizationEvaluator):
 
             if metric == 'MaxBoxAcc':
                 index_iou_50 = self.iou_threshold_list.index(50)
-                metrics |= {metric: max_box_acc_iou[index_iou_50]}
+                metrics |= {
+                    metric: max_box_acc_iou[index_iou_50],
+                    f'{metric}_precision': precision_iou[index_iou_50],
+                    f'{metric}_recall': recall_iou[index_iou_50],
+                    f'{metric}_f1': f1_iou[index_iou_50]
+                }
                 metrics |= {f'{metric}_optimal_threshold': max_box_acc_threshold[index_iou_50]}
             else:
-                metrics |= {metric: np.average(max_box_acc_iou)}
+                precision = np.average(precision_iou)
+                recall = np.average(recall_iou)
+                f1 = f1_score(precision, recall)
+                metrics |= {
+                    metric: np.average(max_box_acc_iou),
+                    f'{metric}_precision': precision,
+                    f'{metric}_recall': recall,
+                    f'{metric}_f1': f1
+                }
             for index, IOU_THRESHOLD in enumerate(self.iou_threshold_list):
                 metrics |= {f'{metric}_IOU_{IOU_THRESHOLD}': max_box_acc_iou[index]}
                 metrics |= {f'{metric}_optimal_threshold_IOU_{IOU_THRESHOLD}': max_box_acc_threshold[index]}
