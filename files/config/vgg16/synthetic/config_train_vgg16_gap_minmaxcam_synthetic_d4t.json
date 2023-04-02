@@ -46,7 +46,7 @@
   "num_val_sample_per_class": 0,
   "override_cache": true,
   "pretrained": true,
-  "pretrained_path": "",
+  "pretrained_path": "models/vgg16_gap_cam_synthetic_d4t.pt",
   "proxy_training_set": false,
   "resize_size": 256,
   "seed": 42,

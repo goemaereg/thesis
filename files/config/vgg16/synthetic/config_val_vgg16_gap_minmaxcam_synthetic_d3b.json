@@ -7,7 +7,7 @@
   "batch_size": 64,
   "bbox_metric": "MaxBoxAccV3",
   "cam_curve_interval": 0.01,
-  "config": "files/config/vgg16/synthetic/config_train_vgg16_gap_minmaxcam_synthetic_d3b.json",
+  "config": "files/config/vgg16/synthetic/config_val_vgg16_gap_minmaxcam_synthetic_d3b.json",
   "crop_size": 224,
   "cutmix_beta": 1.0,
   "cutmix_prob": 1.0,
