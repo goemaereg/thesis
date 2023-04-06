@@ -1,0 +1,33 @@
+\usepackage[english]{babel} % or english if your text is in English
+
+\usepackage[backref,hyperindex=true,pagebackref=true]{hyperref}
+                          % New: you must load the hyperref package
+                          % yourself! This allows you to put it in the
+                          % correct order with the other packages you load!
+
+\usepackage{mathptmx}
+\iftutex
+\usepackage{fontspec}
+\setmainfont{Calibri} % comment this line out if you want computer
+                      % modern as main font, or feel free to select
+                      % any other font
+\setsansfont{Calibri}
+\usepackage{sansmathaccent}
+\fi
+
+\usepackage{multicol}
+\usepackage{glossaries}
+\usepackage{graphicx}
+\graphicspath{{./images/}}
+\usepackage{wrapfig}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{amssymb}
+\usepackage{glossaries}
+\usepackage{amsmath}
+\usepackage[font=small,labelfont=bf,textfont=it]{caption}
+\linespread{1.3}
+
+\makenoidxglossaries
+
+\include{chapters/glossary}

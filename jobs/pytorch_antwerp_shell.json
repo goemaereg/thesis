@@ -3,14 +3,17 @@
     "description": "Used to run pytorch jobs",
     "request": {
         "resources": {
-            "cpus": 1,
-            "gpus": 0,
+            "slaveName": "slave7A",
+            "cpus": 2,
+            "gpus": 1,
             "cpuMemoryGb": 16
         },
         "docker": {
             "storage": [{
                 "hostPath": "/project_antwerp",
                 "containerPath": "/project"
+            },{
+                "containerPath": "/project_scratch"
             }],
             "image": "pytorch/pytorch",
             "command": "sleep 86400"
