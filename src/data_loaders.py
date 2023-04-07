@@ -289,37 +289,46 @@ class WSOLImageLabelTarDataset(Dataset):
 
 class WSOLImageLabelLmdbDataset(Dataset):
     environments = dict()
+
+    @classmethod
+    def _init_db(cls, lmdb_path):
+        if lmdb_path not in cls.environments:
+            cls.environments[lmdb_path] = lmdb.open(lmdb_path, subdir=os.path.isdir(lmdb_path),
+                                                    readonly=True, lock=False,
+                                                    readahead=False, meminit=False)
+        env = cls.environments[lmdb_path]
+        with env.begin(write=False) as txn:
+            length = pickle.loads(txn.get(b'__len__'))
+        return env, length
+
     def __init__(self, lmdb_path, metadata_root, transform, normalize):
         self.lmdb_path = lmdb_path
-        if lmdb_path not in self.environments:
-            self.environments[lmdb_path] = lmdb.open(lmdb_path, subdir=os.path.isdir(lmdb_path),
-                                                     readonly=True, lock=False,
-                                                     readahead=False, meminit=False)
-        with self.environments[lmdb_path].begin(write=False) as txn:
-            self.length = pickle.loads(txn.get(b'__len__'))
+        self.env = None
+        self.length = 1281168
         self.metadata = configure_metadata(metadata_root)
-        self.image_ids = get_image_ids(self.metadata, proxy=False)
         self.image_labels = get_class_labels(self.metadata)
+        self.image_ids = list(self.image_labels)
         self.transform = transform
         self.normalize = normalize
 
     def __getitem__(self, idx):
+        if self.env is None:
+            self.env, self.length = self._init_db(self.lmdb_path)
         image, target = None, None
         # example image_id: train/n01440764/n01440764_10026.JPEG
         image_id = self.image_ids[idx]
         image_label = self.image_labels[image_id]
-        env = self.environments[self.lmdb_path]
-        with env.begin(write=False) as txn:
+        with self.env.begin(write=False) as txn:
             key = u'{}'.format(image_id).encode('ascii')
             byteflow = txn.get(key)
-        image_buffer = pickle.loads(byteflow)
-        with io.BytesIO(image_buffer) as bio:
-            image = Image.open(bio).convert('RGB')
-        if self.transform is not None:
-            image = self.transform(image)
-        if self.normalize is not None:
-            image = self.normalize(image)
-        return image, image_label, image_id
+            image_buffer = pickle.loads(byteflow)
+            with io.BytesIO(image_buffer) as bio:
+                image = Image.open(bio).convert('RGB')
+            if self.transform is not None:
+                image = self.transform(image)
+            if self.normalize is not None:
+                image = self.normalize(image)
+            return image, image_label, image_id
 
     def __len__(self):
         return self.length
@@ -331,8 +340,8 @@ class MiniBatchSampler(Sampler[int]):
                  batch_set_size=12) -> None:
         super().__init__(image_label_dataset)
         self.dataset = image_label_dataset
-        self.labels = list(self.dataset.image_labels.values())
-        self.unique_labels = np.unique(self.labels)
+        self.labels = np.asarray(list(self.dataset.image_labels.values()))
+        self.unique_labels = np.sort(np.unique(self.labels))
         self.class_set_size = class_set_size
         self.batch_set_size = batch_set_size
         batch_size = self.class_set_size * self.batch_set_size

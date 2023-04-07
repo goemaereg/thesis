@@ -161,9 +161,10 @@ class Trainer(object):
                       'Conv2d_3', 'Conv2d_4'],
     }
 
-    def __init__(self, args):
+    def __init__(self, args, log=True):
         self.epoch = 0
         self.args = args
+        self.log = log
         model_params = dict(
             adl_drop_rate=self.args.adl_drop_rate,
             adl_drop_threshold=self.args.adl_threshold,
@@ -217,48 +218,49 @@ class Trainer(object):
         )
         method_args = vars(self.args) | {'model': self.model, 'device': self.device, 'optimizer': self.optimizer}
         self.wsol_method = wsol_methods[self.args.wsol_method](**method_args)
-        # MLFlow logging
-        # artifacts
-        mlflow.log_artifact('requirements.txt')
-        mlflow.log_artifact(self.args.config, 'config')
-        state: dict[str, Any] = vars(self.args)
-        state['data_paths'] = vars(self.args.data_paths)
-        del state['reporter']
-        if self.args.pretrained_path is None:
-            del state['pretrained_path']
-        # sort by key
-        state = dict(sorted(state.items()))
-        mlflow.log_dict(state, 'state/config.json')
-        mlflow.log_text(' '.join(sys.argv), 'state/command.txt')
-        # hyper parameters
-        params = model_params | optimizer_params
-        params |= dict(
-            epochs=self.args.epochs,
-            batch_size=self.args.batch_size,
-            iter_max = self.args.iter_max,
-            iter_stop_prob_delta=self.args.iter_stop_prob_delta,
-            bbox_mask_strategy = self.args.bbox_mask_strategy,
-            bbox_merge_strategy = self.args.bbox_merge_strategy,
-            bbox_merge_iou_threshold=self.args.bbox_merge_iou_threshold
-        )
-        mlflow.log_params(params)
-        # tags
-        tags = dict(
-            architecture=self.args.architecture,
-            architecture_type=self.args.architecture_type,
-            dataset=self.args.dataset_name,
-            dataset_spec=self.args.dataset_name_suffix,
-            experiment=self.args.experiment_name,
-            large_feature_map=self.args.large_feature_map,
-            method=self.args.wsol_method,
-            model=self.model.__class__.__name__,
-            num_classes=self._NUM_CLASSES_MAPPING[self.args.dataset_name],
-            optimizer=self.optimizer.__class__.__name__,
-            pretrained=self.args.pretrained,
-            train=self.args.train,
-            train_augment=self.args.train_augment
-        )
-        mlflow.set_tags(tags)
+        if self.log:
+            # MLFlow logging
+            # artifacts
+            mlflow.log_artifact('requirements.txt')
+            mlflow.log_artifact(self.args.config, 'config')
+            state: dict[str, Any] = vars(self.args)
+            state['data_paths'] = vars(self.args.data_paths)
+            del state['reporter']
+            if self.args.pretrained_path is None:
+                del state['pretrained_path']
+            # sort by key
+            state = dict(sorted(state.items()))
+            mlflow.log_dict(state, 'state/config.json')
+            mlflow.log_text(' '.join(sys.argv), 'state/command.txt')
+            # hyper parameters
+            params = model_params | optimizer_params
+            params |= dict(
+                epochs=self.args.epochs,
+                batch_size=self.args.batch_size,
+                iter_max = self.args.iter_max,
+                iter_stop_prob_delta=self.args.iter_stop_prob_delta,
+                bbox_mask_strategy = self.args.bbox_mask_strategy,
+                bbox_merge_strategy = self.args.bbox_merge_strategy,
+                bbox_merge_iou_threshold=self.args.bbox_merge_iou_threshold
+            )
+            mlflow.log_params(params)
+            # tags
+            tags = dict(
+                architecture=self.args.architecture,
+                architecture_type=self.args.architecture_type,
+                dataset=self.args.dataset_name,
+                dataset_spec=self.args.dataset_name_suffix,
+                experiment=self.args.experiment_name,
+                large_feature_map=self.args.large_feature_map,
+                method=self.args.wsol_method,
+                model=self.model.__class__.__name__,
+                num_classes=self._NUM_CLASSES_MAPPING[self.args.dataset_name],
+                optimizer=self.optimizer.__class__.__name__,
+                pretrained=self.args.pretrained,
+                train=self.args.train,
+                train_augment=self.args.train_augment
+            )
+            mlflow.set_tags(tags)
 
     def _set_device(self):
         device = self.args.device

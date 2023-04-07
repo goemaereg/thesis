@@ -127,6 +127,7 @@ class VggCam(nn.Module):
         if return_cam:
             feature_maps = conv6_relu
             cam_weights = self.fc.weight[labels]
+            # cams shape: (mini batch size, H, W)
             cams = (cam_weights.view(*feature_maps.shape[:2], 1, 1) *
                     feature_maps).nansum(1, keepdim=False)
             result |= { 'cams': cams }

@@ -23,7 +23,7 @@
             "interactive": false,
             "restartable": false,
             "minDuration": "4 days",
-            "maxDuration": "1 week"
+            "maxDuration": "4 weeks"
         }
     }
 }

@@ -1,4 +1,6 @@
 {
+    "name": "pytorch",
+    "description": "Used to run pytorch jobs",
     "request": {
         "resources": {
             "cpus": 4,
@@ -7,23 +9,15 @@
             "gpuModel": [ "V100" ]
         },
         "docker": {
-            "environment": {
-                "EXPERIMENT_NAME": "",
-                "RUN_NAME": "",
-                "CONFIG_FILE": ""
-            },
             "storage": [{
                 "hostPath": "/project_antwerp",
                 "containerPath": "/project"
             }],
             "image": "pytorch/pytorch",
-            "command": "/project/thesis/start_job.sh"
+            "command": "sleep 86400"
         },
         "scheduling": {
-            "interactive": false,
-            "restartable": false,
-            "minDuration": "4 days",
-            "maxDuration": "1 week"
+            "interactive": true
         }
     }
 }
