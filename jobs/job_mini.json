@@ -4,7 +4,7 @@
             "cpus": 2,
             "gpus": 1,
             "cpuMemoryGb": 16,
-            "gpuModel": [ "V100" ]
+            "gpuModel": [ "V100", "4000" ]
         }
     }
 }
