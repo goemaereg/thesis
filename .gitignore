@@ -14,6 +14,7 @@ data/metadata/SYNTHETIC_v0/
 mlruns/
 models/
 models_v0/
+models_v1/
 notebook/mlruns/
 other/
 pytorch/
