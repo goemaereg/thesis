@@ -178,10 +178,11 @@ def perf(args):
     if args.batch_sampler is True:
         _batch_size = 1
         shuffle = None
+
         batch_sampler = MiniBatchSampler(
             dataset,
-            batch_set_size=batch_set_size,
-            class_set_size=class_set_size)
+            batch_set_size=args.minmaxcam_batch_set_size,
+            class_set_size=args.minmaxcam_class_set_size)
     else:
         _batch_size = args.batch_size
         shuffle = args.shuffle
@@ -245,8 +246,10 @@ def str2bool(v):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--path', '-p', type=str, default=lmdb_path, help='lmdb path')
-    parser.add_argument('--batch_size', '-b', type=int, default=256, help='number of images to process')
+    parser.add_argument('--batch_size', '-b', type=int, default=1, help='number of images to process')
     parser.add_argument('--batch_sampler', '-m', type=str2bool, nargs='?', const=True, default=True)
+    parser.add_argument('--minmaxcam_class_set_size', '-l', type=int, default=5, help='MinMaxCam class set size'),
+    parser.add_argument('--minmaxcam_batch_set_size', '-a', type=int, default=12, help='MinMaxCam batch set size'),
     parser.add_argument('--num_images', '-i', type=int, default=np.inf, help='number of images to process')
     parser.add_argument('--shuffle', '-s', type=str2bool, nargs='?', const=True, default=False)
     parser.add_argument('--train', '-t', type=str2bool, nargs='?', const=True, default=False)

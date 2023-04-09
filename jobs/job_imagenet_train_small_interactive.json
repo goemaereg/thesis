@@ -3,7 +3,7 @@
     "description": "Used to run pytorch jobs",
     "request": {
         "resources": {
-            "cpus": 4,
+            "cpus": 8,
             "gpus": 2,
             "cpuMemoryGb": 64,
             "gpuModel": [ "V100" ]

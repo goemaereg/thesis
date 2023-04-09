@@ -5,7 +5,7 @@ import argparse
 import cProfile, pstats
 from src.main import Trainer
 from src.config import configure_load, configure_log_folder, configure_log, configure_data_paths, \
-    configure_mask_root, configure_reporter, configure_pretrained_path, get_architecture_type
+    configure_mask_root, configure_reporter, configure_pretrained_path, get_architecture_type, get_configs
 import torch
 import torch.nn.functional as F
 import numpy as np
@@ -207,19 +207,13 @@ class MinMaxCAMMethod(BaseMethod):
         return logits, loss
 
 
-def train_init(args):
-    targs = argparse.Namespace(**configure_load(args.config))
-    targs.log_folder = 'perf_log'
+def train_init(targs):
+    # targs = argparse.Namespace(**configure_load(args.config))
     targs.experiment_name = 'minmaxcamperf'
+    targs.log_folder = 'perf_log'
     targs.log_folder = configure_log_folder(targs)
     targs.log_path = configure_log(targs)
-    targs.architecture_type = get_architecture_type(targs.architecture_type, targs.wsol_method)
-    targs.data_paths = configure_data_paths(targs)
-    targs.metadata_root = os.path.join(targs.metadata_root, targs.dataset_name)
-    targs.mask_root = configure_mask_root(targs)
-    targs.reporter, targs.reporter_log_root = configure_reporter(targs)
-    targs.pretrained_path = configure_pretrained_path(targs)
-    targs.workers = args.workers
+    print(f'workers = {targs.workers}')
     trainer = Trainer(targs, log=False)
     last_epoch = trainer.epoch - 1
     trainer.set_lr_scheduler(trainer.optimizer, last_epoch)
@@ -247,10 +241,6 @@ def perf(args):
                 total_loss += loss.item() * images.size(0)
                 num_correct += (pred == targets).sum().item()
                 num_images += images.size(0)
-                if num_images >= args.num_images:
-                    break
-            if num_images >= args.num_images:
-                break
             loss = total_loss / float(num_images)
             accuracy = num_correct / float(num_images)  # * 100
             print(f'train: epoch = {epoch} loss = {loss}, accuracy = {accuracy}')
@@ -268,25 +258,21 @@ def str2bool(v):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--path', '-p', type=str, default=lmdb_path, help='lmdb path')
-    parser.add_argument('--num_images', '-i', type=int, default=np.inf, help='number of images to process')
-    parser.add_argument('--config', '-c', type=str, help='Configuration JSON file path with saved arguments')
-    parser.add_argument('--workers', '-w', type=int, default=0)
-    parser.add_argument('--num_stats', '-r', type=int, help='top number of statistics in pstats')
-    args = parser.parse_args()
-    restrictions = []
-    if args.num_stats is not None:
-        restrictions.append(args.num_stats)
+    # parser.add_argument('--path', '-p', type=str, default=lmdb_path, help='lmdb path')
+    # parser.add_argument('--num_images', '-i', type=int, default=np.inf, help='number of images to process')
+    # parser.add_argument('--config', '-c', type=str, help='Configuration JSON file path with saved arguments')
+    # parser.add_argument('--workers', '-w', type=int, default=0)
+    # parser.add_argument('--num_stats', '-r', type=int, help='top number of statistics in pstats')
+    # args = parser.parse_args()
+    args = get_configs()
+    restrictions = [20]
     restrictions = tuple(restrictions)
     pr = cProfile.Profile()
     pr.enable()
-
     # ... do something ...
     perf(args)
-
     pr.disable()
     s = io.StringIO()
-    pstats.Stats(pr, stream=s).sort_stats(pstats.SortKey.CUMULATIVE).print_stats(*restrictions)
-    pstats.Stats(pr, stream=s).sort_stats(pstats.SortKey.TIME).print_stats(*restrictions)
+    pstats.Stats(pr, stream=s).sort_stats(pstats.SortKey.CUMULATIVE).print_stats(20)
+    pstats.Stats(pr, stream=s).sort_stats(pstats.SortKey.TIME).print_stats(20)
     print(s.getvalue())
-
