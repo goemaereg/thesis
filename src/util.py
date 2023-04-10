@@ -37,6 +37,7 @@ class Logger(object):
         return self
 
     def __exit__(self, type, value, traceback):
+        self.flush()
         self.console.close()
         self.fp.close()
         sys.stdout = self.console
