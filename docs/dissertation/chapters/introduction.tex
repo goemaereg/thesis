@@ -1,43 +1,25 @@
 \chapter{Introduction}
 
-% Feedback van Benjamin:
-introductie\\
-- Wat is wSOL, waarom gebruiken, advandage over object detection\\
-- doel object localization\\
-- waarom de keuzes van de metodologie\\
-verschil wsol en explanation\\
-beschrijven cam methods is eerder related work. Zeggen dat cam familie metode is voor localizatie en verwijzen naar related work.\\
-hier research question in intro zetten en niet in related work.\\
-
-% my content
-General approach:
+\gls{WSOL} can be explained by positioning it with respect to other types of object recognition tasks. Object recognition is a generic term to set of computer vision tasks for identifying objects in digital images. There are several tasks that belong to the field of object recognition: Image classification, object localization, object detection and semantic segmentation. 
 \\\\
-Explain all terms: E.g. WSOL.
+Image classification is a task that assigns a single label to an image. So, an image classification algorithm takes as input an image with one or more objects and returns a class label. For example, given an image depicting an animal, an image classification model would return one of labels "cat", "dog", "horse", etc. 
+\\\\
+An object localization algorithm deals with image classification and localizing objects by indicating bounding boxes that surround the objects. Each bounding box represents the location of a detected object. A bounding box is typically represented by two points: the top-left and bottom-right coordinates of the box. An object localization algorithm doesn't return a label for a detected object. There is only one label per image as the result of classification.
+\\\\
+Object detection is the task of localizing objects in an image with bounding boxes and assigning a label for each detected object. Hence, an object detection model takes as input an image with one or more objects and returns a set of bounding boxes and corresponding class labels.
+\\\\
+Semantic segmentation assigns a class label to each pixel in an image. This task can't localize separate different instances of the same class in an image, but returns a single mask including all instances of the same class.
+\\\\
+State-of-the-art object detection models are implemented using deep neural networks that are trained using supervised machine learning. Supervised learning for object detection requires that each object in an image must be assigned a class label and a bounding box that localizes the object in the image. This human labeling is a costly and error-prone task. Object localization only deals with recognition of same-class objects in images and can be seen as a simplified object detection task. It requires only a single image-level class label and bounding boxes for each object of that class in the image. The goal of the object localization task is to cover the full extent of an object in a digital image.
+\\\\
+\gls{WSOL} is an object localization task that trains an object localization model by only using image-level labels and it localizes objects by using features learned for classifying the image correctly. Hence the term weakly: Training uses image class labels but no localization bounding boxes. Because costly human labeling of object locations is not required, weakly supervised localization methods have gained significant momentum \cite{zhou2016cvpr, selvaraju2017grad, chattopadhay2018grad, wang2021minmaxcam, wang2020score, choe2020evaluating}.
+\\\\
+One of the most used methods for weakly supervised object localization is based on \gls{CAM} \cite{zhou2016cvpr}. This method uses features that are relevant for classification of an image to localize objects in that image. A characteristic of this method is that it focuses on the most discriminating parts of an object relevant for the prediction of the class of the image. This is a limitation of the \gls{CAM} method, leading to new research \cite{selvaraju2017grad, chattopadhay2018grad, wang2021minmaxcam, wang2020score, choe2020evaluating} that focuses on overcoming the limitations of the baseline \gls{CAM} method. As the CAM-family of methods represents a main body of research for object localization, we will use a specific list of CAM methods in this project. The relevant methods will be discussed in \ref{ch:related_work}. 
+\\\\
+Certain CAM-related techniques are mainly used for explainability, i.e. they are used to visually explain why a model predicts a certain class label for an image. Some of these methods indicate better ability to detect multiple object of the same class in an image and show promising results in qualitative experiment results \cite{wang2020score}.
+\\\\
+For most CAM methods, the relevant papers report performance improvements over the baseline \gls{CAM} method. \cite{choe2020evaluating} criticizes that \gls{CAM} methods lack a unified definition of the \gls{WSOL} task and proposes a new evaluation protocol localization. We will base our \gls{WSOL} evaluation method on the proposed protocol. A problem is that \gls{WSOL} has not been tested for detecting multiple object instances of the same class and current \gls{WSOL} metrics are not sufficient to measure multiple instance localization. Given that multiple-instance localization hasn't been tested, it is interesting to evaluate it. 
+\\\\
+The research question for us is whether we can use CAM-methods to evaluate and improve localization of multiple instances of the same class within images for the \gls{WSOL} task.
 \\
-Introduce topics and explain choices:\\
-- Why specific datasets, architectures, annotations, masks?\\
-- Why first with synthetic dataset?\\
-\\
-Positioning of WSOL in object localization landscape.
-\\
-WHy WSOL? \\ 
-Advantage over object detection: no costly human labeling of every object in images.\\
-Therefore, WSOL gained significant momentum. \\
-We focus on WSOL CAM method: explain what it is. \\
-\\
-Explain aim of localization: cover full extent of object \\
-In contrast: CAM focuses on discriminative parts of object which is limitation. \\
-WSOL CAM research focus on overcoming limitations. Give references to papers and shortly describe various techniques (CAM, Gradcam, Gradcam++, ScoreCAM, MinMaxCAM. \\
-\\
-Indicate that certain techniques mainly used for explainability, are better in detecting multiple objects from the same class in an image: E.g. ScoreCAM shows promise in qualitative experiment results.\\
-\\
-Most CAM methods reported performance improvements over baseline CAM method. Due to lack of unified definition of WSOL task, WSOL evaluation paper criticizes the methods and proposes a new evaluation protocol localization. \\
-\\
-A problem is that WSOL is not tested for detecting multiple object instances and current WSOL metrics are not sufficient to measure multiple instance localization.\\
-\\
-Our contribution:
-\\
-We introduce evaluation protocol for multiple-instance WSOL by defining new metrics. \\
-We benchmark existing CAM methods for multi-instance WSOL.\\
-We define improvement for multiple-instance WSOL.\\
-
+Therefor, we propose an evaluation protocol for localization of multiple-instances of the same class by defining new localization metrics. We will call this method \gls{MWSOL}. We then benchmark existing CAM methods for multiple instance localization. Finally, we investigate improvement methods for the \gls{MWSOL} task.\\
