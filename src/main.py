@@ -447,7 +447,7 @@ class Trainer(object):
             log=log,
         )
         # this method takes care of mlflow metrics logging
-        metrics = cam_computer.compute_and_evaluate_cams(save_cams=save_cams)
+        metrics = cam_computer.compute_and_evaluate_cams(epoch=epoch, save_cams=save_cams)
         for metric, value in metrics.items():
             if metric in self.performance_meters[split]:
                self.performance_meters[split][metric].update(value)

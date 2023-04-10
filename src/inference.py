@@ -82,6 +82,7 @@ class CAMComputer(object):
         self.log = log
         self.bboxes_meta_path = os.path.join(self.scoremap_root, self.split, 'bboxes_metadata.txt')
         self.optimal_thresholds_path = os.path.join(self.scoremap_root, self.split, 'optimal_thresholds.npy')
+        self.step = 0
 
         metadata = configure_metadata(os.path.join(config.metadata_root, split))
         cam_threshold_list = list(np.arange(0, 1, config.cam_curve_interval))
@@ -99,7 +100,7 @@ class CAMComputer(object):
             log=log)
         self.box_evaluator, self.mask_evaluator = self.get_evaluators(**eval_args)
 
-    def compute_and_evaluate_cams(self, save_cams=False):
+    def compute_and_evaluate_cams(self, epoch, save_cams=False):
         # print("Computing and evaluating cams.")
         cams_metadata = {}
         contexts = {}
@@ -186,7 +187,8 @@ class CAMComputer(object):
                 metrics |= self.mask_evaluator.compute()
             metrics |= {'iter_skipped': num_skipped}
             mlflow_metrics = {f'{self.split}_{metric}': value for metric, value in metrics.items()}
-            mlflow.log_metrics(mlflow_metrics, step=iter_index)
+            mlflow.log_metrics(mlflow_metrics, step=self.step)
+            self.step += 1
             # write scoremap metadata
             # format: image_id,cam_id
             if len(cams_metadata) > 0 and iter_index == 0:
@@ -212,7 +214,7 @@ class CAMComputer(object):
                 os.makedirs(os.path.dirname(self.optimal_thresholds_path))
             np.save(self.optimal_thresholds_path, np.asarray(optimal_threshold_list))
         metric_timers = {name: timer.get_total_elapsed_ms() for name, timer in Timer.timers.items()}
-        mlflow.log_metrics(metric_timers)
+        mlflow.log_metrics(metric_timers, step=epoch)
         Timer.reset()
         # return most recent metrics (i.e. from last iteration)
         return metrics | metric_timers
