@@ -1,32 +1,52 @@
 \chapter{Related work}
 
+% Feedback Benjamin:
+Sectie over WSOL
+Korte sectie over methodes die niet op CAM gebaseerd zijn. Belangrijk om te positioneren dat CAM methods niet de enige methode zijn \\\\
+CAM methods: CAM introduced by … and is … 
+- Gradcam improved method with gradients (zeg wat in paper gezegd is), gradcam++, ScoreCAM, minmaxcam. 
+\\
+Explanation metrics \\
+Evaluation methods \\
+- Hoe geevalueerd wordt \\
+- CAM paper: IOU,\\
+- MinMaxCAM\\
+- Gradcam, scorecam: increase in confidence, … (explanation) \\
+- Gradcam++: \\
+- WSOL evaluation paper\\
+Positioning:\\
+- We werken in WSOL en is gebaseerd op CAM\\
+- My work versus other work\\
+- We gebruiken aantal methods\\
+- We gebruiken bestaande metrics en aangepast aan onze taak multi-instance wsol (ook in methodology zeggen en uitwerken)\\
 
-\begin{verbatim}
-Introduce WSOL (cfr. WSOL evaluation paper):
-- by type of model output, supervision.
-- Present overview of attention methods from baseline CAM to improvements (CAM, GradCAM, ...) for localization of objects for the WSOL task and how they help to overcome CAM limitations and where they differ.
-- Indicate in which area the papers improve (localization, explainability) and what their constraints are (specific architecture requirements, computational complexity, ...)
 
-Describe shortcomings of evaluation techniques of current models as defined in WSOL evaluation paper (EvaluatingWeakly Supervised Object Localization Methods Right) and how it is solved:
-- no uniform evaluation protocol
-- ill-imposed task of WSOL
-Work of the evaluation paper: 
-- unified protocol and metrics 
-Reason about results on datasets (refs.)
+% my content
 
+Introduce WSOL (cfr. WSOL evaluation paper):\\
+- by type of model output, supervision.\\
+- Present overview of attention methods from baseline CAM to improvements (CAM, GradCAM, ...) for localization of objects for the WSOL task and how they help to overcome CAM limitations and where they differ.\\
+- Indicate in which area the papers improve (localization, explainability) and what their constraints are (specific architecture requirements, computational complexity, ...)\\
+\\
+Describe shortcomings of evaluation techniques of current models as defined in WSOL evaluation paper (EvaluatingWeakly Supervised Object Localization Methods Right) and how it is solved:\\
+- no uniform evaluation protocol\\
+- ill-imposed task of WSOL\\
+\\
+Work of the evaluation paper:\\ 
+- unified protocol and metrics \\
+- Reason findings of experiments in contrast with original papers (refs.)\\
+\\
 Discuss that GradCAM++ paper (Grad-CAM++: Improved Visual Explanations for Deep Convolutional Networks) defines an IOU metric to measure location accuracy on the PASCAL VOC 2012 dataset.
-Discuss that WSOL evaluation paper defines metrics based on ILSVRC paper.
-
-Reason that both evaluation paper and GradCAM paper use multi-instance datasets (imagenet, pascal voc) but that the used metrics don't measure how many instances are accurately localized. GradCAM++ IOU metric computes IOU of the area of explanation map pixels inside and ouside GT bounding boxes which is inaccurate and doesn't discrimiate between different instances. WSOL evaluation paper uses different pixel-level metrics and bounding-box level metrics which is more accurate, but doesn't provide multi-instance aware metrics.
-\end{verbatim}
-
-\begin{verbatim}
-Our scope:
-
-In this work, we propose a new multi-instance WSOL evaluation protocol that addresses the aforementioned issues. 
-We answer the research question:
-Can we use CAM-methods in WSOL to localize multiple instances of the same class?
-- We define metrics that enable evaluation of multiple-instance WSOL.
-- We design experiments to evaluate multiple-instance localization for popular CAM methods, architectures and datasets to contribute first multi-instance localization test results for these methods.
-- We investigate localization improvements for the multi-instance WSOL task.
-\end{verbatim}
+Discuss that WSOL evaluation paper defines metrics based on ILSVRC paper.\\
+\\
+Reason that both evaluation paper and GradCAM paper use multi-instance datasets (imagenet, pascal voc) but that the used metrics don't measure how many instances are accurately localized. GradCAM++ IOU metric computes IOU of the area of explanation map pixels inside and ouside GT bounding boxes which is inaccurate and doesn't discrimiate between different instances. WSOL evaluation paper uses different pixel-level metrics and bounding-box level metrics which is more accurate, but doesn't provide multi-instance aware metrics.\\
+\\
+Our scope:\\
+\\
+In this work, we propose a new multi-instance WSOL evaluation protocol that addresses the aforementioned issues. \\\\
+We answer the research question:\\
+Can we use CAM-methods in WSOL to localize multiple instances of the same class?\\
+\\
+- We define metrics that enable evaluation of multiple-instance WSOL.\\
+- We design experiments to evaluate multiple-instance localization for popular CAM methods, architectures and datasets to contribute first multi-instance localization test results for these methods.\\
+- We investigate localization improvements for the multi-instance WSOL task.\\

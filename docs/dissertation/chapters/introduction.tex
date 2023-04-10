@@ -1,33 +1,43 @@
 \chapter{Introduction}
 
-\begin{verbatim}
+% Feedback van Benjamin:
+introductie\\
+- Wat is wSOL, waarom gebruiken, advandage over object detection\\
+- doel object localization\\
+- waarom de keuzes van de metodologie\\
+verschil wsol en explanation\\
+beschrijven cam methods is eerder related work. Zeggen dat cam familie metode is voor localizatie en verwijzen naar related work.\\
+hier research question in intro zetten en niet in related work.\\
+
+% my content
 General approach:
-
+\\\\
 Explain all terms: E.g. WSOL.
-Introduce topics
-Explain choices
-- Why specific datasets, architectures, annotations, masks?
-- Why first with synthetic dataset?
-
+\\
+Introduce topics and explain choices:\\
+- Why specific datasets, architectures, annotations, masks?\\
+- Why first with synthetic dataset?\\
+\\
 Positioning of WSOL in object localization landscape.
-WHy WSOL? 
-Advantage over object detection: no costly human labeling of every object in images.
-Therefore, WSOL gained significant momentum 
-We focus on WSOL CAM method: explain what it is
-
-Explain aim of localization: cover full extent of object
-<-> CAM focuses on discriminative parts of object which is limitation
-WSOL CAM research focus on overcoming limitations. Give references to papers and shortly describe vairous techniques (Gradcam, Gradcam++, ScoreCAM, MinMaxCAM, NL-CAM)
-
-Indicate that certain techniques mainly used for explainability, are better in detecting multiple objects from the same class in an image: E.g. ScoreCAM shows promise in qualitative experiment results.
-
-Most CAM methods reported performance improvements over baseline CAM method. Due to lack of unified definition of WSOL task, WSOL evaluation paper criticizes the methods and proposes a new evaluation protocol localization. 
-
-A problem is that WSOL is not tested for detecting multiple object instances and current WSOL metrics are not sufficient to measure multiple instance localization.
-
+\\
+WHy WSOL? \\ 
+Advantage over object detection: no costly human labeling of every object in images.\\
+Therefore, WSOL gained significant momentum. \\
+We focus on WSOL CAM method: explain what it is. \\
+\\
+Explain aim of localization: cover full extent of object \\
+In contrast: CAM focuses on discriminative parts of object which is limitation. \\
+WSOL CAM research focus on overcoming limitations. Give references to papers and shortly describe various techniques (CAM, Gradcam, Gradcam++, ScoreCAM, MinMaxCAM. \\
+\\
+Indicate that certain techniques mainly used for explainability, are better in detecting multiple objects from the same class in an image: E.g. ScoreCAM shows promise in qualitative experiment results.\\
+\\
+Most CAM methods reported performance improvements over baseline CAM method. Due to lack of unified definition of WSOL task, WSOL evaluation paper criticizes the methods and proposes a new evaluation protocol localization. \\
+\\
+A problem is that WSOL is not tested for detecting multiple object instances and current WSOL metrics are not sufficient to measure multiple instance localization.\\
+\\
 Our contribution:
+\\
+We introduce evaluation protocol for multiple-instance WSOL by defining new metrics. \\
+We benchmark existing CAM methods for multi-instance WSOL.\\
+We define improvement for multiple-instance WSOL.\\
 
-We introduce evaluation protocol for multiple-instance WSOL by defining new metrics. 
-We benchmark existing CAM methods for multi-instance WSOL.
-We define improvement for multiple-instance WSOL.
-\end{verbatim}
