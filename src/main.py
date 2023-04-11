@@ -145,7 +145,6 @@ class EarlyStopping():
 
 class Trainer(object):
     _CHECKPOINT_NAME_TEMPLATE = '{}_checkpoint.pt' #'{}_checkpoint.pth.tar'
-    _SPLITS = ('train', 'val', 'test')
     _EVAL_METRICS = ['loss', 'classification']
     _BEST_CRITERION_METRIC = 'classification'
     _NUM_CLASSES_MAPPING = {
@@ -165,6 +164,7 @@ class Trainer(object):
         self.epoch = 0
         self.args = args
         self.log = log
+        self.splits = self._set_splits(args)
         model_params = dict(
             adl_drop_rate=self.args.adl_drop_rate,
             adl_drop_threshold=self.args.adl_threshold,
@@ -203,6 +203,7 @@ class Trainer(object):
         self.optimizer = self._set_optimizer(**optimizer_params)
         self.lr_scheduler = None
         self.loaders = get_data_loader(
+            splits=self.splits,
             data_roots=self.args.data_paths,
             metadata_root=self.args.metadata_root,
             batch_size=self.args.batch_size,
@@ -272,6 +273,15 @@ class Trainer(object):
         #     device = 'cpu'
         return device
 
+    def _set_splits(self, args):
+        splits = []
+        if args.train:
+            splits.append('train')
+        splits.append('val')
+        if args.dataset_name != 'ILSVRC':
+            splits.append('test')
+        return tuple(splits)
+
     def _set_performance_meters(self):
         if self.args.dataset_name in ('SYNTHETIC', 'OpenImages'):
             metric = 'PxAP'
@@ -290,7 +300,7 @@ class Trainer(object):
                                          if metric == 'loss' else True)
                 for metric in self._EVAL_METRICS
             }
-            for split in self._SPLITS
+            for split in self.splits
         }
         return eval_dict
 
@@ -383,7 +393,7 @@ class Trainer(object):
 
 
     def print_performances(self):
-        for split in self._SPLITS:
+        for split in self.splits:
             for metric in self._EVAL_METRICS:
                 current_performance = \
                     self.performance_meters[split][metric].current_value
@@ -473,7 +483,7 @@ class Trainer(object):
                 metric: self.performance_meters[split][metric].state_dict()
                 for metric in self._EVAL_METRICS
             }
-            for split in self._SPLITS
+            for split in self.splits
         }
         torch.save({'epoch': self.epoch,
                     'meters_state_dict': meters_state_dict,
@@ -585,15 +595,17 @@ def main(args):
             if early_stop:
                 print(f'Training stopped early after {trainer.epoch} epochs')
                 break
-    elif trainer.args.dataset_name != 'ILSVRC':
+    else:
         print("===========================================================")
         print("Final epoch evaluation on val set ...")
         trainer.evaluate(trainer.args.epochs, split='val', save_xai=True, save_cams=True, log=True)
-    print("===========================================================")
-    print("Final epoch evaluation on test set ...")
-    trainer.evaluate(trainer.args.epochs, split='test', save_xai=True, save_cams=True, log=True)
+        trainer.report(trainer.args.epochs, split='val')
+    if trainer.args.dataset_name != 'ILSVRC':
+        print("===========================================================")
+        print("Final epoch evaluation on test set ...")
+        trainer.evaluate(trainer.args.epochs, split='test', save_xai=True, save_cams=True, log=True)
+        trainer.report(trainer.args.epochs, split='test')
     trainer.print_performances()
-    trainer.report(trainer.args.epochs, split='test')
     trainer.save_performances()
     print("===========================================================")
     print(f"Tracking URI: {mlflow.get_tracking_uri()}")

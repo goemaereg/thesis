@@ -37,7 +37,6 @@ from typing import Iterator, List
 
 _IMAGE_MEAN_VALUE = [0.485, 0.456, 0.406]
 _IMAGE_STD_VALUE = [0.229, 0.224, 0.225]
-_SPLITS = ('train', 'val', 'test')
 
 _CAT_IMAGE_MEAN_STD = {
 'data/metadata/ILSVRC/train': {'mean': _IMAGE_MEAN_VALUE, 'std': _IMAGE_STD_VALUE},
@@ -381,57 +380,41 @@ def get_eval_loader(split, data_root, metadata_root, batch_size, workers,
         bbox_mask_strategy=bbox_mask_strategy)
     return DataLoader(dataset, batch_size=batch_size, num_workers=workers)
 
-def get_data_loader(data_roots, metadata_root, batch_size, workers,
+def get_data_loader(splits, data_roots, metadata_root, batch_size, workers,
                     resize_size, crop_size, proxy_training_set,
                     num_val_sample_per_class=0, batch_set_size=None,
                     class_set_size=None, train_augment=True, dataset_name='SYNTHETIC'):
-    mean_std = {}
-    dataset_normalize = {}
-    for split in _SPLITS:
+    loaders = {}
+    for split in splits:
         metadata_root_split = os.path.join(metadata_root, split)
         mean_std = _CAT_IMAGE_MEAN_STD[metadata_root_split]
         mean, std = mean_std['mean'], mean_std['std']
-        dataset_normalize[split] = transforms.Normalize(mean, std)
-
-    dataset_transforms = dict(
-        train=transforms.Compose([
-            transforms.Resize((resize_size, resize_size)),
-            transforms.RandomCrop(crop_size),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor()
-        ]),
-        val=transforms.Compose([
-            transforms.Resize((crop_size, crop_size)),
-            transforms.ToTensor()
-        ]),
-        test=transforms.Compose([
-            transforms.Resize((crop_size, crop_size)),
-            transforms.ToTensor()
-        ]))
-    if not train_augment:
-        dataset_transforms['train'] = transforms.Compose([
-            transforms.Resize((crop_size, crop_size)),
-            transforms.ToTensor()
-        ])
-    loaders = {}
-    for split in _SPLITS:
-        if dataset_name == 'ILSVRC' and split == 'train':
+        dataset_normalize = transforms.Normalize(mean, std)
+        if split == 'train' and train_augment is True:
+            dataset_transforms = transforms.Compose([
+                transforms.Resize((resize_size, resize_size)),
+                transforms.RandomCrop(crop_size),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor()])
+        else:
+            dataset_transforms = transforms.Compose([
+                transforms.Resize((crop_size, crop_size)),
+                transforms.ToTensor()])
+        if split == 'train' and dataset_name == 'ILSVRC':
             dataset = WSOLImageLabelLmdbDataset(
                 lmdb_path = os.path.join(data_roots[split], 'lmdb_train.lmdb'),
                 metadata_root=os.path.join(metadata_root, split),
-                transform=dataset_transforms[split],
-                normalize=dataset_normalize[split]
-            )
+                transform=dataset_transforms,
+                normalize=dataset_normalize)
         else:
             dataset = WSOLImageLabelDataset(
                 data_root=data_roots[split],
                 metadata_root=os.path.join(metadata_root, split),
-                transform=dataset_transforms[split],
-                normalize=dataset_normalize[split],
+                transform=dataset_transforms,
+                normalize=dataset_normalize,
                 proxy=proxy_training_set and split == 'train',
                 num_sample_per_class=(num_val_sample_per_class
-                                      if split == 'val' else 0)
-            )
+                                      if split == 'val' else 0))
         # default case: if batch_size > 1 then automatic batch loading
         shuffle = split == 'train'
         batch_sampler = None
@@ -445,12 +428,10 @@ def get_data_loader(data_roots, metadata_root, batch_size, workers,
                     dataset,
                     batch_set_size=batch_set_size,
                     class_set_size=class_set_size)
-        loaders |= {
-         split: DataLoader(
-             dataset,
-             batch_size=_batch_size,
-             shuffle=shuffle,
-             batch_sampler=batch_sampler,
-             num_workers=workers)
-        }
+        loaders[split] = DataLoader(
+            dataset,
+            batch_size=_batch_size,
+            shuffle=shuffle,
+            batch_sampler=batch_sampler,
+            num_workers=workers)
     return loaders
