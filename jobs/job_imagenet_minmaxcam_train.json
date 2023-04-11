@@ -1,0 +1,29 @@
+{
+    "request": {
+        "resources": {
+            "cpus": 16,
+            "gpus": 2,
+            "cpuMemoryGb": 64,
+            "gpuModel": [ "V100" ]
+        },
+        "docker": {
+            "environment": {
+                "EXPERIMENT_NAME": "",
+                "RUN_NAME": "",
+                "CONFIG_FILE": ""
+            },
+            "storage": [{
+                "hostPath": "/project_antwerp",
+                "containerPath": "/project"
+            }],
+            "image": "pytorch/pytorch",
+            "command": "/project/thesis/start_job.sh"
+        },
+        "scheduling": {
+            "interactive": false,
+            "restartable": false,
+            "minDuration": "4 days",
+            "maxDuration": "4 weeks"
+        }
+    }
+}

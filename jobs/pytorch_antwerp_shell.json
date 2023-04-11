@@ -13,6 +13,8 @@
                 "containerPath": "/project"
             },{
                 "containerPath": "/project_scratch"
+            },{
+                "containerPath": "/datasets_antwerp"
             }],
             "image": "pytorch/pytorch",
             "command": "sleep 86400"

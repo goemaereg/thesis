@@ -1,10 +1,21 @@
 \chapter{Related work} \label{ch:related_work}
 
-% Feedback Benjamin:
-Sectie over WSOL
-Korte sectie over methodes die niet op CAM gebaseerd zijn. Belangrijk om te positioneren dat CAM methods niet de enige methode zijn \\\\
-CAM methods: CAM introduced by … and is … 
-- Gradcam improved method with gradients (zeg wat in paper gezegd is), gradcam++, ScoreCAM, minmaxcam. 
+\acrfull{cnn} are used with great performance in a number of computer vision tasks. Within the landscape of object recognition tasks, given an input image, classification models return image-level class predictions \cite{lecun1998gradient}, semantic segmentation models \cite{shelhamer2017fully} predict pixel-wise class predictions, and object detection models \cite{girshick2014rich, girshick2015fast, ren2015faster} output a set of bounding-boxes with class predictions, one bounding box and class per recognized object. Object localization \cite{russakovsky2015imagenet} assumes that the image contains an object of a single class and produces a binary mask or a bounding box around the object of the class of interest.
+\\\\
+In supervised learning, a model learns a task by minimizing the error between its predictions and ground-truth labels. As human labeling of bounding boxes and segmentation masks cost significantly more than image-level categories \cite{papandreou2015weakly}, \acrshort{wsol} research \cite{zhou2016cvpr, zhang2018adversarial, zhang2018self, choe2019attention, singh2017hide} has gained significant momentum. 
+\\\\
+A baseline for a family of \acrshort{cam} methods was introduced by Zhou \textit{et al.} \cite{zhou2016cvpr}. \acrfull{cam} considers feature map activations before a \acrfull{gap} layer in the \acrshort{cnn} to localize the discriminative image regions despite being trained for a classification task. A disadvantage is that \acrshort{cam} requires modifications in network architectures to accomodate a \acrshort{gap} layer. This has as consequence that classificiation accuracy drops compared with the original architecture. Another disadvantage is that \acrshort{cam} can only partially localize objects due to its focus on discriminative parts of an image. 
+\\\\
+New \acrshort{wsol} research focused on overcoming the limitations of \acrshort{cam}. \acrfull{gradcam}, proposed by Selvaraju \textit{et al.} \cite{selvaraju2017grad}, uses gradients of a target with respect to the final convolutional layer to produce a localization map highlighting the important regions in an image concerning a certain object target. \acrshort{gradcam} is a generalization of \acrshort{cam}: It is applicable to a wide variety of \acrshort{cnn} architecture as it doesn't require a specific \acrshort{gap} layer. Off-the-shelf models can be evaluated for the \acrshort{wsol} task as no retraining is required. \acrshort{gradcam} is also used for making \acrshort{cnn}-based models more transparent by producing visual explanations. Further, \acrshort{gradcam} combines localizations with existing high-resolution visualizations \cite{springenberg2014striving} to obtain high-resolution class-discriminative Guided Grad-CAM visualizations.
+\\\\
+Grad-CAM++ (Chattopadhay \textit{et al.} \cite{chattopadhay2018grad}) is a generalization of \acrshort{gradcam} and addresses its shortcomings (multiple occurrences of same class in an image and poor object localizations). As in \acrshort{gradcam}, the CAM of a certain class is a linear combination of activation maps in the highest convolutional layer. In Grad-CAM, weights are an unweighted average of the gradients of each pixel in the activation map. In Grad-CAM++, weights are a weighted average of the gradients of each pixel in the activation map. This way, parts of the image important for predicting a specific class will be highlighted more in the activation map. Grad-CAM++ provides better visual explanations for a given \acrshort{cnn} architecture when compared to Grad-CAM.
+\\\\
+One of the most common problems of \acrshort{cam} methods is caused either by localization maps which focus, exclusively, on the most discriminative region of the objects of interest, or by activations occurring in background regions. MinMaxCAM (Wang \textit{et al.} \cite{wang2021minmaxcam}) addresses these two problems by proposing two representation regularization mechanisms: Full Region Regularization which tries to maximize the coverage of the localization map inside the object region, and Common Region Regularization which minimizes the activations occurring in background region. MinMaxCAM has the same architectural constraints as \acrshort{cam} in that it requires a modified network architecture with a \acrshort{gap} layer. An additional constraint is that it requires re-training weights due to its region regularization.
+\\\\
+ScoreCAM, introduced by Wang \textit{et al.} \cite{wang2020score}, proposes a novel post-hoc visual explanation method called Score-CAM based on class activation mapping. Unlike previous class activation mapping based approaches, Score-CAM gets rid of the dependence on gradients by obtaining the weight of each activation map through its forward passing score on target class. The final result is obtained by a linear combination of weights and activation maps. Score-CAM achieves better visual performance and fairness for interpreting the decision making process and outperforms previous methods on both recognition and localization tasks. It also shows promise to recognize multiple instances of the same class within an image. A disadvantage of the method is its high computational cost because it requires as many forward passes as there are activation maps to compute the weight of each activation map. 
+\\\\
+There has been a number of works other than \acrshort{cam} methods exploring \acrfull{wsol} using \acrshort{cnn}s. Bergamo \textit{et al.} \cite{bazzani2016self} proposes self-taught object localization technique that masks out image regions to identify the region that incurs the maximal drop in recognition score, and hence has the highest likelihood to contain the object of interest. Cinbis \textit{et al.} \cite{cinbis2016weakly} and Pinheiro \textit{et al.} \cite{pinheiro2015image} combine multiple-instance learning with \acrshort{cnn}s to localize objects. While these approaches yield some promising results, they are not trained end-to-end.
+% evaluation
 \\
 Explanation metrics \\
 Evaluation methods \\
@@ -19,14 +30,6 @@ Positioning:\\
 - My work versus other work\\
 - We gebruiken aantal methods\\
 - We gebruiken bestaande metrics en aangepast aan onze taak multi-instance wsol (ook in methodology zeggen en uitwerken)\\
-
-
-% my content
-
-Introduce WSOL (cfr. WSOL evaluation paper):\\
-- by type of model output, supervision.\\
-- Present overview of attention methods from baseline CAM to improvements (CAM, GradCAM, ...) for localization of objects for the WSOL task and how they help to overcome CAM limitations and where they differ.\\
-- Indicate in which area the papers improve (localization, explainability) and what their constraints are (specific architecture requirements, computational complexity, ...)\\
 \\
 Describe shortcomings of evaluation techniques of current models as defined in WSOL evaluation paper (EvaluatingWeakly Supervised Object Localization Methods Right) and how it is solved:\\
 - no uniform evaluation protocol\\
@@ -44,8 +47,6 @@ Reason that both evaluation paper and GradCAM paper use multi-instance datasets 
 Our scope:\\
 \\
 In this work, we propose a new multi-instance WSOL evaluation protocol that addresses the aforementioned issues. \\\\
-We answer the research question:\\
-Can we use CAM-methods in WSOL to localize multiple instances of the same class?\\
 \\
 - We define metrics that enable evaluation of multiple-instance WSOL.\\
 - We design experiments to evaluate multiple-instance localization for popular CAM methods, architectures and datasets to contribute first multi-instance localization test results for these methods.\\
