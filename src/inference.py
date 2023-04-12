@@ -29,6 +29,8 @@ import mlflow
 from wsol.cam_method.utils.model_targets import ClassifierOutputTarget
 from wsol.cam_method import CAM, GradCAM, GradCAMPlusPlus, ScoreCAM
 from wsol.cam_method.utils.timer import Timer
+import lmdb
+import pickle
 
 _IMAGENET_MEAN = [0.485, .456, .406]
 _IMAGENET_STDDEV = [.229, .224, .225]
@@ -83,7 +85,6 @@ class CAMComputer(object):
         self.bboxes_meta_path = os.path.join(self.scoremap_root, self.split, 'bboxes_metadata.txt')
         self.optimal_thresholds_path = os.path.join(self.scoremap_root, self.split, 'optimal_thresholds.npy')
         self.step = 0
-
         metadata = configure_metadata(os.path.join(config.metadata_root, split))
         cam_threshold_list = list(np.arange(0, 1, config.cam_curve_interval))
         eval_args = dict(
@@ -99,13 +100,22 @@ class CAMComputer(object):
             bbox_merge_iou_threshold=config.bbox_merge_iou_threshold,
             log=log)
         self.box_evaluator, self.mask_evaluator = self.get_evaluators(**eval_args)
+        self.lmdb_scoremaps_path = os.path.join(self.scoremap_root, self.split, 'lmdb_scoremaps.lmdb')
+        if not os.path.exists(os.path.dirname(self.lmdb_scoremaps_path)):
+            os.makedirs(os.path.dirname(self.lmdb_scoremaps_path))
+        self.db = lmdb.open(self.lmdb_scoremaps_path, subdir=False,
+                                 map_size=68719476736, readonly=False, # map_size 68 GB
+                                 meminit=False, map_async=True)
+        self.db_commit_writes = 5000
+        self.db_writes = 0
 
-    def compute_and_evaluate_cams(self, epoch, save_cams=False):
+    def compute_and_evaluate_cams(self, epoch):
         # print("Computing and evaluating cams.")
         cams_metadata = {}
         contexts = {}
         metrics = {}
         optimal_threshold_list = []
+        self.db_txn = self.db.begin(write=True)
         timer_cam = Timer.create_or_get_timer(self.device, 'runtime_cam', warm_up=True)
         tq0 = tqdm.tqdm(range(self.iter_max), total=self.iter_max, desc='iterative bbox extraction')
         for iter_index in tq0:
@@ -164,7 +174,13 @@ class CAMComputer(object):
                         # stack cams
                         cam_stack = np.stack(cam_list, axis=0)
                         cam_merged = np.max(cam_stack, axis=0)
-                        np.save(cam_path, cam_merged)
+                        # save into lmdb
+                        # np.save(cam_path, cam_merged)
+                        self.db_txn.put(u'{}'.format(image_id).encode('ascii'), pickle.dumps(cam_merged))
+                        self.db_writes += 1
+                        if self.db_writes % self.db_commit_writes == 0:
+                            self.db_txn.commit()
+                            self.db_txn = self.db.begin(write=True)
                         cams_metadata[image_id] = cam_id
                     bbox_context = {}
                     if self.box_evaluator:
@@ -213,6 +229,11 @@ class CAMComputer(object):
             if not os.path.exists(os.path.dirname(self.optimal_thresholds_path)):
                 os.makedirs(os.path.dirname(self.optimal_thresholds_path))
             np.save(self.optimal_thresholds_path, np.asarray(optimal_threshold_list))
+        # close lmdb transactions
+        self.db_txn.commit()
+        self.db.sync()
+        self.db.close()
+        # metrics logging
         metric_timers = {name: timer.get_total_elapsed_ms() for name, timer in Timer.timers.items()}
         mlflow.log_metrics(metric_timers, step=epoch)
         Timer.reset()

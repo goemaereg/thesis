@@ -166,11 +166,7 @@ class Trainer(object):
         self.log = log
         self.splits = self._set_splits(args)
         model_params = dict(
-            adl_drop_rate=self.args.adl_drop_rate,
-            adl_drop_threshold=self.args.adl_threshold,
-            acol_drop_threshold=self.args.acol_threshold,
-       )
-        model_kwargs = model_params | dict(
+            architecture=self.args.architecture,
             architecture_type=self.args.architecture_type,
             dataset_name = self.args.dataset_name,
             pretrained=self.args.pretrained,
@@ -191,7 +187,7 @@ class Trainer(object):
         self.early_stopping = self._set_early_stopping()
         self.reporter = self.args.reporter
         self.device = self._set_device()
-        self.model = self._set_model(**model_kwargs)
+        self.model = self._set_model(**model_params)
         self.cross_entropy_loss = nn.CrossEntropyLoss().to(self.device)#.cuda()
         self.mse_loss = nn.MSELoss(reduction='mean').to(self.device)#.cuda()
         batch_set_size = None
@@ -244,6 +240,13 @@ class Trainer(object):
                 bbox_merge_strategy = self.args.bbox_merge_strategy,
                 bbox_merge_iou_threshold=self.args.bbox_merge_iou_threshold
             )
+            if self.args.wsol_method == 'minmaxcam':
+                params |= dict(
+                    minmaxcam_bss=self.args.minmaxcam_batch_set_size,
+                    minmaxcam_css = self.args.minmaxcam_class_set_size,
+                    minmaxcam_frr = self.args.minmaxcam_frr_weight,
+                    minmaxcam_crr = self.args.minmaxcam_crr_weight
+                )
             mlflow.log_params(params)
             # tags
             tags = dict(
@@ -457,7 +460,7 @@ class Trainer(object):
             log=log,
         )
         # this method takes care of mlflow metrics logging
-        metrics = cam_computer.compute_and_evaluate_cams(epoch=epoch, save_cams=save_cams)
+        metrics = cam_computer.compute_and_evaluate_cams(epoch=epoch)
         for metric, value in metrics.items():
             if metric in self.performance_meters[split]:
                self.performance_meters[split][metric].update(value)
@@ -584,8 +587,7 @@ def main(args):
                 trainer.early_stopping(val_loss)
                 early_stop = trainer.early_stopping.early_stop
             last_epoch = (epoch == (trainer.args.epochs - 1)) or early_stop
-            save = last_epoch and trainer.args.dataset_name != 'ILSVRC'
-            trainer.evaluate_wsol(epoch, split='val', save_xai=save, save_cams=save, log=last_epoch)
+            trainer.evaluate_wsol(epoch, split='val', save_xai=last_epoch, save_cams=last_epoch, log=last_epoch)
             if trainer.lr_scheduler is not None:
                 trainer.lr_scheduler.step()
             # trainer.print_performances()

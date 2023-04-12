@@ -21,10 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import argparse
 import cv2
-import math
 import numpy as np
 import os
-import torch.utils.data as torchdata
 import tqdm
 import mlflow
 import matplotlib.pyplot as plt
@@ -34,11 +32,11 @@ from data_loaders import get_image_ids
 from data_loaders import get_bounding_boxes, get_bounding_boxes_from_file
 from data_loaders import get_image_sizes
 from data_loaders import get_mask_paths
+from data_loaders import get_cam_loader, get_cam_lmdb_loader
 from util import check_scoremap_validity
 from util import check_box_convention
 from util import t2n
 from sklearn.metrics import ConfusionMatrixDisplay
-from typing import List
 
 _IMAGENET_MEAN = [0.485, .456, .406]
 _IMAGENET_STDDEV = [.229, .224, .225]
@@ -210,34 +208,6 @@ def compute_bboxes_from_scoremaps(scoremap, scoremap_threshold_list,
         thresh_boxes_num.append(number_of_box)
         thresh_boxes_areas.append(areas)
     return thresh_boxes, thresh_boxes_num, thresh_boxes_areas
-
-
-class CamDataset(torchdata.Dataset):
-    def __init__(self, scoremap_path, split, image_ids):
-        self.scoremap_path = scoremap_path
-        self.split = split
-        metadata = {}
-        with open(os.path.join(scoremap_path, split, 'scoremap_metadata.txt'), 'r') as fp:
-            for line in fp.readlines():
-                image_id, cam_id = line.strip('\n').split(',')
-                metadata[image_id] = cam_id
-        metadata = dict(sorted(metadata.items()))
-        self.image_ids = list(metadata.keys())
-        self.cam_ids = list(metadata.values())
-        self.length = len(self.image_ids)
-
-    def _load_cam(self, cam_id):
-        scoremap_file = os.path.join(self.scoremap_path, cam_id)
-        return np.load(scoremap_file)
-
-    def __getitem__(self, index):
-        image_id = self.image_ids[index]
-        cam_id = self.cam_ids[index]
-        cam = self._load_cam(cam_id)
-        return cam, image_id
-
-    def __len__(self):
-        return self.length
 
 
 class LocalizationEvaluator(object):
@@ -850,14 +820,6 @@ class MaskEvaluator(LocalizationEvaluator):
         return {'PxAP': auc}
 
 
-def _get_cam_loader(image_ids, scoremap_path, split):
-    return torchdata.DataLoader(
-        CamDataset(scoremap_path, split, image_ids),
-        batch_size=128,
-        shuffle=False,
-        num_workers=0,
-        pin_memory=True)
-
 def normalize_scoremap(cam):
     """
     Args:
@@ -885,12 +847,11 @@ def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, log=False
     optimal_thresholds_path = os.path.join(scoremap_root, split, 'optimal_thresholds.npy')
     thresholds = np.load(optimal_thresholds_path)
     optimal_threshold = thresholds[-1]
-    image_ids = get_image_ids(metadata)
     image_sizes = get_image_sizes(metadata)
     gt_bbox_dict = get_bounding_boxes(metadata)
     est_bbox_dict = get_bounding_boxes_from_file(os.path.join(scoremap_root, split, 'bboxes_metadata.txt'))
     est_bbox_dict = scale_bounding_boxes(est_bbox_dict, image_sizes, (224,224))
-    cam_loader = _get_cam_loader(image_ids, scoremap_root, split)
+    cam_loader = get_cam_lmdb_loader(scoremap_root, split)
     count = 0
     color_red = (0, 0, 255)  # BGR
     color_green = (0, 255, 0)  # BGR
@@ -999,8 +960,6 @@ def evaluate_wsol(xai_root, scoremap_root, data_root, metadata_root, mask_root,
     """
     print("Loading and evaluating cams.")
     metadata = configure_metadata(metadata_root)
-    image_ids = get_image_ids(metadata)
-    cam_threshold_list = list(np.arange(0, 1, cam_curve_interval))
     est_bboxes = get_bounding_boxes_from_file(os.path.join(scoremap_root, split, 'bboxes_metadata.txt'))
     optimal_thresholds_path = os.path.join(scoremap_root, split, 'optimal_thresholds.npy')
     thresholds = np.load(optimal_thresholds_path)
@@ -1022,7 +981,7 @@ def evaluate_wsol(xai_root, scoremap_root, data_root, metadata_root, mask_root,
         log=False)
 
     box_evaluator, mask_evaluator = get_evaluators(**eval_args)
-    cam_loader = _get_cam_loader(image_ids, scoremap_root, split)
+    cam_loader = get_cam_loader(scoremap_root, split)
     for cams, image_ids in cam_loader:
         for cam, image_id in zip(cams, image_ids):
             cam = t2n(cam)

@@ -360,6 +360,93 @@ class MiniBatchSampler(Sampler[int]):
     def __len__(self) -> int:
         return self.batch_num
 
+class CamDataset(Dataset):
+    def __init__(self, scoremap_root, split):
+        self.scoremap_root = scoremap_root
+        self.split = split
+        metadata = {}
+        with open(os.path.join(scoremap_root, split, 'scoremap_metadata.txt'), 'r') as fp:
+            for line in fp.readlines():
+                image_id, cam_id = line.strip('\n').split(',')
+                metadata[image_id] = cam_id
+        metadata = dict(sorted(metadata.items()))
+        self.image_ids = list(metadata.keys())
+        self.cam_ids = list(metadata.values())
+        self.length = len(self.image_ids)
+
+    def _load_cam(self, cam_id):
+        scoremap_path = os.path.join(self.scoremap_root, cam_id)
+        return np.load(scoremap_path)
+
+    def __getitem__(self, index):
+        image_id = self.image_ids[index]
+        cam_id = self.cam_ids[index]
+        cam = self._load_cam(cam_id)
+        return cam, image_id
+
+    def __len__(self):
+        return self.length
+
+
+class CamLmdbDataset(Dataset):
+    @classmethod
+    def _init_db(cls, lmdb_path):
+        env = lmdb.open(lmdb_path, subdir=os.path.isdir(lmdb_path),
+                        readonly=True, lock=False,
+                        readahead=False, meminit=False)
+        with env.begin(write=False) as txn:
+            length = txn.stat()['entries']
+            keys = [key for key, _ in txn.cursor()]
+            return env, length, keys
+
+    def __init__(self, lmdb_path):
+        super(CamLmdbDataset, self).__init__()
+        self.lmdb_path = lmdb_path
+        self.db = None
+        self.length = 0
+        self.keys = []
+        db = lmdb.open(lmdb_path, subdir=os.path.isdir(lmdb_path),
+                        readonly=True, lock=False,
+                        readahead=False, meminit=False)
+        with db.begin(write=False) as txn:
+            self.length = txn.stat()['entries']
+            self.keys = [key for key, _ in txn.cursor()]
+        db.close()
+
+    def __getitem__(self, index):
+        if self.db is None:
+            self.db = lmdb.open(self.lmdb_path, subdir=os.path.isdir(self.lmdb_path),
+                                readonly=True, lock=False,
+                                readahead=False, meminit=False)
+        with self.db.begin(write=False) as txn:
+            key = self.keys[index]
+            raw = txn.get(key)
+            cam = pickle.loads(raw)
+            image_id = key.decode('ascii')
+            return cam, image_id
+
+    def __len__(self):
+        return self.length
+
+
+def get_cam_loader(scoremap_path, split):
+    return DataLoader(
+        CamDataset(scoremap_path, split),
+        batch_size=128,
+        shuffle=False,
+        num_workers=0,
+        pin_memory=True)
+
+def get_cam_lmdb_loader(scoremap_root, split):
+    lmdb_path = os.path.join(scoremap_root, split, 'lmdb_scoremaps.lmdb')
+    return DataLoader(
+        CamLmdbDataset(lmdb_path),
+        batch_size=128,
+        shuffle=False,
+        num_workers=0,
+        pin_memory=True)
+
+
 def get_eval_loader(split, data_root, metadata_root, batch_size, workers,
                     resize_size, bboxes_path=None, bbox_mask_strategy=None):
     metadata_root_split = os.path.join(metadata_root, split)
