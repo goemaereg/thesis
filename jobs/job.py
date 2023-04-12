@@ -33,7 +33,8 @@ job = {
             "environment": {
                 "EXPERIMENT_NAME": "",
                 "RUN_NAME": "",
-                "CONFIG_FILE": ""
+                "CONFIG_FILE": "",
+                "PARAMETERS": ""
             },
             "storage": [{
                 "hostPath": "/project_antwerp",
@@ -65,6 +66,7 @@ def main(job):
     parser.add_argument('-e', '--experiment_name', type=str, required=True)
     parser.add_argument('-r', '--run_name', type=str, required=True)
     parser.add_argument('-c', '--config_file', type=str, required=True)
+    parser.add_argument('-p', '--parameters', type=str, required=False, help='overrides config_file params. Form: ^A=a^B=b')
     parser.add_argument('-j', '--job', type=str, required=False, default='jobs/job_default.json')
     args = parser.parse_args()
     job_overlay = {}
@@ -72,8 +74,9 @@ def main(job):
         job_overlay = json.load(fp)
     env = dict(EXPERIMENT_NAME=args.experiment_name,
                RUN_NAME=args.run_name,
-               CONFIG_FILE=args.config_file) 
-
+               CONFIG_FILE=args.config_file)
+    if args.parameters:
+        env |= dict(PARAMETERS=args.parameters)
     job = dict_merge(job, job_overlay)
     job['request']['docker']['environment'] = env
     r = requests.post(url, json=job, cert=cert)

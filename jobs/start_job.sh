@@ -14,7 +14,8 @@ exec_job() {
    apt-get install -y libgl1
    apt-get install -y libgtk2.0-dev
    source venv/bin/activate
-   mlflow run -e main --experiment-name $EXPERIMENT_NAME --run-name $RUN_NAME --env-manager local -P config=$CONFIG_FILE .
+   mlflow run -e main --experiment-name $EXPERIMENT_NAME --run-name $RUN_NAME --env-manager local -P config=$CONFIG_FILE ${PARAMETERS//^/ -P } .
+
 }
 
 echo "Job started at $(date)"
