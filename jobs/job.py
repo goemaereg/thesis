@@ -63,20 +63,22 @@ def dict_merge(dct, merge_dct):
 
 def main(job):
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--experiment_name', type=str, required=True)
-    parser.add_argument('-r', '--run_name', type=str, required=True)
+    parser.add_argument('-e', '--mlflow_exp_name', type=str, required=True, help='mlflow experiment name')
+    parser.add_argument('-r', '--mlflow_run_name', type=str, required=True, help='mlflow run name')
     parser.add_argument('-c', '--config_file', type=str, required=True)
-    parser.add_argument('-p', '--parameters', type=str, required=False, help='overrides config_file params. Form: ^A=a^B=b')
+    parser.add_argument('-p', '--param', type=str, action='append', help='Overrides config_file params. '
+                                                                         'Format: -p param1=value1 -p param2=value2')
     parser.add_argument('-j', '--job', type=str, required=False, default='jobs/job_default.json')
     args = parser.parse_args()
     job_overlay = {}
     with open(args.job, 'r') as fp:
         job_overlay = json.load(fp)
-    env = dict(EXPERIMENT_NAME=args.experiment_name,
-               RUN_NAME=args.run_name,
+    env = dict(EXPERIMENT_NAME=args.mlflow_exp_name,
+               RUN_NAME=args.mlflow_run_name,
                CONFIG_FILE=args.config_file)
-    if args.parameters:
-        env |= dict(PARAMETERS=args.parameters)
+    if args.param and len(args.param) > 0:
+        params = f'^{"^".join(args.param)}'
+        env |= dict(PARAMETERS=params)
     job = dict_merge(job, job_overlay)
     job['request']['docker']['environment'] = env
     r = requests.post(url, json=job, cert=cert)
