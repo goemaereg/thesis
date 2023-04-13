@@ -117,7 +117,7 @@ class EarlyStopping():
     Early stopping to stop the training when the loss does not improve after
     certain epochs.
     """
-    def __init__(self, patience=5, min_delta=0):
+    def __init__(self, patience=5, min_delta=0, min_epochs=5):
         """
         :param patience: how many epochs to wait before stopping when loss is
                not improving
@@ -126,11 +126,18 @@ class EarlyStopping():
         """
         self.patience = patience
         self.min_delta = min_delta
+        self.min_epochs = min_epochs
         self.counter = 0
+        self.epochs = 0
         self.best_loss = None
         self.early_stop = False
 
+    @property
+    def stop(self):
+        return self.early_stop and self.epochs >= self.min_epochs
+
     def __call__(self, val_loss):
+        self.epochs += 1
         if self.best_loss == None:
             self.best_loss = val_loss
         elif self.best_loss - val_loss > self.min_delta:
@@ -312,7 +319,8 @@ class Trainer(object):
         if self.args.early_stopping:
             min_delta = self.args.early_stopping_min_delta
             patience = self.args.early_stopping_patience
-            early_stopping = EarlyStopping(patience=patience, min_delta=min_delta)
+            min_epochs = self.args.early_stopping_minimum_epochs
+            early_stopping = EarlyStopping(patience=patience, min_delta=min_delta, min_epochs=min_epochs)
         return early_stopping
 
     def _set_model(self, **kwargs):
@@ -585,7 +593,7 @@ def main(args):
             if trainer.early_stopping is not None:
                 val_loss = val_metrics['loss']
                 trainer.early_stopping(val_loss)
-                early_stop = trainer.early_stopping.early_stop
+                early_stop = trainer.early_stopping.stop
             last_epoch = (epoch == (trainer.args.epochs - 1)) or early_stop
             trainer.evaluate_wsol(epoch, split='val', save_xai=last_epoch, save_cams=last_epoch, log=last_epoch)
             if trainer.lr_scheduler is not None:

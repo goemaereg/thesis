@@ -200,6 +200,8 @@ def configure_parse(load_config=True):
                         help='minimum difference between new loss and best loss for new loss to be considered as an improvement')
     parser.add_argument('--early_stopping_patience', type=int, default=5,
                         help='how many epochs to wait before stopping when loss is not improving')
+    parser.add_argument('--early_stopping_minimum_epochs', type=int, default=10,
+                        help='minimum number of epochs to wait before stopping')
     parser.add_argument('--pretrained', type=str2bool, nargs='?',
                         const=True, default=True,
                         help='Use pre-trained model.')
