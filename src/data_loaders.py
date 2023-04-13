@@ -188,6 +188,7 @@ class WSOLImageLabelDataset(Dataset):
         mean_std = _CAT_IMAGE_MEAN_STD[metadata_root]
         self.dataset_mean = mean_std['mean']
         self.dataset_std = mean_std['std']
+        self.num_channels = len(self.dataset_mean)
         if bboxes_path is not None and os.path.exists(bboxes_path):
             self.computed_bboxes = get_bounding_boxes_from_file(bboxes_path)
 
@@ -240,9 +241,9 @@ class WSOLImageLabelDataset(Dataset):
                 elif self.bbox_mask_strategy == 'random':
                     # fill with random value from dataset (mean, std) before normalization
                     # first sample from standard normal distribution (mean=0, std=1)
-                    v = np.random.randn(3, h, w)
+                    v = np.random.randn(self.num_channels, h, w)
                     # Then scale to dataset distribution with (mean=<dataset.mean>, std=<dataset.std>)
-                    for i in range(len(self.dataset_std[i])):
+                    for i in range(self.num_channels):
                         v[i,:,:] = self.dataset_std[i] * v[i,:,:] + self.dataset_mean[i]
                     v = torch.tensor(v)
                     image[..., i:i+h, j:j+w] = v
