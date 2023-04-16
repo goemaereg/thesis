@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 import numpy as np
 from data_loaders import get_eval_loader
 from evaluation import BoxEvaluator, MaskEvaluator
-from evaluation import configure_metadata
+from evaluation import configure_metadata, xai_save_cams
 import os
 import tqdm
 import mlflow
@@ -103,19 +103,15 @@ class CAMComputer(object):
         self.lmdb_scoremaps_path = os.path.join(self.scoremap_root, self.split, 'lmdb_scoremaps.lmdb')
         if not os.path.exists(os.path.dirname(self.lmdb_scoremaps_path)):
             os.makedirs(os.path.dirname(self.lmdb_scoremaps_path))
-        self.db = lmdb.open(self.lmdb_scoremaps_path, subdir=False,
-                                 map_size=68719476736, readonly=False, # map_size 68 GB
-                                 meminit=False, map_async=True)
         self.db_commit_writes = 5000
         self.db_writes = 0
 
-    def compute_and_evaluate_cams(self, epoch):
+    def compute_and_evaluate_cams(self, epoch, save_xai=False):
         # print("Computing and evaluating cams.")
-        cams_metadata = {}
+        cams_saved = {}
         contexts = {}
         metrics = {}
         optimal_threshold_list = []
-        self.db_txn = self.db.begin(write=True)
         timer_cam = Timer.create_or_get_timer(self.device, 'runtime_cam', warm_up=True)
         tq0 = tqdm.tqdm(range(self.iter_max), total=self.iter_max, desc='iterative bbox extraction')
         for iter_index in tq0:
@@ -131,6 +127,10 @@ class CAMComputer(object):
                 self.config.crop_size,
                 bboxes_path=self.bboxes_meta_path, bbox_mask_strategy=bbox_mask_strategy)
             tq1 = tqdm.tqdm(loader, total=len(loader), desc='evaluate cams batches')
+            self.db = lmdb.open(self.lmdb_scoremaps_path, subdir=False,
+                                map_size=68719476736, readonly=False,  # map_size 68 GB
+                                meminit=False, map_async=True)
+            self.db_txn = self.db.begin(write=True)
             for images, targets, image_ids in tq1:
                 # Using the with statement ensures the context is freed, and you can
                 # recreate different CAM objects in a loop.
@@ -138,59 +138,52 @@ class CAMComputer(object):
                 with self.cam_algorithm(**self.cam_args) as cam_method:
                     timer_cam.start()
                     # cam_method returns numpy array
+                    # cams is already resized to 224x224 and normalized by cam_method call
                     cams, outputs = cam_method(images, output_targets)
                     cams = cams.astype('float')
                     timer_cam.stop()
                 cams_it = zip(cams, outputs, output_targets, image_ids, images)
                 for cam, output, output_target, image_id, image in cams_it:
                     context = contexts[image_id] if image_id in contexts else None
-                    # check whether this image is tagged as to be skipped
                     # softmax: extract prediction probability from logit scores
-                    skip = False
                     y = np.exp(output - np.max(output))  # numerically stable version of softmax
                     smax = y / np.sum(y)
                     prob = output_target(smax)
+                    skip = False
                     if context is not None:
+                        # check whether this image is tagged as to be skipped
                         skip = context.get('skip', False)
-                        if 'prob' in context:
-                            prev_prob = context['prob']
-                            # prob of prediction decreased at least with delta confidence
-                            if prev_prob - prob >= self.config.iter_stop_prob_delta:
-                                skip = True
-                                prob = prev_prob
+                        prev_prob = context.get('prob', prob)
+                        if skip:
+                            prob = prev_prob
+                        elif prev_prob - prob >= self.config.iter_stop_prob_delta:
+                            skip = True
+                            prob = prev_prob
                     cam_merged = cam
+                    if image_id in cams_saved:
+                        raw = self.db_txn.get(u'{}'.format(image_id).encode('ascii'))
+                        cam_loaded = pickle.loads(raw)
+                        if skip:
+                            cam_merged = cam_loaded
+                        else:
+                            cam_merged = np.max(np.stack([cam, cam_loaded], axis=0), axis=0)
                     if not skip:
-                        # cam is already resized to 224x224 and normalized by cam_method call
-                        cam_id = os.path.join(self.split, f'{os.path.basename(image_id)}.npy')
-                        cam_path = os.path.join(self.scoremap_root, cam_id)
-                        if not os.path.exists(os.path.dirname(cam_path)):
-                            os.makedirs(os.path.dirname(cam_path))
-                        cam_list = []
-                        if os.path.exists(cam_path):
-                            cam_loaded = np.load(cam_path)
-                            cam_list = [cam_loaded]
-                        # add new cam to cam list
-                        cam_list.append(cam)
-                        # stack cams
-                        cam_stack = np.stack(cam_list, axis=0)
-                        cam_merged = np.max(cam_stack, axis=0)
                         # save into lmdb
-                        # np.save(cam_path, cam_merged)
                         self.db_txn.put(u'{}'.format(image_id).encode('ascii'), pickle.dumps(cam_merged))
                         self.db_writes += 1
                         if self.db_writes % self.db_commit_writes == 0:
                             self.db_txn.commit()
                             self.db_txn = self.db.begin(write=True)
-                        cams_metadata[image_id] = cam_id
+                        cam_id = os.path.join(self.split, f'{os.path.basename(image_id)}.npy')
+                        cams_saved[image_id] = cam_id
                     bbox_context = {}
                     if self.box_evaluator:
-                        if not skip:
-                            bbox_context = self.box_evaluator.accumulate_bboxes(cam, image_id, context)
-                        else:
+                        if skip:
                             bbox_context = context
+                        else:
+                            bbox_context = self.box_evaluator.accumulate_bboxes(cam, image_id, context)
                         self.box_evaluator.accumulate_boxacc(bbox_context)
                     if self.mask_evaluator:
-                        # merge cams of previous iterations with current cam
                         self.mask_evaluator.accumulate(cam_merged, image_id)
                     contexts[image_id] = bbox_context | {'image_id': image_id, 'prob': prob, 'skip': skip}
                     if skip:
@@ -207,8 +200,8 @@ class CAMComputer(object):
             self.step += 1
             # write scoremap metadata
             # format: image_id,cam_id
-            if len(cams_metadata) > 0 and iter_index == 0:
-                metadata = dict(sorted(cams_metadata.items()))
+            if len(cams_saved) > 0 and iter_index == 0:
+                metadata = dict(sorted(cams_saved.items()))
                 lines = [f'{image_id},{cam_id}' for image_id, cam_id in metadata.items()]
                 scoremap_meta_path = os.path.join(self.scoremap_root, self.split, 'scoremap_metadata.txt')
                 if not os.path.exists(os.path.dirname(scoremap_meta_path)):
@@ -229,10 +222,20 @@ class CAMComputer(object):
             if not os.path.exists(os.path.dirname(self.optimal_thresholds_path)):
                 os.makedirs(os.path.dirname(self.optimal_thresholds_path))
             np.save(self.optimal_thresholds_path, np.asarray(optimal_threshold_list))
-        # close lmdb transactions
-        self.db_txn.commit()
-        self.db.sync()
-        self.db.close()
+            # close lmdb transactions
+            self.db_txn.commit()
+            self.db.sync()
+            self.db.close()
+            if self.config.xai and save_xai:
+                metadata_root = os.path.join(self.config.metadata_root, self.split)
+                metadata = configure_metadata(metadata_root)
+                xai_save_cams(xai_root=self.config.xai_root,
+                              split=self.split,
+                              metadata=metadata,
+                              data_root=self.config.data_paths[self.split],
+                              scoremap_root=self.config.scoremap_root,
+                              log=True,
+                              iter=iter_index)
         # metrics logging
         metric_timers = {name: timer.get_total_elapsed_ms() for name, timer in Timer.timers.items()}
         mlflow.log_metrics(metric_timers, step=epoch)

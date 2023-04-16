@@ -30,7 +30,6 @@ import torch.optim
 from config import get_configs
 from data_loaders import get_data_loader, configure_metadata
 from inference import CAMComputer
-from evaluation import xai_save_cams
 from util import string_contains_any, Logger
 import wsol
 import tqdm
@@ -465,27 +464,17 @@ class Trainer(object):
             split=split,
             config=self.args,
             loader=self.loaders[split],
-            log=log,
-        )
+            log=log)
         # this method takes care of mlflow metrics logging
-        metrics = cam_computer.compute_and_evaluate_cams(epoch=epoch)
+        metrics = cam_computer.compute_and_evaluate_cams(epoch=epoch, save_xai=save_xai)
         for metric, value in metrics.items():
             if metric in self.performance_meters[split]:
                self.performance_meters[split][metric].update(value)
-        if self.args.xai and save_xai:
-            metadata_root = os.path.join(self.args.metadata_root, split)
-            metadata = configure_metadata(metadata_root)
-            xai_save_cams(xai_root=self.args.xai_root,
-                          split=split,
-                          metadata=metadata,
-                          data_root=self.args.data_paths[split],
-                          scoremap_root=self.args.scoremap_root,
-                          log=True)
         return metrics
 
     def evaluate(self, epoch, split, save_xai=False, save_cams=False, log=False):
         metrics_class = self.evaluate_classification(epoch, split)
-        metrics_wsol = self.evaluate_wsol(epoch, split, save_xai, save_cams, log)
+        metrics_wsol = self.evaluate_wsol(epoch, split, save_xai, save_cams=save_cams, log=log)
         return metrics_class | metrics_wsol
 
     def _torch_save_model(self, filename):
@@ -632,8 +621,14 @@ def main(args):
         mlflow.log_dict(info, 'state/training.json')
     mlflow.pytorch.log_model(trainer.model, 'model', pip_requirements='requirements.txt')
 
+def SIGSEGV_signal_arises(signalNum, stack):
+    print(f"{signalNum} : SIGSEGV arises")
+    # Your code
+
+import signal
 
 if __name__ == '__main__':
+    signal.signal(signal.SIGSEGV, SIGSEGV_signal_arises)
     args = get_configs()
     with mlflow.start_run() as run:
         with Logger(args.log_path):

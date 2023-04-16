@@ -843,7 +843,7 @@ def scale_bounding_boxes(bboxes_dict, image_sizes, orig_shape):
         for image_id, bboxes in bboxes_dict.items() }
     return resized_bboxes
 
-def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, log=False, files_max=400):
+def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, log=False, files_max=400, iter=None):
     optimal_thresholds_path = os.path.join(scoremap_root, split, 'optimal_thresholds.npy')
     thresholds = np.load(optimal_thresholds_path)
     optimal_threshold = thresholds[-1]
@@ -879,7 +879,10 @@ def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, log=False
             cam_grey = (cam_heatmap * 255).astype('uint8')
             heatmap = cv2.applyColorMap(cam_grey, cv2.COLORMAP_JET)
             cam_annotated = heatmap * 0.3 + img * 0.5
-            cam_path = os.path.join(xai_root, split, os.path.basename(image_id))
+            if iter is not None:
+                cam_path = os.path.join(xai_root, split, str(iter), os.path.basename(image_id))
+            else:
+                cam_path = os.path.join(xai_root, split, os.path.basename(image_id))
             if not os.path.exists(os.path.dirname(cam_path)):
                 os.makedirs(os.path.dirname(cam_path))
             cv2.imwrite(cam_path, cam_annotated)
@@ -902,9 +905,11 @@ def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, log=False
                 for bbox in est_bbox_list:
                     start, end = bbox[:2], bbox[2:]
                     img_ann = cv2.rectangle(img_ann, start, end, color_red, thickness)
-
             img_ann_id = f'{os.path.basename(image_id).split(".")[0]}_ann.png'
-            img_ann_path = os.path.join(xai_root, split, img_ann_id)
+            if iter is not None:
+                img_ann_path = os.path.join(xai_root, split, str(iter), img_ann_id)
+            else:
+                img_ann_path = os.path.join(xai_root, split, img_ann_id)
             if not os.path.exists(os.path.dirname(img_ann_path)):
                 os.makedirs(os.path.dirname(img_ann_path))
             cv2.imwrite(img_ann_path, img_ann)

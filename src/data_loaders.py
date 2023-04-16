@@ -230,24 +230,23 @@ class WSOLImageLabelDataset(Dataset):
                 w = x1 - x0
                 h = y1 - y0
                 i, j = y0, x0
+                v = image[..., i:i+h, j:j+w]
                 if self.bbox_mask_strategy == 'zero':
                     # Erasing by filling black values. Has to be done before normalization.
-                    v = 0
-                    image = TF.erase(image, i, j, h, w, v, inplace=True)
+                    v = torch.zeros(*v.shape)
                 elif self.bbox_mask_strategy == 'mean':
                     # fill with image mean value
-                    v = torch.mean(image)
-                    image = TF.erase(image, i, j, h, w, v, inplace=True)
+                    image_mean = torch.mean(image, dim=(1,2), keepdim=True)
+                    v = torch.tile(image_mean, dims=(1,h,w))
                 elif self.bbox_mask_strategy == 'random':
                     # fill with random value from dataset (mean, std) before normalization
                     # first sample from standard normal distribution (mean=0, std=1)
-                    v = np.random.randn(self.num_channels, h, w)
+                    v = torch.rand(*v.shape)
                     # Then scale to dataset distribution with (mean=<dataset.mean>, std=<dataset.std>)
                     for i in range(self.num_channels):
                         v[i,:,:] = self.dataset_std[i] * v[i,:,:] + self.dataset_mean[i]
-                    v = torch.tensor(v)
-                    image[..., i:i+h, j:j+w] = v
                     # after this step, normalization will transform to standard normal distribution
+                image[..., i:i+h, j:j+w] = v
         image = self.normalize(image)
         return image, image_label, image_id
 
