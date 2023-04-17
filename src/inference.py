@@ -110,7 +110,6 @@ class CAMComputer(object):
 
     def compute_and_evaluate_cams(self, epoch, save_xai=False):
         # print("Computing and evaluating cams.")
-        xai_images_max = 100
         cams_saved = {}
         cams_stats = {}
         contexts = {}
@@ -150,7 +149,7 @@ class CAMComputer(object):
                 cams_it = zip(cams, outputs, output_targets, image_ids, images)
                 for cam, output, output_target, image_id, image in cams_it:
                     if self.config.xai and save_xai:
-                        if xai_images < xai_images_max:
+                        if xai_images < self.config.xai_images_max:
                             xai_save_cam_inference(
                                 xai_root=self.config.xai_root, metadata=self.metadata, split=self.split,
                                 image_id=image_id, image=t2n(image), size_orig=self.image_sizes[image_id], cam=cam,
@@ -252,7 +251,7 @@ class CAMComputer(object):
                               data_root=self.config.data_paths[self.split],
                               scoremap_root=self.config.scoremap_root,
                               log=True,
-                              images_max=xai_images_max,
+                              images_max=self.config.xai_images_max,
                               iter_index=iter_index)
         # metrics logging
         metric_timers = {name: timer.get_total_elapsed_ms() for name, timer in Timer.timers.items()}

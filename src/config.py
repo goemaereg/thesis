@@ -160,6 +160,7 @@ def configure_parse(load_config=True):
     # parser.add_argument('--scoremap_storage_limit', type=int, default=200,
     #                     help="The maximum number of scoremaps that are saved for validation or test set.")
     parser.add_argument('--xai_folder', type=str, default='xai', help='xai folder')
+    parser.add_argument('--xai_images_max', type=int, default=20, help='Maximum number of images with explanations')
     parser.add_argument('--override_cache', type=str2bool, nargs='?',
                         const=True, default=False)
     parser.add_argument('--workers', default=0, type=int,
