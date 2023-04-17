@@ -20,9 +20,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
 import numpy as np
-from data_loaders import get_eval_loader
+from util import t2n
+from data_loaders import get_eval_loader, get_image_sizes
 from evaluation import BoxEvaluator, MaskEvaluator
-from evaluation import configure_metadata, xai_save_cams
+from evaluation import configure_metadata, xai_save_cams, xai_save_cam_inference
 import os
 import tqdm
 import mlflow
@@ -85,10 +86,11 @@ class CAMComputer(object):
         self.bboxes_meta_path = os.path.join(self.scoremap_root, self.split, 'bboxes_metadata.txt')
         self.optimal_thresholds_path = os.path.join(self.scoremap_root, self.split, 'optimal_thresholds.npy')
         self.step = 0
-        metadata = configure_metadata(os.path.join(config.metadata_root, split))
+        self.metadata = configure_metadata(os.path.join(config.metadata_root, split))
+        self.image_sizes = get_image_sizes(self.metadata)
         cam_threshold_list = list(np.arange(0, 1, config.cam_curve_interval))
         eval_args = dict(
-            metadata=metadata,
+            metadata=self.metadata,
             dataset_name=config.dataset_name,
             split=split,
             cam_threshold_list=cam_threshold_list,
@@ -108,7 +110,9 @@ class CAMComputer(object):
 
     def compute_and_evaluate_cams(self, epoch, save_xai=False):
         # print("Computing and evaluating cams.")
+        xai_images_max = 100
         cams_saved = {}
+        cams_stats = {}
         contexts = {}
         metrics = {}
         optimal_threshold_list = []
@@ -119,6 +123,7 @@ class CAMComputer(object):
                 self.box_evaluator.reset()
             if self.mask_evaluator:
                 self.mask_evaluator.reset()
+            xai_images = 0
             num_skipped = 0
             optimal_threshold_index = 0
             bbox_mask_strategy = self.config.bbox_mask_strategy if iter_index > 0 else None
@@ -137,18 +142,25 @@ class CAMComputer(object):
                 output_targets = [ClassifierOutputTarget(target.item()) for target in targets]
                 with self.cam_algorithm(**self.cam_args) as cam_method:
                     timer_cam.start()
-                    # cam_method returns numpy array
+                    # cam_method returns tuple of numpy arrays
                     # cams is already resized to 224x224 and normalized by cam_method call
                     cams, outputs = cam_method(images, output_targets)
                     cams = cams.astype('float')
                     timer_cam.stop()
                 cams_it = zip(cams, outputs, output_targets, image_ids, images)
                 for cam, output, output_target, image_id, image in cams_it:
+                    if self.config.xai and save_xai:
+                        if xai_images < xai_images_max:
+                            xai_save_cam_inference(
+                                xai_root=self.config.xai_root, metadata=self.metadata, split=self.split,
+                                image_id=image_id, image=t2n(image), size_orig=self.image_sizes[image_id], cam=cam,
+                                iter_index=iter_index, log=True)
+                    xai_images += 1
                     context = contexts[image_id] if image_id in contexts else None
                     # softmax: extract prediction probability from logit scores
                     y = np.exp(output - np.max(output))  # numerically stable version of softmax
                     smax = y / np.sum(y)
-                    prob = output_target(smax)
+                    prob = float(output_target(smax))
                     skip = False
                     if context is not None:
                         # check whether this image is tagged as to be skipped
@@ -156,7 +168,7 @@ class CAMComputer(object):
                         prev_prob = context.get('prob', prob)
                         if skip:
                             prob = prev_prob
-                        elif prev_prob - prob >= self.config.iter_stop_prob_delta:
+                        elif (prev_prob - prob) >= self.config.iter_stop_prob_delta:
                             skip = True
                             prob = prev_prob
                     cam_merged = cam
@@ -186,6 +198,11 @@ class CAMComputer(object):
                     if self.mask_evaluator:
                         self.mask_evaluator.accumulate(cam_merged, image_id)
                     contexts[image_id] = bbox_context | {'image_id': image_id, 'prob': prob, 'skip': skip}
+                    if image_id not in cams_stats:
+                        cams_stats[image_id] = dict(prob=[prob], skip=[skip])
+                    else:
+                        cams_stats[image_id]['prob'].append(prob)
+                        cams_stats[image_id]['skip'].append(skip)
                     if skip:
                         num_skipped += 1
             if self.box_evaluator:
@@ -235,10 +252,12 @@ class CAMComputer(object):
                               data_root=self.config.data_paths[self.split],
                               scoremap_root=self.config.scoremap_root,
                               log=True,
-                              iter=iter_index)
+                              images_max=xai_images_max,
+                              iter_index=iter_index)
         # metrics logging
         metric_timers = {name: timer.get_total_elapsed_ms() for name, timer in Timer.timers.items()}
         mlflow.log_metrics(metric_timers, step=epoch)
+        mlflow.log_dict(cams_stats, f'state/{self.split}/{epoch}/cams_stats.json')
         Timer.reset()
         # return most recent metrics (i.e. from last iteration)
         return metrics | metric_timers

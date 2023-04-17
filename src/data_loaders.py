@@ -50,6 +50,7 @@ def mch(**kwargs):
 
 def configure_metadata(metadata_root):
     metadata = mch()
+    metadata.root = metadata_root
     metadata.image_ids = os.path.join(metadata_root, 'image_ids.txt')
     metadata.image_ids_proxy = os.path.join(metadata_root,
                                             'image_ids_proxy.txt')
@@ -243,8 +244,8 @@ class WSOLImageLabelDataset(Dataset):
                     # first sample from standard normal distribution (mean=0, std=1)
                     v = torch.rand(*v.shape)
                     # Then scale to dataset distribution with (mean=<dataset.mean>, std=<dataset.std>)
-                    for i in range(self.num_channels):
-                        v[i,:,:] = self.dataset_std[i] * v[i,:,:] + self.dataset_mean[i]
+                    for c in range(self.num_channels):
+                        v[c,:,:] = self.dataset_std[c] * v[c,:,:] + self.dataset_mean[c]
                     # after this step, normalization will transform to standard normal distribution
                 image[..., i:i+h, j:j+w] = v
         image = self.normalize(image)
@@ -399,19 +400,12 @@ class CamLmdbDataset(Dataset):
             keys = [key for key, _ in txn.cursor()]
             return env, length, keys
 
-    def __init__(self, lmdb_path):
+    def __init__(self, lmdb_path, image_ids):
         super(CamLmdbDataset, self).__init__()
         self.lmdb_path = lmdb_path
+        self.image_ids = image_ids
+        self.length = len(image_ids)
         self.db = None
-        self.length = 0
-        self.keys = []
-        db = lmdb.open(lmdb_path, subdir=os.path.isdir(lmdb_path),
-                        readonly=True, lock=False,
-                        readahead=False, meminit=False)
-        with db.begin(write=False) as txn:
-            self.length = txn.stat()['entries']
-            self.keys = [key for key, _ in txn.cursor()]
-        db.close()
 
     def __getitem__(self, index):
         if self.db is None:
@@ -419,10 +413,10 @@ class CamLmdbDataset(Dataset):
                                 readonly=True, lock=False,
                                 readahead=False, meminit=False)
         with self.db.begin(write=False) as txn:
-            key = self.keys[index]
+            image_id = self.image_ids[index]
+            key = u'{}'.format(image_id).encode('ascii')
             raw = txn.get(key)
             cam = pickle.loads(raw)
-            image_id = key.decode('ascii')
             return cam, image_id
 
     def __len__(self):
@@ -437,10 +431,10 @@ def get_cam_loader(scoremap_path, split):
         num_workers=0,
         pin_memory=True)
 
-def get_cam_lmdb_loader(scoremap_root, split):
+def get_cam_lmdb_loader(scoremap_root, image_ids, split):
     lmdb_path = os.path.join(scoremap_root, split, 'lmdb_scoremaps.lmdb')
     return DataLoader(
-        CamLmdbDataset(lmdb_path),
+        CamLmdbDataset(lmdb_path, image_ids),
         batch_size=128,
         shuffle=False,
         num_workers=0,

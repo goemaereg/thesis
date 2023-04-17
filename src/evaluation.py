@@ -33,6 +33,7 @@ from data_loaders import get_bounding_boxes, get_bounding_boxes_from_file
 from data_loaders import get_image_sizes
 from data_loaders import get_mask_paths
 from data_loaders import get_cam_loader, get_cam_lmdb_loader
+from data_loaders import _CAT_IMAGE_MEAN_STD
 from util import check_scoremap_validity
 from util import check_box_convention
 from util import t2n
@@ -843,16 +844,61 @@ def scale_bounding_boxes(bboxes_dict, image_sizes, orig_shape):
         for image_id, bboxes in bboxes_dict.items() }
     return resized_bboxes
 
-def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, log=False, files_max=400, iter=None):
+def xai_save_cam_inference(xai_root, metadata, split, image_id, image, size_orig, cam, iter_index=None, log=False):
+    # get dataset mean and std
+    mean_std = _CAT_IMAGE_MEAN_STD[metadata.root]
+    mean = mean_std['mean']
+    std = mean_std['std']
+    # image size: 224x224, cam size: 224x224
+    # scale image and cam to original size
+    # convert cam to grey image
+    cam = (cam * 255).astype('uint8')
+    # convert to heatmap in BGR format
+    cam = cv2.applyColorMap(cam, cv2.COLORMAP_JET)
+    # resize to original image size
+    cam = cv2.resize(cam, size_orig, interpolation=cv2.INTER_CUBIC)
+    # de-normalize image
+    for i, image_color in enumerate(image):
+        image[i, :, :] = std[i] * image_color + mean[i]
+    # scale to 255 range
+    image = (image * 255).astype('uint8')
+    # transform image into cv shape: (C, H, W) -> (H, W, C)
+    image = np.transpose(image, (1, 2, 0))
+    # transform RGB to BGR format
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    # resize to original image size
+    image = cv2.resize(image, size_orig, interpolation=cv2.INTER_CUBIC)
+    # image path naming
+    img_base_id = os.path.basename(image_id).split(".")[0]
+    suffix = f'_{str(iter_index)}' if iter_index is not None else ''
+    img_id = f'{img_base_id}_img{suffix}.png'
+    img_cam_id = f'{img_base_id}_cam{suffix}.png'
+    img_path = os.path.join(xai_root, split, os.path.basename(img_id))
+    img_cam_path = os.path.join(xai_root, split, os.path.basename(img_cam_id))
+    if not os.path.exists(os.path.dirname(img_path)):
+        os.makedirs(os.path.dirname(img_path))
+    if not os.path.exists(os.path.dirname(img_cam_path)):
+        os.makedirs(os.path.dirname(img_cam_path))
+    # merge cam heatmap and image
+    image_cam = cam * 0.5 + image * 0.5
+    # save image
+    cv2.imwrite(img_path, image)
+    cv2.imwrite(img_cam_path, image_cam)
+    if log:
+        mlflow.log_artifact(img_path, f'xai/{split}')
+        mlflow.log_artifact(img_cam_path, f'xai/{split}')
+
+def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, log=False, images_max=100, iter_index=None):
     optimal_thresholds_path = os.path.join(scoremap_root, split, 'optimal_thresholds.npy')
     thresholds = np.load(optimal_thresholds_path)
     optimal_threshold = thresholds[-1]
     image_sizes = get_image_sizes(metadata)
+    image_ids = list(image_sizes)
     gt_bbox_dict = get_bounding_boxes(metadata)
     est_bbox_dict = get_bounding_boxes_from_file(os.path.join(scoremap_root, split, 'bboxes_metadata.txt'))
     est_bbox_dict = scale_bounding_boxes(est_bbox_dict, image_sizes, (224,224))
-    cam_loader = get_cam_lmdb_loader(scoremap_root, split)
-    count = 0
+    cam_loader = get_cam_lmdb_loader(scoremap_root, image_ids, split)
+    images_num = 0
     color_red = (0, 0, 255)  # BGR
     color_green = (0, 255, 0)  # BGR
     tq0 = tqdm.tqdm(cam_loader, total=len(cam_loader), desc='xai_cam_batches')
@@ -860,6 +906,12 @@ def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, log=False
         cams = t2n(cams)
         cams_it = zip(cams, image_ids)
         for cam, image_id in cams_it:
+            images_num += 1
+            if images_num > images_max:
+                return
+            # estimated and GT bboxes overlay
+            gt_bbox_list = gt_bbox_dict[image_id]
+            est_bbox_list = est_bbox_dict[image_id]
             # render image overlayed with CAM heatmap
             path_img = os.path.join(data_root, image_id)
             # load image
@@ -874,50 +926,41 @@ def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, log=False
             # assign minimal value to area outside segment mask so normalization is constrained to segment values
             cam_heatmap = cam.copy()
             # zero out area outside masked scoremap
-            cam_heatmap[np.logical_not(cam_mask)] = 0.0
+            # cam_heatmap[np.logical_not(cam_mask)] = 0.0
             # transform to grey image
             cam_grey = (cam_heatmap * 255).astype('uint8')
             heatmap = cv2.applyColorMap(cam_grey, cv2.COLORMAP_JET)
-            cam_annotated = heatmap * 0.3 + img * 0.5
-            if iter is not None:
-                cam_path = os.path.join(xai_root, split, str(iter), os.path.basename(image_id))
-            else:
-                cam_path = os.path.join(xai_root, split, os.path.basename(image_id))
-            if not os.path.exists(os.path.dirname(cam_path)):
-                os.makedirs(os.path.dirname(cam_path))
-            cv2.imwrite(cam_path, cam_annotated)
-            count += 1
-            if log:
-                mlflow.log_artifact(cam_path, f'xai/{split}')
-            # render image with annotations and CAM overlay
-            # CAM overlay
+            img_ann = heatmap * 0.5 + img * 0.5
+            # CAM segment mask
             segment = np.zeros(shape=img.shape, dtype=np.uint8)
             segment[cam_mask] = color_red
-            img_ann = segment * 0.3 + img * 0.5
-            # estimated and GT bboxes overlay
-            gt_bbox_list = gt_bbox_dict[image_id]
-            est_bbox_list = est_bbox_dict[image_id]
+            img_seg = segment * 0.5 + img * 0.5
             if (len(gt_bbox_list) + len(est_bbox_list)) > 0:
                 thickness = 2  # Pixels
                 for bbox in gt_bbox_list:
                     start, end = bbox[:2], bbox[2:]
                     img_ann = cv2.rectangle(img_ann, start, end, color_green, thickness)
+                    img_seg = cv2.rectangle(img_seg, start, end, color_green, thickness)
                 for bbox in est_bbox_list:
                     start, end = bbox[:2], bbox[2:]
                     img_ann = cv2.rectangle(img_ann, start, end, color_red, thickness)
-            img_ann_id = f'{os.path.basename(image_id).split(".")[0]}_ann.png'
-            if iter is not None:
-                img_ann_path = os.path.join(xai_root, split, str(iter), img_ann_id)
-            else:
-                img_ann_path = os.path.join(xai_root, split, img_ann_id)
+                    img_seg = cv2.rectangle(img_seg, start, end, color_red, thickness)
+            # image path naming
+            suffix = f'_{str(iter_index)}' if iter_index is not None else ''
+            img_base_id = os.path.basename(image_id).split(".")[0]
+            img_ann_id = f'{img_base_id}_ann{suffix}.png'
+            img_seg_id = f'{img_base_id}_seg{suffix}.png'
+            img_ann_path = os.path.join(xai_root, split, os.path.basename(img_ann_id))
+            img_seg_path = os.path.join(xai_root, split, os.path.basename(img_seg_id))
             if not os.path.exists(os.path.dirname(img_ann_path)):
                 os.makedirs(os.path.dirname(img_ann_path))
+            if not os.path.exists(os.path.dirname(img_seg_path)):
+                os.makedirs(os.path.dirname(img_seg_path))
             cv2.imwrite(img_ann_path, img_ann)
-            count += 1
+            cv2.imwrite(img_seg_path, img_seg)
             if log:
                 mlflow.log_artifact(img_ann_path, f'xai/{split}')
-            if count >= files_max:
-                return
+                mlflow.log_artifact(img_seg_path, f'xai/{split}')
 
 def get_evaluators(**args):
     dataset_name = args.get('dataset_name', 'SYNTHETIC')
