@@ -21,89 +21,113 @@ Introduce topics and explain choices:\\
 
 
 % my content
-Explain localization approach:\\
-- based on WSOL CAM methods\\
-- learning method: Main task is classification. Localizaition based on learned features\\
-- baseline CAM method: weighted combination of features maps with where activations are related to predicted class. Other CAM methods have specific method to compute CAM scoremap.\\
-- CAM scoremap is transformed in binary scoremap using a CAM threshold
-= Binarized CAM scoremap is used as segmentation mask for datasets with ground truth segmentation mask labels.\\
-- Contours are computed in binarized CAM scoremap to derive bounding boxes for those datasets that have ground truth bounding boxes as labels. Bounding box is defined as coordinate tuple (x1, x2, y1, y2) where $x1 = x_{min}(coutour), y1 = y_{min}(contour), x2 = x_{max}(contour), y2 = y_{max}(contour)$\\
-- Localization accuracy is computed by counting predicted and ground truth label matches in the evaluation dataset.\\
-\\
-Networks\\
-\\
-VGG16 (used in most papers)\\
-- explain vgg16 architecture, complexity (parameter stats), how it is used and modified for 
-CAM method localization.\\
-\\
-ResNet50 \\
-- used in MinMaxCAM, more recent than VGG16\\
-- explain architecture: deeper networks using skip connections with less parameters\\
-\\
+\section{localization approach}
+\begin{itemize}
+    \item based on WSOL CAM methods
+    \item learning method: Main task is classification. Localizaition based on learned features
+    \item baseline CAM method: weighted combination of features maps with where activations are related to predicted class. Other CAM methods have specific method to compute CAM scoremap.
+    \item CAM scoremap is transformed in binary scoremap using a CAM threshold = Binarized CAM scoremap is used as segmentation mask for datasets with ground truth segmentation mask labels
+    \item Contours are computed in binarized CAM scoremap to derive bounding boxes for those datasets that have ground truth bounding boxes as labels. Bounding box is defined as coordinate tuple (x1, x2, y1, y2) where $x1 = x_{min}(coutour), y1 = y_{min}(contour), x2 = x_{max}(contour), y2 = y_{max}(contour)$
+    \item Localization accuracy is computed by counting predicted and ground truth label matches in the evaluation dataset
+\end{itemize}
 
-Datasets\\
-\\
-synthetic dataset:\\
-- Propose to use synthetic dataset to limit computational requirements and have control over image structure and ground truth data.\\
-- describe dataset split (train, val, test), classes, show examples.\\
-\\
-Better than CIFAR10\\
-- cifar 10 too simple, only 10 classes, no background, single instance.\\
-- syntehtic dataset inspiration from paper: Quantifying Explainability of Saliency Methods in Deep Neural Networks with a Synthetic Dataset (Erico Tjoa, Guan Cuntai)\\
-\\
-reason to use synthetic dataset:\\
-- Easier to interprete\\
-- generate segmentation masks for fine-grained localization evaluation and for datasets with GT segment masks\\
-- generate bounding box labels for datasets providing GT bounding box labels\\
-- Image size 512x512 large enough for chosen network architectures\\
-- generate 4 datasets with different number of object instances per image to measure localization difference.\\
-\\
-ImageNet-1k dataset:\\
-- describe dataset split (train, val, test), classes\\
-- Why we use imagenet (real, natural images, diverse objects (1000 classes), multi-instance images and GT labels, very popular dataset used in many papers, used in ILSVRC.\\
-\\
-Learning\\
-- train classification task\\
-- approach: training, tuning, pretrained datasets\\
-- How we trained our models: SGD, momentum, weight decay, learning rate schedule (step, multistep), regularization (minmaxcam), model weight initialization\\
-- stop criterion\\
-\\
-Localization:\\
-- Using CAM WSOL methods to compute attention map\\
-\\
-Explain selected CAM methods: reason about choice criteria, differences, benefits, limitations\\
-- CAM: baseline method\\
-- MinMaxCAM: regularization of common object regions and background\\
-- GradCAM: Generalization of CAM that doesn’t require a GAP layer in the architecture\\
-- ScoreCAM: Shows more focus on object instances. Also seems to do a better job in capturing the features of multiple instances in the explanation map than GradCAM.\\
-\\
-Complexity computation\\
-- reasoning about choice between runtime and flops\\
-- runtime cpu versus cuda (gpu), synchronization\\
-- theoretical versus empirical\\
-\\
-Evaluation metrics:\\
-- Reason about existing versus required metrics\\
-- Explain in detail how metrics are computed\\
-- MaxBoxAccV3: modified version of MaxBoxAccV2 (Choe et al.,2020b) to support multiple instance WSOL\\
-- PxAP (pixel average precision) when ground truth segmentation masks are available.\\
-- explain for each method how they capture localization accuracy\\
-- explain how localization of small versus large objects are affected by metrics\\
-\\
-Localization improvement: Iterative bounding box extraction\\
-- Explain intuition for improving localization (see synthetic dataset results and how localization accuracy decreases when number of instances per images increases)\\
-\\
-Proposal:\\
-- Feed image to model and compute feature activation maps (CAMS)\\
-- Extract bounding boxes from binarized CAMS\\
-- Mask bounding box areas in image (e.g. with noise, zero values) \\
-- Repeat until some stop criterion\\
-\\
-Variant: Mask image with binarized CAMs.\\
-\\
-Possible stop criteria for iterative approach:\\
-- No new bounding boxes are found\\
-- Predefined minimum CAM threshold is reached\\
-- Predefined drop in classification score is reached\\
-- Predefined number of iterations is reached.\\
+\section{Networks}
+\subsection{VGG16 network}
+\begin{itemize}
+    \item VGG16 (used in most papers)
+    \item Explain vgg16 architecture, complexity (parameter stats), how it is used and modified for CAM method localization.
+\end{itemize}
 
+\subsection{ResNet50 network}
+\begin{itemize}
+    \item used in MinMaxCAM, more recent than VGG16
+    \item explain architecture: deeper networks using skip connections with less parameters
+\end{itemize}
+
+\section{Datasets}
+\subsection{synthetic dataset}
+\begin{itemize}
+    \item Propose to use synthetic dataset to limit computational requirements and have control over image structure and ground truth data
+    \item describe dataset split (train, val, test), classes, show examples
+    \item Better than CIFAR10: cifar 10 too simple, only 10 classes, no background, single instance
+    \item Syntehtic dataset inspiration from paper: Quantifying Explainability of Saliency Methods in Deep Neural Networks with a Synthetic Dataset (Erico Tjoa, Guan Cuntai)
+\end{itemize}
+reason to use synthetic dataset:
+\begin{itemize}
+    \item Easier to interprete
+    \item generate segmentation masks for fine-grained localization evaluation and for datasets with GT segment masks
+    \item generate bounding box labels for datasets providing GT bounding box labels
+    \item Image size 512x512 large enough for chosen network architectures
+    \item generate 4 datasets with different number of object instances per image to measure localization difference.
+\end{itemize}
+
+\subsection{ImageNet-1k dataset}
+\begin{itemize}
+    \item describe dataset split (train, val, test), classes
+    \item Why we use imagenet (real, natural images, diverse objects (1000 classes), multi-instance images and GT labels, very popular dataset used in many papers, used in ILSVRC.
+\end{itemize}
+
+\section{Learning}
+\begin{itemize}
+    \item train classification task
+    \item approach: training, tuning, pretrained datasets
+    \item How we trained our models: SGD, momentum, weight decay, learning rate schedule (step, multistep), regularization (minmaxcam), model weight initialization
+    \item stop criterion
+\end{itemize}
+
+\section{Localization}
+Using CAM WSOL methods to compute attention map. Explain general pipeline from classification, to classification score to feature maps. Principle: features activate on certain characteristics in image that relate to certain class. Feature activations are combined in score maps. Score maps are binarized by threshold. Contours are computed for separate components in cam map. Bounding boxes are computed and compared to ground truth during validation and test to compute localizaton metrics.
+
+Explain selected CAM methods: reason about choice criteria, differences, benefits, limitations
+
+\subsection{CAM}
+CAM: baseline method
+
+\subsection{GradCAM}
+GradCAM: Generalization of CAM that doesn’t require a GAP layer in the architecture
+
+\subsection{GradCAM++}
+
+\subsection{ScoreCAM}
+ScoreCAM: Shows more focus on object instances. Also seems to do a better job in capturing the features of multiple instances in the explanation map than GradCAM.
+
+\subsection{MinMaxCAM}
+MinMaxCAM: regularization of common object regions and background
+
+\section{Evaluation}
+\subsection{Computational complexity}
+Complexity computation
+\begin{itemize}
+    \item reasoning about choice between runtime and flops
+    \item runtime cpu versus cuda (gpu), synchronization
+    \item theoretical versus empirical
+\end{itemize}
+
+\subsection{Localization metrics}
+\begin{itemize}
+    \item Reason about existing versus required metrics
+    \item Explain in detail how metrics are computed
+    \item MaxBoxAccV3: modified version of MaxBoxAccV2 (Choe et al.,2020b) to support multiple instance WSOL
+    \item PxAP (pixel average precision) when ground truth segmentation masks are available.
+    \item explain for each method how they capture localization accuracy
+    \item explain how localization of small versus large objects are affected by metrics
+\end{itemize}
+
+\section{Localization improvement}
+Iterative bounding box extraction: Explain intuition for improving localization (see synthetic dataset results and how localization accuracy decreases when number of instances per images increases).
+
+Proposal:
+\begin{itemize}
+    \item Feed image to model and compute feature activation maps (CAMS)
+    \item Extract bounding boxes from binarized CAMS
+    \item Mask bounding box areas in image (e.g. with noise, zero values)
+    \item Repeat until some stop criterion
+\end{itemize}
+Variant: Mask image with binarized CAMs.
+
+Possible stop criteria for iterative approach
+\begin{itemize}
+    \item No new bounding boxes are found
+    \item Predefined drop in classification score is reached
+    \item Predefined number of iterations is reached.
+\end{itemize}
