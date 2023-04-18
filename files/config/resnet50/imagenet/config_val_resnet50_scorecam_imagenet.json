@@ -4,10 +4,10 @@
   "adl_threshold": 0.9,
   "architecture": "resnet50",
   "architecture_type": "cam",
-  "batch_size": 128,
+  "batch_size": 512,
   "bbox_metric": "MaxBoxAccV3",
   "cam_curve_interval": 0.01,
-  "config": "files/config/resnet50/imagenet/config_train_resnet50_gradcamplusplus_imagenet.json",
+  "config": "files/config/resnet50/imagenet/config_val_resnet50_scorecam_imagenet.json",
   "crop_size": 224,
   "cutmix_beta": 1.0,
   "cutmix_prob": 1.0,
@@ -20,7 +20,7 @@
   "early_stopping_patience": 5,
   "epochs": 100,
   "eval_checkpoint_type": "last",
-  "experiment_name": "resnet50_gradcamplusplus_imagenet",
+  "experiment_name": "resnet50_scorecam_imagenet",
   "has_drop_rate": 0.5,
   "has_grid_size": 4,
   "iou_threshold_list": [
@@ -59,6 +59,6 @@
   "train_augment": true,
   "weight_decay": 1e-4,
   "workers": 4,
-  "wsol_method": "gradcam++",
+  "wsol_method": "scorecam",
   "xai": true
 }

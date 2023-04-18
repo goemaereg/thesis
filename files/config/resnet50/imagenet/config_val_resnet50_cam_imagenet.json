@@ -7,7 +7,7 @@
   "batch_size": 512,
   "bbox_metric": "MaxBoxAccV3",
   "cam_curve_interval": 0.01,
-  "config": "files/config/resnet50/imagenet/config_train_resnet50_cam_imagenet.json",
+  "config": "files/config/resnet50/imagenet/config_val_resnet50_cam_imagenet.json",
   "crop_size": 224,
   "cutmix_beta": 1.0,
   "cutmix_prob": 1.0,
