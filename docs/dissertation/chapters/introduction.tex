@@ -130,10 +130,15 @@ To answer the question whether an image is of a certain class, a model should le
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[]{fig_pooling.png}
-    \caption{Pooling.}
+    \caption{Maximum pooling.}
     \label{fig:pooling}
     \end{center}
 \end{figure}
+
+Fig. \ref{fig:pooling} shows the concept of pooling. As with the convolutional operation, we can think of a pooling window, starting from the upper-left of the input and sliding across the input from left to right and top to bottom. At each location, pooling computes the maximum or average value of the input in the window, depending on whether maximum or average pooling is employed. In the example of Fig. \ref{fig:pooling}, the 3x3 image is fed to the 2x2 pooling layer and the resulting output is a 2x2 feature map.
+
+When the pooling window has the same size as the input, it is called a global pooling layer and the output will be a single neuron. In case an average operation is applied, we refer to this layer as a \textbf{\acrfull{gap}} layer.
+
 
 \subsection{The network architecture}
 Depending on the task to solve, many different types of \acrshort{cnn} architectures exist, but they all share some basic building blocks. A network architecture used for the image classification task is shown in Fig. \ref{fig:cnn_arch}. There are two major parts in the architecture:
@@ -149,13 +154,17 @@ Depending on the task to solve, many different types of \acrshort{cnn} architect
     \end{center}
 \end{figure}
 
-\section{Supervised learning}
-% end-to-end picture: input (image, label), inference, output (score)
-% learning: error function, sgd, backpropagation
+\section{Learning the task}
+Assume there's a perfect hypothetical function that can classify images correctly. As we don't know that function, we approximate that function using a neural network model. We train the model using images and class labels to verify whether the model's predictions are correct. A loss function will express the error between the predictions and the actual labels, also known as ground-truth labels.
 
-State-of-the-art object detection models are implemented using deep neural networks that are trained using supervised machine learning. Supervised learning for object detection requires that each object in an image must be assigned a class label and a bounding box that localizes the object in the image. This human labeling is a costly and error-prone task. Object localization only deals with recognition of a single object class in an image and can be seen as a simplified object detection task. The goal of the object localization task is to cover the full extent of an object in a digital image.
-
-%(supervised learning, labels, ground-truth, learning)
+As neural network implements the approximated function using many weights, which need to be trained to approximate the hypothetical function as close as possible. The the training of these weights is typically done by minimizing the loss function. To minimize that loss function, the gradients of that function with respect to those weights are computed and the loss function will be moved towards its minimum by updating the weight with their gradients. This process is called \acrfull{sgd}. Fig. \ref{fig:learning} illustrates this process.
+\begin{figure}[ht]
+    \begin{center}       
+    \includegraphics[width=0.8\textwidth]{fig_learning.png}
+    \caption{How neural networks learn weights.}
+    \label{fig:learning}
+    \end{center}
+\end{figure}
 
 \section{Weakly supervised object localization}
 Human labeling of images with bounding boxes is a costly and error-prone task. Object localization only deals with recognition of a single object class in an image and can be seen as a simplified object detection task. 
