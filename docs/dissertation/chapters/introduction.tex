@@ -7,9 +7,11 @@ In this introduction we'll first describe the different object recognition tasks
 \section{Object recognition tasks}
 Object recognition is a generic term covering a set of computer vision tasks for identifying objects in digital images. Fig. \ref{fig:object_recognition_tasks} shows the main tasks. From left to right: classification, localization, object detection, instance segmentation. Classification identifies the main object portrayed in the image, i.e. 'cat'. Localization identifies the main object in the image and its location is indicated as the red bounding box. Object detection identifies every object and its location: A cat with a red bounding box and a dog with a blue bounding box. Instance segmentation classifies every pixel in an image and identifies the boundaries of objects. In this example the dog is marked with a blue mask and type cat with a red mask.
 \begin{figure}[ht]
+    \begin{center}
     \includegraphics[width=\textwidth]{fig_object_recognition_tasks.png}
     \caption{Object recognition tasks.}
     \label{fig:object_recognition_tasks}
+    \end{center}
 \end{figure}
 
 \subsection{Image classification}
@@ -27,19 +29,130 @@ Instance segmentation detects all instances of a class and demarcates separate i
 A related task is semantic segmentation. This is a technique to associate a class label with each pixel of a digital image. Essentially, semantic segmentation doesn't classify real-world objects and can't make the distinction between objects.
 
 \section{Artificial neural networks}
-State-of-the-art object detection methods are implemented using a \acrfull{ann}. Here, we introduce the basic concepts and terminology of neural networks as we will use those terms further in this document. 
+State-of-the-art object detection methods are implemented using an \acrfull{ann}. Here, we introduce the basic concepts and terminology of neural networks as we will use those terms further in this document. 
 
-\subsection{Inspiration}
-\subsection{Computational model for a neuron}
+\subsection{Inspiration from real neurons}
+Artificial neural networks are a biologically-inspired algorithm that attempt to mimic the functions of neurons in the brain. Neurons are the fundamental units of the brain and nervous system, the cells responsible for receiving sensory input from the external world, for sending commands to our muscles, and for transforming and relaying the electrical signals at every step in between.
+\begin{figure}[ht]
+    \includegraphics[width=\textwidth]{fig_neuron.png}
+    \caption{Real neuron.}
+    \label{fig:neuron}
+\end{figure}
+Figure \ref{fig:neuron} illustrates the different parts of a biological neuron.
+Each neuron acts as a computational unit, accepting input signals from other neurons via the dendrites and outputting signals through the axon terminals. Actions are triggered when a specific combination of neurons are activated.
+
+\subsection{A computational model for an artificial neuron}
+In computer science, we want to build artificial neurons that act as functions taking inputs and producing outputs. The perceptron \cite{rosenblatt1958perceptron, minsky2017perceptrons}, illustrated in Fig. \ref{fig:perceptron}, is the basic building block of a \acrfull{nn}. It takes weighted input values, performs a mathematical calculation and produces output. It is also called a unit or node.
+\begin{figure}[ht]
+    \begin{center}
+    \includegraphics[width=0.8\textwidth]{fig_perceptron.png}
+    \caption{Perceptron.}
+    \label{fig:perceptron}
+    \end{center}
+\end{figure}
+A neuron consists of following building blocks:
+\begin{itemize}
+    \item \textbf{Input} iss the data passed to a neuron.
+    \item \textbf{Weights} explain the strength (degree of importance) of the connection between any two neurons.
+    \item \textbf{Bias} is a constant value added to the weighted sum of input values. It is used to accelerate or delay the activation of a given node.
+    \item \textbf{Activation function} is used to introduce non-linearity into a \acrshort{nn}. The perceptron activation is a step function limiting the output value from 0 (when the neuron doesn't activate), to 1 (when the neuron activates).
+\end{itemize}
+As the perceptron output only produces either 0 or 1, this model is only capable of binary classification of the input. It divides the input in two classes. To learn the function that can classify input into the correct class, the weights are tuned over the time. This process of tuning is called the training of the model: We start with some initial value of the weights and those values get updated to minimize the error between the function output and the expected output.
+
 \subsection{A network of neurons}
-\subsection{Hidden layers}
+The previous model is only capable of binary classification. However, we can perform multi-class classification by extending the network. A \acrfull{nn} is made of several neurons stacked into layers. For an n-dimensional input, the first layer (also called the input layer) will have a number of input nodes and the final output layer will have a number of output neurons. All intermediate layers are called hidden layers. The first layer, the input layer, performs no computation except to pass the input values. For this reason, when counting the number of layers in a \acrshort{nn}, we ignore the input layer. Fig. \ref{fig:neural_network} shows a Neural network with 2 hidden layers and a single output neuron. 
+\begin{figure}[ht]
+    \begin{center}
+    \includegraphics[width=0.8\textwidth]{fig_neural_network.png}
+    \caption{Neural network.}
+    \label{fig:neural_network}
+    \end{center}
+\end{figure}
+
+For more complex problems, neural networks with more layers are required. The number of layers in a \acrshort{nn} determines the depth of the network. A neural networks with many hidden layers is called a \acrfull{dnn}. a \acrfull{mlp} is a special case of a \acrshort{nn}. In \acrshort{mlp}, all nodes are densely-connected, i.e. each neuron is connected to all nodes in the previous layer. These layers are also called fully connected layers. The \acrshort{nn} in Fig. \ref{fig:neural_network} is called a \acrshort{mlp} or feed-forward network. Models that are capable of classifying input to more than two classes will have as many outputs as there are classes.
 
 \section{Convolutional neural networks}
-\subsection{What is a CNN?}
-\subsection{How does it work?}
-\subsection{The layers in a CNN}
+There are many different types of neural network architectures, each with its benefits. \acrfull{cnn}s are used a lot for object recognition tasks because they provide some advantages over feed-forward networks because of the characteristics of visual data.
+
+\subsection{Visual data characteristics}
+The method we use to recognize objects should not be overly concerned with the precise location of the object in the image. Let's take an example of the game “Where’s Waldo in Fig. \ref{fig:where_is_wally} \cite{zhang2021dive}. Despite Waldo's characteristic outfit, it can be difficult to locate him, due to the large number of distractions. However, what Waldo looks like does not depend upon where he is located. 
+\begin{figure}[ht]
+    \begin{center}       
+    \includegraphics[width=0.8\textwidth]{fig_where_is_wally.jpeg}
+    \caption{An image of the “Where’s Waldo” game.}
+    \label{fig:where_is_wally}
+    \end{center}
+\end{figure}
+
+Due to its fully-connected layers, an \acrshort{mlp} looks at the complete image, implying that it takes into account the location of objects and thus making it unsuited for the task of object recognition.
+
+Convolutional neural networks are better suited for object recognition because they meet some desired properties:
+\begin{enumerate}
+    \item \textbf{Translation invariance}. In the earliest layers, the network should respond similarly to the same object, regardless of where it appears in the image. 
+    \item \textbf{Locality}. The earliest layers of the network should focus on local regions.
+    \item \textbf{Compositionality}. As we proceed, deeper layers should be able to aggregate local representations to make predictions at image level.
+\end{enumerate}
+
+\subsection{The convolution operation}
+Where a neuron in \acrshort{mlp}s is fully-connected to all neurons in the previous layer, neurons in \acrshort{cnn}s are computed using convolutional operations. Fig. \ref{fig:convolution} shows how this operation works for two-dimensional data representation. In this example we have an input image with height and width of 3. The kernel has height and width of 2. The kernel is also called a filter or convolution and will slide like a window over the input from left to right and from top to bottom. At each position, the input contained in the window and the kernel are multiplied element wise and the results are summed yielding a single scalar value. This result gives the value of the output at a specific location. Here, the output has a height and width of 2.
+\begin{figure}[ht]
+    \begin{center}       
+    \includegraphics{fig_convolution.png}
+    \caption{Two-dimensional convolution operation.}
+    \label{fig:convolution}
+    \end{center}
+\end{figure}
+
+We call the input and output features. The output features are essentially, the weighted sums (with the weights being the values of the kernel itself) of the input features located roughly in the same location of the output pixel on the input layer. The example in Fig. \ref{fig:convolution} shows a convolution for a single-channel layer. For RGB images, the input would have three channels and each convolutional layer would have multiple channels. In that case there would be as many kernels as channels in a layer and the kernel would be 3-dimensional, covering all channels of the input layer. The kernel's values are used to detect certain characteristics of an object, like edges or patterns. For large kernels and many successive layers of convolutions, it's impossible to design kernels by hand. The kernel weights will be learned when training a \acrshort{cnn} model with images.
+
+We introduce some terminology that is used further in this document.
+
+\textbf{Feature map}. A feature map is the output of the convolution operation. When a kernel K1 is applied to an input in a convolutional layer, a feature map F1 is produced. When another kernel K2 is applied to the same input, another feature map F2 is produced. A feature map is also called an textbf{activation map}.
+
+\textbf{Receptive field}. A receptive field is the portion of the input image that is used to compute the activation of a neuron in a feature map.
+
+\begin{figure}[ht]
+    \begin{center}       
+    \includegraphics[width=0.8\textwidth]{fig_receptive_field.png}
+    \caption{Receptive field and feature maps.}
+    \label{fig:receptive_field}
+    \end{center}
+\end{figure}
+Terminology that is used further in the text is illustrated in Fig. \ref{fig:receptive_field}. 
+
+In the example illustrated in Fig. \ref{fig:receptive_field}, a feature map is a 2-dimensional matrix of shape 46×46. There are 100 feature maps (so 100 kernels where applied to the input image). The receptive field of a neuron is a 3-dimensional sub-region of the image of shape 5×5×3. In this case of a 2d-convolution, the kernel has the same depth as the input image.
+
+A we go deeper into a \acrshort{cnn}, the receptive field of neurons increases. This is because the output feature map of a convolutional layer is the input of the next layer. That next layer will produce feature maps in which neurons will cover a larger receptive field because it covers multiple neurons of the previous layer.
+
+\subsection{Pooling}
+To answer the question whether an image is of a certain class, a model should learn a global feature representation of the input. By gradually aggregating information into coarser feature maps, we can reach that goal. Pooling layers are used for this task. They actually serve two purposes: Mitigation of the sensitivity of convolutional layers to location and spatial downsampling of representations.
+
+\begin{figure}[ht]
+    \begin{center}       
+    \includegraphics[]{fig_pooling.png}
+    \caption{Pooling.}
+    \label{fig:pooling}
+    \end{center}
+\end{figure}
+
+\subsection{The network architecture}
+Depending on the task to solve, many different types of \acrshort{cnn} architectures exist, but they all share some basic building blocks. A network architecture used for the image classification task is shown in Fig. \ref{fig:cnn_arch}. There are two major parts in the architecture:
+\begin{itemize}
+\item \textbf{Feature extractor.} This part contains all convolutional layers and is used to detect the features that are relevant for the main object portrayed in the input image. These features will serve as input to the classifier.
+\item \textbf{classifier.} This part of the network has fully-connected layers and takes as input the features from the feature extractor, and produces a   prediction for the class of the input image.
+\end{itemize}
+\begin{figure}[ht]
+    \begin{center}       
+    \includegraphics[width=\textwidth]{fig_cnn_arch.png}
+    \caption{A CNN architecture for image recognition.}
+    \label{fig:cnn_arch}
+    \end{center}
+\end{figure}
 
 \section{Supervised learning}
+% end-to-end picture: input (image, label), inference, output (score)
+% learning: error function, sgd, backpropagation
+
 State-of-the-art object detection models are implemented using deep neural networks that are trained using supervised machine learning. Supervised learning for object detection requires that each object in an image must be assigned a class label and a bounding box that localizes the object in the image. This human labeling is a costly and error-prone task. Object localization only deals with recognition of a single object class in an image and can be seen as a simplified object detection task. The goal of the object localization task is to cover the full extent of an object in a digital image.
 
 %(supervised learning, labels, ground-truth, learning)
@@ -51,15 +164,17 @@ Human labeling of images with bounding boxes is a costly and error-prone task. O
 
 The baseline \acrshort{wsol} method is \acrfull{cam} \cite{zhou2016cvpr}. This method trains a model for the classification task and uses learned features that are activated on the most discriminative parts of an object to localize an object of a specific class. This focus on the most discriminative parts is a limitation of the \acrshort{cam} method, as it doesn't cover the complete object. New \acrshort{wsol} research \cite{selvaraju2017grad, chattopadhay2018grad, wang2021minmaxcam, wang2020score, choe2020evaluating} focuses on overcoming the limitations of the baseline \acrshort{cam} method. As the CAM-family of methods represents a main body of research for \acrlong{wsol}, we will use a specific list of CAM methods in this project. The relevant methods will be discussed in chapter \ref{ch:related_work} and \ref{ch:methodology}. 
 
-\section{WSOL and explainability}
+\subsection{WSOL and explainability}
 %(similarities and differences between wsol and explainability)
-
-The goal of the object localization task is to cover the full extent of an object in a digital image.
+WSOL methods share similarities with model explainability. They both analyse which image pixels lead to image classification results. On the other hand, they both serve different goals.
+Model explainability is used to visually explain why a model predicts a certain label by capturing the discriminative features. Typically these features cover only parts of an object of interest. In contrast, the goal of \acrshort{wsol} is to localize the full extend of an object of interest.
 
 Certain CAM-related techniques are mainly used for explainability, i.e. they are used to visually explain why a model predicts a certain class label for an image. Some of these methods indicate the ability to detect multiple object of the same class in an image and show promising results in qualitative experiment results \cite{wang2020score}.
 
+\subsection{WSOL evaluation}
 Many \acrshort{cam} papers report performance improvements over the baseline \acrshort{cam} method. Choe \textit{et al.} \cite{choe2020evaluating} criticize that \acrshort{cam} methods lack a unified definition of the \acrshort{wsol} task and proposes a new localization evaluation protocol. A problem is that \acrshort{wsol} has not been tested for localization of multiple object instances of the same class and current \acrshort{wsol} evaluation metrics are not sufficient to measure multiple instance localization. Given that multiple-instance localization hasn't been tested, it is interesting to evaluate it. 
 
+\section{Our contribution}
 The research question for us is whether we can use CAM-methods to evaluate and improve localization of multiple instances of the same class within images for the \acrshort{wsol} task.
 
 Therefore, we propose an evaluation protocol for localization of multiple-instances of the same class by enhancing existing evaluation metrics \cite{choe2020evaluating} to measure multiple-instance localization performance. We will call this method \acrfull{mwsol}. We then benchmark existing CAM methods for multiple instance localization. Finally, we investigate improvements for the \acrshort{mwsol} task using an iterative bounding box extraction method. Bounding boxes of objects localized in previous iterations, are used to mask their location in images. These masked images are then used to find the location of objects missed during previous iterations.
