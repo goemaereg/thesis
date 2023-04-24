@@ -1,6 +1,6 @@
 \chapter{Methodology} \label{ch:methodology}
 
-In this chapter, our \acrshort{wsol} evaluation methodology is explained in detail. We start by describing the general approach for CAM-based localization in the end-to-end setup. This approach serves as a blueprint for the different localization techniques used. Next we specify the different networks and datasets used to train and evaluate models. Subsequently, the training process if defined. In the penultimate section, each localization method is discussed in detail. Finally we explain how we investigate localization improvements for multiple-instance localization.
+In this chapter, our \acrshort{wsol} evaluation methodology is explained in detail. We specify the different networks and datasets used to train and evaluate models. Subsequently, the training process if defined. Next, each localization method is discussed in detail. Finally we explain how we investigate localization improvements for multiple-instance localization.
 
 \section{Networks}
 The \acrshort{cam}-based \acrshort{wsol} methods require a \acrshort{cnn} model to classify images and localize objects in those images. We use the VGG16 and Resnet50 network. VGG16 and a variant of it for \acrshort{cam} is used in a lot of \acrshort{cam}-based papers and a good reference for benchmarking \acrshort{wsol}. Resnet50 is more recent and is used for experiments with MinMaxCAM by Wang, Kaili \textit{et al.}
@@ -210,15 +210,38 @@ instances &  images \\
 \label{tab:imagenet_instance_distribution}
 \end{table}
 
-\section{Learning}
-In the \acrlong{wsol} approach, we only provide image-level labels to train a model for the classification task. At test time we will provide the ground-truth labels to measure localization performance.
+\section{Training}
+For the \acrlong{wsol} task, we only provide image-level labels to train a model for classification. At test time we will provide ground-truth bounding boxes and segmentation masks  to measure localization performance.
 
+The \acrshort{cnn} is a feed-forward network. During the training process, the network will process the input through all the layers, compute the loss to understand how far the predicted label of the image is falling from the correct one, and propagate the gradients of network weights back into the network to update the weights of the layers. By iterating over a large dataset of inputs, the network will learn to set its weights to achieve the best results. The goal of training is to minimize the loss function. This optimization process requires iterating over the training data a number of times. One full iteration over the dataset is called an epoch.
+
+\subsection{Data preprocessing}
+Image preprocessing and image augmentations are two key processes taking place before images are fed to a neural network.
+
+\textbf{Image preprocessing}
+Image preprocessing are manipulations applied to images to create a common representations of different content. Following preprocessing operations are performed:
 \begin{itemize}
-    \item train classification task
-    \item approach: training, tuning, pretrained datasets
-    \item How we trained our models: SGD, momentum, weight decay, learning rate schedule (step, multistep), regularization (minmaxcam), model weight initialization
-    \item stop criterion
+    \item Resize: This operation resizes images to 256x256 dimension for training and 224x224 for inference.
+    \item ToTensor: This operation converts an image format in the range [0, 255] to a tensor in the range [0.0, 1.0].
 \end{itemize}
+\textbf{Data augmentation}
+Image augmentation are manipulations applied to images to create different versions of similar content in order to expose the model to a wider array of training examples. For example, randomly altering rotation, brightness, or scale of an input image requires that a model consider what an image subject looks like in a variety of situations. Following augmentation operations are performed:
+\begin{itemize}
+    \item RandomCrop: Crops a given image at a random location.
+    \item RandomHorizontalFlip: Horizontally flips a given image randomly with a given probability.
+\end{itemize}
+
+\subsection{Training process}
+For training a model on the synthetic dataset, we will need to train the networks from scratch as we cannot use a pretrained network.
+
+For training a model on the imagenet dataset, we take following approach:
+\begin{itemize}
+    \item VGG16: Use pre-trained model for \acrshort{cam} methods that don't require pretraining. Fine-tune model for MinMaxCAM as this model requires training because of regularizaton.
+    \item VGG16-GAP: Use pre-trained VGG16 parameters and re-train model.
+    \item Resnet50: Use pre-trained model for all \acrshort{cam} methods. Fine-tune model for MinMaxCAM.
+\end{itemize}
+
+We use stochastic gradient descent for optimization of the loss function. We stop the learning process when the loss of the model on the validation dataset hasn't descrease for more than 5 training episodes.
 
 % begin section to be removed
 \begin{itemize}
