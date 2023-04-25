@@ -222,7 +222,7 @@ Image preprocessing and image augmentations are two key processes taking place b
 Image preprocessing are manipulations applied to images to create a common representations of different content. Following preprocessing operations are performed:
 \begin{itemize}
     \item Resize: This operation resizes images to 256x256 dimension for training and 224x224 for inference.
-    \item ToTensor: This operation converts an image format in the range [0, 255] to a tensor in the range [0.0, 1.0].
+    \item ToTensor: This operation converts an image's values in the range [0, 255] to a tensor in the range [0.0, 1.0].
 \end{itemize}
 \textbf{Data augmentation}
 Image augmentation are manipulations applied to images to create different versions of similar content in order to expose the model to a wider array of training examples. For example, randomly altering rotation, brightness, or scale of an input image requires that a model consider what an image subject looks like in a variety of situations. Following augmentation operations are performed:
@@ -232,58 +232,204 @@ Image augmentation are manipulations applied to images to create different versi
 \end{itemize}
 
 \subsection{Training process}
-For training a model on the synthetic dataset, we will need to train the networks from scratch as we cannot use a pretrained network.
+\subsubsection{Model initialization}
+In order to build a model that accurately classifies images, the model weights must be initialized with proper values so that the model converges, i.e., minimizes the loss function.
 
-For training a model on the imagenet dataset, we take following approach:
+We initialize weights of convolutional layers with values according to the method described by He \textit{et a.} \cite{he2015delving}, as this method is proven to provide good training results for \acrshort{cnn}s having \acrshort{relu} activation functions.
+
+The weights of the fully-connected layers are initialized using random values from a normal distribution with standard deviation of 0.01. Using small initial weights avoids the vanishing and exploding gradients problem.
+
+For training a model on the imagenet dataset, we will use pre-trained model paremeters as follows:
 \begin{itemize}
-    \item VGG16: Use pre-trained model for \acrshort{cam} methods that don't require pretraining. Fine-tune model for MinMaxCAM as this model requires training because of regularizaton.
-    \item VGG16-GAP: Use pre-trained VGG16 parameters and re-train model.
-    \item Resnet50: Use pre-trained model for all \acrshort{cam} methods. Fine-tune model for MinMaxCAM.
+    \item VGG16: Use pre-trained model for all \acrshort{cam} methods that don't require a network architecture with a \acrshort{gap} layer.
+    \item VGG16-GAP: Parameters from layers common with the VGG16 model, are initialized with pre-trained parameters from the VGG16 model.
+    \item Resnet50: Use pre-trained model parameters for all \acrshort{cam} methods.
 \end{itemize}
 
-We use stochastic gradient descent for optimization of the loss function. We stop the learning process when the loss of the model on the validation dataset hasn't descrease for more than 5 training episodes.
+For training a model on the synthetic dataset, we will need to train the networks from scratch as this is a new dataset and thus no pre-trained network exists.
 
-% begin section to be removed
-\begin{itemize}
-    \item based on WSOL CAM methods
-    \item learning method: Main task is classification. Localization based on learned features
-    \item baseline CAM method: weighted combination of features maps with where activations are related to predicted class. Other CAM methods have specific method to compute CAM scoremap.
-    \item CAM scoremap is transformed in binary scoremap using a CAM threshold = Binarized CAM scoremap is used as segmentation mask for datasets with ground truth segmentation mask labels
-    \item Contours are computed in binarized CAM scoremap to derive bounding boxes for those datasets that have ground truth bounding boxes as labels. Bounding box is defined as coordinate tuple (x1, x2, y1, y2) where $x1 = x_{min}(coutour), y1 = y_{min}(contour), x2 = x_{max}(contour), y2 = y_{max}(contour)$
-    \item Localization accuracy is computed by counting predicted and ground truth label matches in the evaluation dataset
-\end{itemize}
-% end section to be removed
+\subsubsection{Model training}
+Supervised classification is an optimization problem where we want to minimize the loss, i.e. the difference between predicted and ground-truth class for the images in a dataset.
+
+We use stochastic gradient descent for optimization of the loss function. We stop the learning process when the loss of the model on the validation dataset hasn't decreased for five subsequent training episodes.
 
 \section{Localization}
-To localize object instances in images, we will benchmark a set of \acrshort{cam} related methods. All those models will be evaluated using a pre-trained model on a dataset. 
-
- Feature activations are combined in score maps. Score maps are binarized by threshold. Contours are computed for separate components in cam map. Bounding boxes are computed and compared to ground truth during validation and test to compute localizaton metrics.
-
-Explain selected CAM methods: reason about choice criteria, differences, benefits, limitations
-CAM methods: Per cam methode: \\
-- Figuur toevoegen \\
-- In gewone termen uitleggen wat verschil is \\
-- Formules geven en uitleggen (hoe de map gemaakt wordt) \\
-Complexity computation \\
-- Bezien als evaluatie methode \\
-Evaluation metrics \\
-- Quantitative evaluation (maxboxaccv3, pxap) \\
-- Formules geven en uitleggen \\
-- Complexity analysis \\
+To localize object instances in images, we will benchmark a set of \acrshort{cam} related methods using models trained for classification on the synthetic and imagenet datasets. The general process for localization is the same for all \acrshort{cam} methods. For each image of the validation or test dataset, following steps are performed:
+\begin{enumerate}
+    \item The neural network takes an image as input and returns a class prediction score.
+    \item In the final a score map is computed as a weighted combination of the feature maps in the final convolutional layer of the \acrshort{nn}. The weights are related to the ground-truth class of the image. The method to compute the weights is specific to the \acrshort{cam} method.
+    \item The score map is normalized to values between 0 and 1.
+    \item The normalized score map is binarized using a \acrshort{cam} threshold. We use 100 different thresholds ranging from 0 to 1 with a step of 0.01, yielding 100 binarized score cams.
+    \item For each binarized score map, we compute all self-contained contours. For those contours, bounding boxes are extracted. Bounding boxes are defined as a tuple with four coordinates ($(x_1, y_1, x_2, y_2)$ with $(x_1, y_1)$ the top-left coordinate and $(x_2, y_2)$ the bottom-right coordinate of the bounding box.
+    \item For each score map, we keep track of the true positives and false positives, both for bounding boxes compared to ground-truth bounding boxes, and for binarized score maps compared to grounnd-truth segmentation masks.
+    \item Localization accuracy is computed by counting predicted and ground truth label matches in the evaluation dataset
+\end{enumerate}
+When metrics are collected for all images, localization performance can be computed. The computation and evaluation of localization metrics are discussed in section \ref{sec:localization_metrics}. In the next sections we discuss the different \acrshort{cam}-based and how the score map is computed.
 
 \subsection{CAM}
-CAM: baseline method
+Zhou \textit{et al.} proposes a general technique called \acrfull{cam} for \acrshort{cnn}s with \acrshort{gap} layer. A class activation map for a particular category indicates the discriminative image regions used by the
+\acrshort{cnn} to identify that category. The procedure used for generating these maps is shown in Fig. \ref{fig:cam}. The \acrshort{gap} layer outputs the spatial average of the feature map of each channel of the last convolutional layer. The class-specific weights related to the \acrshort{gap} layer units, are then used to compute the weighted combination of the feature maps yielding the class activation map (or score map).
+\begin{figure}[ht]
+    \begin{center}       
+    \includegraphics[width=1.0\textwidth]{fig_cam.jpeg}
+    \caption[Class Activation Mapping]{Class Activation Mapping. The predicted class score is mapped back to the last convolutional layer to generate the class activation map. The \acrshort{cam} highlights the class-specific discriminative regions.}
+    \caption*{Source: \href{https://github.com/zhoubolei/CAM}{https://github.com/zhoubolei/CAM}}
+    \label{fig:cam}
+    \end{center}
+\end{figure}
+
+We describe more formally how the \acrshort{cam} is computed. Let $f_{k}(x,y)$ be the activation of unit k in the final convolutional layer at spatial location $(x,y)$. Then, for unit k, the result of the \acrshort{gap} layer is:
+\begin{equation} \label{eq:cam_gap}
+    F^{k} = \sum_{x,y}f_{k}(x,y)
+\end{equation}
+For a given class c, the classification score $Y^{c}$ can be computed as:
+\begin{equation} \label{eq:cam_score}
+    y^{c} = \sum_{k}w_{k}^{c}F_{k}
+\end{equation}
+Here, $w_{k}^{c}$ is the weight corresponding to class $c$ for unit $k$. It expresses the importance of $F_{k}$ for class $c$.
+When we substitute equation \ref{eq:cam_gap} into \ref{eq:cam_score}, we get:
+\begin{equation} \label{eq:cam_score2}
+    Y^{c} = \sum_{k}w_{k}^{c}\sum_{x,y}f_{k}(x,y) = \sum_{x,y}\sum_{k}w_{k}^{c}f_{k}(x,y)
+\end{equation}
+Then the definition of the class activation map for class c for each spatial element is given by:
+\begin{equation} \label{eq:cam_map}
+    L_{CAM}^{c}(x,y) = \sum_{k}w_{k}^{c}f_{k}(x,y)
+\end{equation}
+
+The advantage of \acrlong{cam} is that it is able to localize discriminative image regions despite being trained for solving a classification task. In additon, it has low computational complexity as it needs only a single forward pass through the network to obtain the score map.
+
+A disadvantage is, that the network only focuses on discriminative regions in an image, which leads to partial localization of objects. Another disadvantage of \acrshort{cam} is that it requires the network to have a \acrshort{gap} layer, which requires modifications in the network architecture. This change in an architecture causes a classification performance drop.
 
 \subsection{GradCAM}
-GradCAM: Generalization of CAM that doesn’t require a GAP layer in the architecture
+Selvaraju \textit{et al.} \cite{selvaraju2017grad} propose a technique called \acrfull{gradcam}. This approach uses the gradients of a class score, flowing into 
+the final convolutional layer to produce a coarse localization map highlighting the important regions in the image for predicting the concept. 
+
+\acrshort{gradcam} uses the final convolutional layer for localization as convolutional features retain spatial information that is lost in fully-connected layers and because the final convolutional layer can be expected to have the best compromise between high-level semantics and detailed spatial information. \acrshort{gradcam} uses the gradients of the neurons in the final convolutional layer to indicate the importance of each neuron for a predicted class.
+
+\begin{figure}[ht]
+    \begin{center}       
+    \includegraphics[width=1.0\textwidth]{fig_gradcam.png}
+    \caption[Grad-CAM]{Grad-CAM. After forwarding an image through the network, a class score is obtained. The gradients of the desired class is then backpropagated to the feature maps of interest, which are combined using the average gradients per feature map as weights, yielding the \acrshort{gradcam} localization map.}
+    \caption*{Source: Selvaraju \textit{et al.} \cite{selvaraju2017grad}}
+    \label{fig:gradcam}
+    \end{center}
+\end{figure}
+Fig. \ref{fig:gradcam} shows how the class-discriminative localization map is obtained. First the gradient of the score $Y^c$ for class $c$ is computed with respect to feature maps $A^k$ of a convolutional layer, i.e. $\frac{\partial{Y^c}}{\partial{A^k}}$. These gradients are then averaged to obtain the neuron importance weights $w_{k}^{c}$:
+\begin{equation}
+    w_{k}^{c} = \frac{1}{Z}\sum_{i}\sum_{j}\frac{\partial{Y^c}}{\partial{A_{ij}^{k}}}
+\end{equation}
+
+The weight $w_{k}^{c}$ captures the importance of a feature map $k$ for a target class $c$. The \acrshort{gradcam} localization map is then calculated as the weighted combination of feature maps, followed by a \acrshort{relu} activation function as we are only interested in features that have positive influence on the class of interest:
+\begin{equation}
+    L_{Grad-CAM}^{c} = ReLU \left( \sum_{k}w_{k}^{c} A^{k} \right)
+\end{equation}
+
+\acrshort{gradcam} is a generalization of \acrshort{cam}. It can be proven that when \acrshort{gradcam} is applied to architectures with a \acrshort{gap} layer, it specializes to the \acrshort{cam} method. Unlike the baseline \acrshort{cam} method, \acrshort{gradcam} is applicable to a wide variety of CNN model-families as it doesn't require an architecture with \acrshort{gap} layer.
 
 \subsection{GradCAM++}
+Chattopadhay \textit{et al.} \cite{chattopadhay2018grad} propose a technique called Grad-CAM++, to provide better localization of objects
+as well as explaining occurrences of multiple objects of a class in a single image, compared with \acrshort{gradcam}. The proposed method uses a weighted combination of the positive partial derivatives of the last convolutional layer feature maps with respect to a specific class score as weights to generate a visual explanation for the class label under consideration.
+
+The authors propose a more generalized method by explicitly coding the structure of the weights as:
+\begin{equation}
+    w_{k}^{c} = \sum_{i} \sum_{j} \alpha_{ij}^{kc} \dot ReLU \left( \frac{\partial{Y^c}}{\partial{A_{ij}^{k}}} \right)
+\end{equation}
+In this formulation, $w_{k}^{c}$ captures the importance of a particular activation map $A^k$. The weights are a weighted combination of the positive
+partial derivatives with respect to each pixel in an activation map $A^k$ and capture the importance of that map for class $c$. Here, the weights $w_k^c$ are a weighted average of the gradients as opposed to a global average in GradCAM. $\alpha_{ij}^{k}$ is the weight of the gradient at spatial location $(x,y)$ in the feature map $A^k$. 
+
+A formal derivation of the gradient weights is defined by Chattopadhay \textit{et al.} \cite{chattopadhay2018grad} and the result is given here for reference:
+\begin{equation}
+    \alpha_{ij}^{kc} = \frac{\frac{\partial^{2}{Y^c}}{\left( \partial{A_{ij}^{k}} \right)^2}}{2\frac{\partial^{2}{Y^c}}{\left( \partial{A_{ij}^{k}} \right)^2} + \sum_a \sum_b A_{ab}^{k} {\frac{\partial^{3}{Y^c}}{\left( \partial{A_{ij}^{k}} \right)^3}} }
+\end{equation}
+The time overhead for calculating higher order derivatives is of the same order as Grad-CAM as no cross higher-order derivatives are computed. The class-discriminative map for a given class $c$ is then computes as:
+\begin{equation}
+    L_{ij}^{c} = ReLU \left( \sum_{k}w_{k}^{c} A_{ij}^{k} \right)
+\end{equation}
+The Grad-CAM++ method, compared with CAM and Grad-CAM, is illustrated in Fig. \ref{fig:gradcamplusplus}.
+\begin{figure}[ht]
+    \begin{center}       
+    \includegraphics[width=1.0\textwidth]{fig_gradcamplusplus.png}
+    \caption[Grad-CAM++]{Grad-CAM++, compared to Grad-CAM and CAM.}
+    \caption*{Source: Chattopadhay \textit{et al.} \cite{chattopadhay2018grad}}
+    \label{fig:gradcamplusplus}
+    \end{center}
+\end{figure}
 
 \subsection{ScoreCAM}
-ScoreCAM: Shows more focus on object instances. Also seems to do a better job in capturing the features of multiple instances in the explanation map than GradCAM.
+Wang \textit{et al.} argue that gradient-based \acrshort{cam} methods can suffer from saturating gradients giving the false confidence that higher weights lead to high target scores. Score-CAM gets rid of the dependence on gradients by obtaining the weight of each activation map through its forward passing score on target class. The final score map is obtained by a linear combination of weights and activation maps.
+
+In contrast to previous methods [4, 12], which use the gradient information flowing into the last convolutional layer to represent the importance of each activation map, Wang \textit{et al.} incorporate the importance as the Increase of Confidence: Given a function $Y = f(X)$ with input vector $X$ and output scalar $Y$, for a baseline input $X_b$, the contribution $c_i$ of $x_i$ towards $Y$ is the change of output by replacing the i-th entry in $X_b$ with $x_i$.
+\begin{equation}
+    c_i = f(X_b o H_i) - F(X_b)
+\end{equation}
+Where $H_i$ is a vector with the same shape of $X_b$ but for each entry $h_j$ in $H_i$, $h_i = I[i=j]$ and $o$ denotes the Hadamard product.
+
+Given a CNN model Y = f(X) that takes an input $X$ and outputs a scalar $Y$. We pick an internal convolutional layer l in f and the corresponding activation as A. Denote the
+k-th channel of $A_l$ by $A^k_l$ . For a known baseline input $X_b$,
+the contribution $A^k_l$ towards $Y$ is defined as:
+\begin{equation}
+    C(A^k_l = f(X o H^k_l) - f(X_b)
+\end{equation}
+where
+\begin{equation}
+    H^k_l) = Normalization(Upsampled(A^k_l))
+\end{equation}
+Finally, the score map is defined as:
+\begin{equation}
+    L^{c}_{Score-CAM} = ReLU(\sum_{k} \alpha^{c}_{k} A^k_l)
+\end{equation}
+where
+\begin{equation}
+    \alpha^{c}_{k} = C(A^k_l)
+\end{equation}
+Fig. \ref{fig:scorecam} shows the pipeline for Score-CAM. Activation maps are first extracted in Phase 1. Each activation then works as a mask on original image, and obtain its forward-passing score on the target class. Phase 2 repeats for N times where N is the number of activation maps. Finally, the result can be generated by linear combination of score-based weights and activation maps. Phase 1 and Phase 2 shares a
+same CNN module as feature extractor. 
+\begin{figure}[ht]
+    \begin{center}       
+    \includegraphics[width=1.0\textwidth]{fig_scorecam.png}
+    \caption[ScoreCAM]{ScoreCAM.}
+    \caption*{Source: Wang \textit{et al.} \cite{wang2020score}}
+    \label{fig:scorecam}
+    \end{center}
+\end{figure}
+
+ScoreCAM shows more focus on object instances and is also promising for capturing the features of multiple instances in the explanation map. A major disadvantage of ScoreCAM is the computational cost because it requires a factor of the number of feature maps in the last convolutonal layer more forward passes than the baselne \acrshort{cam} method.
 
 \subsection{MinMaxCAM}
-MinMaxCAM: regularization of common object regions and background
+One of the most common problems of methods based on Class Activation Mapping, this
+is caused either by localization maps which focus, exclusively, on the most discriminative region of the objects of interest, or by activations occurring
+in background regions. To address these two problems, Wang \textit{et al.} \cite{wang2021minmaxcam} propose two representation regularization mechanisms: Full Region Regularization which tries to maximize the coverage of the localization map inside the object region, and Common Region Regularization which minimizes the activations occurring in background regions.
+
+The idea of the Common region regularization (CRR) is that different images depicting foreground objects of the same class should share similar features. The localized-object features can be obtained by applying the localization map $H$, which is generated by forwarding image $I$ through \acrshort{cnn} backbone $B$, as in the \acrshort{cam} method, on the image $I$ and extract the feature of $I \cdot H$, denoted as $f$. Therefore, $f=B(I o H)$, where $o$ refers to the element-wise multiplication. To save computation resources, we use the same backbone B. Given S different images from the same class, we have 
+\begin{equation}
+    CRR = \frac{1}{S(S-1)} \sum^{S-1}_{i=0} \sum^{S-1}_{j=0} \lVert f_i - f_j \rVert^2_2
+\end{equation}
+CRR calculates the pair-wise distance of the feature of $IoH$. The goal of CRR is to localize the common region of a set of images from the same class. By minimizing it, it can minimize the activations on the localization map, i.e. suppress the activations in non-object regions of the images.
+
+For the case of the failed localization on the most discriminative region, we propose Full region regularization (FRR) to enlarge the localization map.
+
+\begin{equation}
+    FRR = \frac{1}{S} \sum^{S-1}_{i=0}\lVert f_i - f^o_i \rVert^2_2
+\end{equation}
+$f^o$ is the feature of the original image $I$, i.e. $f^o=B(I)$. FRR calculates the distance of the feature between the $IoH$ and $I$. Minimizing FRR has the effect of maximizing the activations on the localization map.
+
+The learning process has two stages. For stage I, it takes $N x S$ images as input. The model is trained for the classification task, i.e. update the backbone and linear layer via the cross-entropy loss. It is the same as CAM.
+
+For stage II, the backbone B is frozen as a feature extractor. It receives the images multiplied by the localization map $(IoH)$ as input
+
+The features ($f$ and $f^o$) extracted by B are used for the two regularizations. The loss only updates the weights of the linear layer, by minimizing CRR and FRR:
+\begin{equation}
+    L_{S2} = \lambda_{1}CRR + \lambda_{2}FRR
+\end{equation} 
+LS1 and LS2 update the model every mini-batch. Fig. \ref{fig:minmaxcam} shows the proposed method.
+\begin{figure}[ht]
+    \begin{center}       
+    \includegraphics[width=1.0\textwidth]{fig_minmaxcam.png}
+    \caption[MinMaxCAM]{MinMaxCAM.}
+    \caption*{Source: Wang \textit{et al.} \cite{wang2021minmaxcam}}
+    \label{fig:minmaxcam}
+    \end{center}
+\end{figure}
 
 \section{Evaluation}
 \subsection{Computational complexity}
@@ -294,7 +440,11 @@ Complexity computation
     \item theoretical versus empirical
 \end{itemize}
 
-\subsection{Localization metrics}
+\subsection{Localization metrics} \label{sec:localization_metrics}
+Localization metrics \\
+- Quantitative evaluation (maxboxaccv3, pxap) \\
+- Formules geven en uitleggen \\
+- Complexity analysis
 \begin{itemize}
     \item Reason about existing versus required metrics
     \item Explain in detail how metrics are computed

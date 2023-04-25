@@ -619,7 +619,7 @@ def main(args):
         if trainer.early_stopping is not None:
             info |= {'early_stop': str(trainer.early_stopping.early_stop).lower()}
         mlflow.log_dict(info, 'state/training.json')
-    mlflow.pytorch.log_model(trainer.model, 'model', pip_requirements='requirements.txt')
+    # mlflow.pytorch.log_model(trainer.model, 'model', pip_requirements='requirements.txt')
 
 def SIGSEGV_signal_arises(signalNum, stack):
     print(f"{signalNum} : SIGSEGV arises")
