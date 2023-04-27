@@ -105,7 +105,7 @@ As most research papers evaluting \acrshort{cam}-related \acrshort{wsol} methods
 By using a synthetic dataset we limit computational requirements for training and evaluating our models. As we are evaluating localization of multiple object instances, using this synthetic dataset we have control over image structure, number of object instances and ground truth data. 
 
 \subsubsection{Baseline}
-For generation of the images, we took inspiration from Tjoa, E. \textit{et al.}. The authors provide algorithms for generating synthetic image datasets to quantify explainability of heatmaps in \acrshort{dnn}. The images can be generated along with the ground-truth segmentation masks for objective quantitative assessment. Each sample data is an image of a cell with easily recognized features that are  distinguished from localization ground-truth mask.
+For generation of the images, we took inspiration from Tjoa, E. \textit{et al.} \cite{tjoa2022quantifying}. The authors provide algorithms for generating synthetic image datasets to quantify explainability of heatmaps in \acrshort{dnn}. The images can be generated along with the ground-truth segmentation masks for objective quantitative assessment. Each sample data is an image of a cell with easily recognized features that are  distinguished from localization ground-truth mask.
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=1.0\textwidth]{fig_synthethic_paper_samples.jpeg}
@@ -175,9 +175,10 @@ According to the criteria in previous section, we have 8 different synthetic dat
 Each dataset has a train, validation and test split of 1000, 200 and 200 images.
 
 \subsection{Imagenet dataset}
-We use the Imagenet dataset because it contains real, natural images with a diverse objects covering 1000 distinct classes. The dataset has multi-instance images and ground-truth image-level labels and bounding boxes. It is a very popular dataset used in many papers. It is also used in The \acrfull{ilsvrc}, a compitition that evaluates algorithms for object detection and image classification at large scale.
+Deng \textit{et al.} \cite{deng2009imagenet} introduced a database called "ImageNet”, a largescale ontology of images built upon the backbone of the
+WordNet structure. It contains real, natural images with a diverse objects covering 1000 distinct classes. We use the dataset that was used in the \acrfull{ilsvrc} competition for object localization. The dataset has multi-instance images and ground-truth image-level labels and bounding boxes. It is a very popular dataset used in many papers.
 
-We use the Imagenet dataset for the classification with localization tasks as defined for the ILSVRC in 2012. The validation dataset consists of 50,000 photographs, collected from flickr and other search engines, hand labeled with the presence or absence of 1000 object categories. The training dataset is the subset of ImageNet containing the 1000 categories and 1.2 million images. The distribution of object instances over the images is show in table \ref{tab:imagenet_instance_distribution}.
+We use the Imagenet dataset for the classification with localization tasks as defined for the \acrfull{ilsvrc} compitition of 2012. The validation dataset consists of 50,000 photographs, collected from flickr and other search engines, hand labeled with the presence or absence of 1000 object categories. The training dataset is the subset of ImageNet containing the 1000 categories and 1.2 million images. The distribution of object instances over the images is show in table \ref{tab:imagenet_instance_distribution}.
 \begin{table}[ht]
 \centering
 \begin{tabular}{rr}
@@ -466,43 +467,97 @@ Based on the design of the \acrshort{cam} methods, we can theoretically reason a
 MinMaxCAM uses CAM as localization method, so it has the same inference time. MinMaxCAM has longer training time due to its regularization, but this is not taken into account for the localization task itself. Both CAM an MinMaxCAM have lowest computational cost as they only require a single forward pass per batch of images. GradCAM and GradCAM++ are gradient-based methods and need an additional backward pass through the network to compute the gradients. If we take the assumption that forward pass and backward pass have the same order of complexity, then GradCAM and GradCAM++ have roughly double the run time of CAM. ScoreCAM requires many forward passes: It gets the features maps, as the other methods do. For those feature maps, it then needs a forward pass of the original image ablated with the feature map to get the weights computed as confidence score. It does so in batches. This explains the $N\frac{F}{B}$ term in the number of forward passes. ScoreCAM roughly requires $F$ times more forward passes than CAM. For a Resnet50 network with 2048 feature maps in the final convolutional layer, this is a costly operation.
 
 \subsection{Localization metrics} \label{sec:localization_metrics}
-%Quantitative evaluation
-%questions to answer here:
-%- Are the existing metrics usable for multi-instance WSOL?
-%- What are the chosen metrics telling about multi-instance WSOL?
+To objectively evaluate and compare object localization using different \acrshort{cam} methods, we need to quantitatively determine performance using localization metrics. The papers introducing the \acrshort{cam} methods, specify different metrics: Zhou \textit{et al.} \cite{zhou2016cvpr} (\acrshort{cam}) and Selvaraju \textit{et a.} \cite{selvaraju2017grad} (\acrshort{gradcam}) use the localization error. Chattopadhay \textit{et al.} \cite{chattopadhay2018grad} (\acrshort{gradcam}++) evaluate localization using faithfulness based metrics and Wang \textit{et al.} \cite{wang2020score} evaluates localization from an energy-based perspective. 
+
+However, none of the mentioned metrics is usable for measuring localization of multiple object instances in images. The localization error is defined for single-instance object localization in the \acrlong{ilsvrc} competition \cite{russakovsky2015imagenet}. The faithfulness based metrics measure image-level drop or increase in confidence scores when occluding images. And the energy-based metrics consider the proportion of the sum of pixel values of a saliency map that are inside a ground-truth bounding box versus the ones that are outside.
+
+We set out following criteria for choosing localization metrics:
+\begin{enumerate}
+    \item The metrics must be applicable to all evaluated \acrshort{cam} methods
+    \item Metrics must be applicable for datasets with bounding boxes ground-truth and for datasets with segmentation mask ground-truth
+    \item Localization accuracy of multiple object instances is measured
+\end{enumerate}
+
+Choe \textit{et al.} \cite{choe2020evaluating} have defined a \acrshort{wsol} evaluation protocol, defining metrics that are applicable to all evaluated {cam} methods, meeting criterion 1. The authors defined a metric that measures maximum box accuracy for datasets with ground-truth bounding boxes, and a metric that measures pixel average precision for datasets with ground-truth segmentation masks. This covers criterion 2. However, criterion 3 is not met as the maximum box accuracy doesn't take into account measuring of multiple instances.
+
+We enhance the evaluation metrics of Choe \textit{et al.} to measure localization of multiple object instances for the \acrshort{wsol} task, thereby meeting criterion 3.
+
 %- What if an image has 1 large object inistance and 1 small instance?
 %- Is the metrics only saying something about the large instance?
 %- What is the intended use of the metrics?
 %- Do you want to find all instance in an image or are you using a metric that is good at measuring localization but not good at finding all instances?
 \subsubsection{MaxBoxAccV3 metric}
+Many datasets only provide bounding box annotations, as pixel-wise masks are expensive to collect. This is the case for the Imagenet dataset.
+It is not possible to measure exact pixel-wise precison and recall with bounding boxes. Therefore, a surrogate is defined.
+
+Here we derive the multi-instance localization metric $MaxBoxAccV3$ step by step, starting with metrics defined by Choe \textit{et al.} \cite{choe2020evaluating}.
+
+Given a dataset with N images and ground truth boxes B, the box accuracy at score map threshold $\tau$ and a \acrshort{iou} threshold $\delta$ is defined as:
+\begin{equation} \label{eq:boxacc}
+    BoxAcc(\tau,\delta) := \frac{1}{N} \sum_{n}1_{IoU(box(s(X^{(n)}),\tau),B^{(n)})\ge\delta}
+\end{equation}
+where $box(s(X^{(n)})$ is the tightest bounding box around the largest-area connected component in the score map \{$(i,j)\text{ }|\text{ }s(X^{(n)}_{ij}) \ge \tau$\}. The amount of overlapping between the predicted bounding box and ground truth bounding box expresses how accurate the localization method is. The overlapping is computed as the proportion of area of the boxes that overlap versus the total area of both boxes. The \acrfull{iou} metric captures this overlap and is illustrated in Fig. \ref{fig:iou}. This metric is also used frequently in object detecton challanges such as the Pascal VOC challenge \cite{everingham2009pascal}. The \acrshort{iou} produces a number between $0$ and $1$. The closer \acrshort{iou} is to 1, the better the localization is. We will use an \acrshort{iou} threshold $\tau$ to assess whether the amount of overlap is sufficient to consider the localization a true positive match.
+\begin{figure}[ht]
+    \begin{center}       
+    \includegraphics[width=0.3\textwidth]{fig_iou.png}
+    \caption[The IoU equation]{The Intersection over Union equation.}
+    \caption*{Source: href{https://pyimagesearch.com/2016/11/07/intersection-over-union-iou-for-object-detection}{https://pyimagesearch.com/2016/11/07/intersection-over-union-iou-for-object-detection}}
+    \label{fig:iou}
+    \end{center}
+\end{figure}
+
+We then count the number of images where the predicted bounding box overlaps with ground truth box $B$ with $IoU \ge \delta$, and average the count over the number of images. This gives a box accuracy score between $0$ and $1$. For datasets with images where more than one ground truth bounding box is provided, e.g. Imagenet, we count the number of images where box prediction overlaps with at least one of the ground truth bounding boxes with $IoU \ge \delta$. When $\tau$ is 0.5, the metric is commonly-called GT-known localization accuracy. 
+
+For score map threshold independence, the box accuracy is reported at the optimal threshold $\tau$, i.e., the \textbf{maximal box accuracy}:
+\begin{equation}
+    MaxBoxAcc(\tau) := max_{\tau} BoxAcc(\tau,\delta)
+\end{equation}
+
+Choe \textit{et al.} \cite{choe2020evaluating} sets $\delta = 0.5$ for $MaxBoxAcc$ to follow prior works. The authors developed an improved version called $MaxBoxAccV2$ that is better for two reasons: $MaxBoxAcc$ measures performance at fixed \acrshort{iou} threshold ($\delta = 0.5$). $MaxBoxAccV2$ averages performance across $\delta \in$ {0.3, 0.5, 0.7} to account for different levels of localization fineness. $MaxBoxAcc$ takes the largest connected component in the score map for estimating the bounding box, assuming that the object of interest will be large. This assumption is dropped by $MaxBoxAccV2$, which considers the best match between the set of detected bounding boxes and ground truth bounding boxes. Choe \textit{et al.} encourage to use $MaxBoxAccV2$ for future \acrshort{wsol} research. $MaxBoxAccV2$ is thus defined as:
+\begin{equation}
+    MaxBoxAccV2(\tau) := \frac{1}{3} \sum_{\delta \in (0.3,0.5,0.7)} max_{\tau} BoxAcc(\tau,\delta)
+\end{equation}
+
+As $MaxBoxAccV2$ considers the best match between the set of estimated and ground truth bounding boxes, it is not suited for measuring multiple-instance localization performance. We will enhance $MaxBoxAccV2$ to account for multiple instances. To this purpose, the definition of box accuracy must be revised to $BoxAccV2$:
+\begin{equation} \label{eq:boxaccv2}
+    BoxAccV2(\tau,\delta) := \frac{1}{G} \sum^{N}_{n} \sum^{G^{(n)}}_{g}  1_{IoU(box(s(X^{(n)}),\tau),B^{(n)})\ge\delta}
+\end{equation}
+
+The n-th image in dataset $X$ is denoted as $X^{(n)}$. The \acrshort{cam} method produces the score map $s(X^{(n)})$ and estimated set of bounding boxes $box(s(X^{(n)}),\tau)$ at score map threshold $\tau$. The set of ground truth bounding boxes for image n is $B^{(n)}$. The number of images in the dataset is $N$, the number of ground truth boxes in image n is $G^(n)$ and the total number of ground truth boxes in the dataset is $G$. The major difference with Equation \ref{eq:boxacc} is that in Equation \ref{eq:boxaccv2} we have an additional inner iteration where for each ground truth bounding box in an image, we try to find a match with the set of estimated bounding boxes for that image. In this inner iteration, there can only be a single match between a ground truth box and an estimated box at any time.
+
+We then define $MaxBoxAccV3$ as:
+\begin{equation}
+    MaxBoxAccV3(\tau) := \frac{1}{3} \sum_{\delta \in (0.3,0.5,0.7)} max_{\tau} BoxAccV2(\tau,\delta)
+\end{equation}
+With this definition we meet the third criterion for a metric that measures multiple-instance localization performance.
+
 \subsubsection{PxAP metric}
 
-- Formules geven en uitleggen \\
-\begin{itemize}
-    \item Explain in detail how metrics are computed
-    \item MaxBoxAccV3: modified version of MaxBoxAccV2 (Choe et al.,2020b) to support multiple instance WSOL
-    \item PxAP (pixel average precision) when ground truth segmentation masks are available.
-    \item explain for each method how they capture localization accuracy
-    \item explain how localization of small versus large objects are affected by metrics
-\end{itemize}
+When ground truth masks are available for evaluation, pixel-wise precision and recall can be measured. These metrics allow users to choose the preferred operating score map threshold $\tau$ that provides a trade-off between precision and recall. Choe \textit{et al.} define the \textbf{pixel-wise precision and recall at threshold $\tau$} as:
+\begin{equation} \label{eq:pxprec}
+    PxPrec(\tau) = \frac{\lvert \{ s^{(n)}_{ij} \ge \tau \} \cap \{ T^{(n)}_{ij} = 1 \} \rvert}{\lvert \{ s^{(n)}_{ij} \ge \tau \} \rvert}
+\end{equation}
+and:
+\begin{equation} \label{eq:pxrec}
+    PxRec(\tau) = \frac{\lvert \{ s^{(n)}_{ij} \ge \tau \} \cap \{ T^{(n)}_{ij} = 1 \} \rvert}{\lvert \{ T^{(n)}_{ij} = 1 \} \rvert}
+\end{equation}
+
+Pixel-wise precision in Equation \ref{eq:pxprec} computes the proportion of the pixels in the score map $\{ s^{(n)}_{ij} \ge \tau \}$ that match the foreground pixels of the ground truth mask $\{ T^{(n)}_{ij} = 1 \}$. Pixel-wise recall indicates the proportion of the number of foreground pixels in the ground truth mask that are matched by the pixels in the score map at threshold $\tau$. For threshold independence, the \textbf{pixel average precision} is defined:
+\begin{equation}
+    PxAP := \sum_{l} PxPrec(\tau_{l})(PxRec(\tau_{l}) - PxRec(\tau_{l-1}))
+\end{equation}
+This metric is the area under the curve of the pixel precision-recall curve. As the metric measure localization at pixel level, it can be used to evaluate multiple-instance localization, and therefore the third localization criterion is met.
 
 \section{Localization improvement}
-Iterative bounding box extraction: Explain intuition for improving localization (see synthetic dataset results and how localization accuracy decreases when number of instances per images increases).
+A challenge of using a single operational threshold for masking the score map and during localization, is that not all object instances in an image may be of similar intensity. An intuition is that as the \acrshort{wsol} task is trained for classification, it will activate on the most discriminative parts of the image that are related to the targeted class. Some object instances may  have more outspoken features that activate during inference. For classification to be accurate, it's not necessary for the network to activate equally strong on all object instances.
 
-Proposal:
-\begin{itemize}
-    \item Feed image to model and compute feature activation maps (CAMS)
-    \item Extract bounding boxes from binarized CAMS
-    \item Mask bounding box areas in image (e.g. with noise, zero values)
-    \item Repeat until some stop criterion
-\end{itemize}
+Based on the formulated intuition, we propose an iterative localization method where we mask previously found object instance locations in the original image and apply the localization method again to find additional object instance locations. The process is as follows:
 
-Possible stop criteria for iterative approach
-\begin{itemize}
-    \item No new bounding boxes are found
-    \item Predefined drop in classification score is reached
-    \item Predefined number of iterations is reached.
-\end{itemize}
+\begin{enumerate}
+    \item In the first iteration, all images of the test dataset are fed to the \acrshort{cam} localization method. Bounding boxes are computed for various score map thresholds. From all these thresholds and bounding boxes, the $MaxBoxAccV3$ metric is computed yielding the optimal score map threshold. The bounding boxes estimated at the optimal threshold are saved.
+    \item In a next iteration, all images of the dataset are masked with bounding boxes extracted during the previous iteration. We test different mask strategies: Mask with zero values, mean image value, random values drawn from the image dataset distribution. The masked images are fed to the \acrshort{cam} localization method to extract bounding boxes and compute the $MaxBoxAccV3$ metric. Newly found bounding boxes are added to boxes found during previous iterations according to a bounding box merge strategy: 'Add' unconditionally adds boxes to the list of boxes from previous iterations. If boxes overlap more than 20\%, 'Drop' removes boxes and 'Merge' unifies the boxes by calculating the box surrounding both boxes. If a box overlaps less than 20\% with an existing box, it is added to the list of boxes. Masked images that cause a drop in classification score that exceeds a predefined threshold, will stop contributing to this iterative process of finding additional object instances. This predefined drop threshold is a parameter that can be tuned.
+    \item The second step is repeated until a predefined number of iterations  has executed.
+\end{enumerate}
 
 \section{Implementation references}
 We based our evaluation method on existing implementations and extended them to implement \acrlong{mwsol}. The software implementations we enhanced is listed here for reference:
