@@ -1,6 +1,6 @@
 \chapter{Methodology} \label{ch:methodology}
 
-In this chapter, our \acrshort{wsol} evaluation methodology is explained in detail. We specify the different networks and datasets used to train and evaluate models. Subsequently, the training process if defined. Next, each localization method is discussed in detail. Finally we explain how we investigate localization improvements for multiple-instance localization.
+In this chapter, our \acrshort{wsol} evaluation methodology is explained in detail. We specify the different networks and datasets used to train and evaluate models. Subsequently, the training process if defined. We then explain the localization in general and for each localization method, we discuss in detail how localization is done. Finally we  investigate how to improve localization of multiple-instances.
 
 \section{Networks}
 The \acrshort{cam}-based \acrshort{wsol} methods require a \acrshort{cnn} model to classify images and localize objects in those images. We use the VGG16 and Resnet50 network. VGG16 and a variant of it for \acrshort{cam} is used in a lot of \acrshort{cam}-based papers and a good reference for benchmarking \acrshort{wsol}. Resnet50 is more recent and is used for experiments with MinMaxCAM by Wang, Kaili \textit{et al.}
@@ -433,20 +433,52 @@ LS1 and LS2 update the model every mini-batch. Fig. \ref{fig:minmaxcam} shows th
 
 \section{Evaluation}
 \subsection{Computational complexity}
-Complexity computation
-\begin{itemize}
-    \item reasoning about choice between runtime and flops
-    \item runtime cpu versus cuda (gpu), synchronization
-    \item theoretical versus empirical
-\end{itemize}
+An important aspect of any algorithm is its computational complexity, i.e. a measure of the amount of computing resources (time and space) that a particular algorithm consumes when it runs. While the initial focus in research may be on maximizing accuracy of an algorithm, it is also important to focus on maximizing the inference efficiency. The efficiency of an algorithm may determine whether it is a viable solution. In this section we specify the metrics we use to measure the algorithm complexity in our experiments. From a theoretical perspective, we reason about the complexity of the different \acrshort{cam} methods used for localization.
+
+\subsubsection{Complexity metric}
+Geifman \cite{article:FLOPSvsRuntime} reasons that it is wrong to assume that \acrfull{flop} can serve as an accurate proxy for any kind of efficiency, including run-time. Due to high parallelization capabilities of the \acrshort{gpu}, parallelizable operations will run faster. Moreover, some operations may require the same number of \acrshort{flop}s, but different run time, depending on how well the operations can be accelerated on a \acrshort{gpu}. Another problem is that many \acrshort{flop} count tools only measure forward passes in a model. This is not ok for gradient-based \acrshort{cam} methods which require backward passes through the model to compute gradients.
+
+This is why we measure the run time of \acrshort{cam} methods. Given equal hardware and parallelization capabilities, a fair comparison can be made between algorithms. To correctly measure the run time of the \acrshort{cam} methods we take into account following aspects:
+\begin{enumerate}
+    \item We don't measure \acrshort{gpu} warm-up time, i.e. the time a \acrshort{gpu} device needs to go from low-power state to operational state. We don't measure that time, because it is not relevant for the comparison of the methods. Before measuring starts, we send random data through a dummy model to force the \acrshort{gpu} in its operational state.
+    \item Data loading, pre-processing and transferring between \acrshort{cpu} and \acrshort{gpu} is not measured.
+    \item  Time recording takes place only after the process running on the \acrshort{gpu} is finished, i.e., when \acrshort{gpu} and \acrshort{cpu} are synchronized.
+\end{enumerate}
+\subsubsection{Comparison from theoretical perspective}
+Based on the design of the \acrshort{cam} methods, we can theoretically reason about their computational complexity. Table \ref{tab:complexity_theoretical} shows a comparison.
+\begin{table}[ht]
+\centering
+\begin{tabular}{|l|c|c|}
+  \hline
+  Method & Forward passes & Backward passes\\
+  \hline
+  CAM & $\frac{N}{B}$ & $0$\\
+  GradCAM & $\frac{N}{B}$ & $\frac{N}{B}$\\
+  GradCAM++ & $\frac{N}{B}$ & $\frac{N}{B}$\\
+  MinMaxCAM & $\frac{N}{B}$ & $0$\\
+  ScoreCAM & $\frac{N}{B}$ + $N\frac{F}{B}$ & $0$\\
+  \hline 
+\end{tabular}
+\caption[Theoretical complexity of CAM methods]{Theoretical complexity of CAM methods. N: number of images in dataset, B: batch size, F: number of feature maps in last \acrshort{cnn} layer.}
+\label{tab:complexity_theoretical}
+\end{table}
+
+MinMaxCAM uses CAM as localization method, so it has the same inference time. MinMaxCAM has longer training time due to its regularization, but this is not taken into account for the localization task itself. Both CAM an MinMaxCAM have lowest computational cost as they only require a single forward pass per batch of images. GradCAM and GradCAM++ are gradient-based methods and need an additional backward pass through the network to compute the gradients. If we take the assumption that forward pass and backward pass have the same order of complexity, then GradCAM and GradCAM++ have roughly double the run time of CAM. ScoreCAM requires many forward passes: It gets the features maps, as the other methods do. For those feature maps, it then needs a forward pass of the original image ablated with the feature map to get the weights computed as confidence score. It does so in batches. This explains the $N\frac{F}{B}$ term in the number of forward passes. ScoreCAM roughly requires $F$ times more forward passes than CAM. For a Resnet50 network with 2048 feature maps in the final convolutional layer, this is a costly operation.
 
 \subsection{Localization metrics} \label{sec:localization_metrics}
-Localization metrics \\
-- Quantitative evaluation (maxboxaccv3, pxap) \\
+%Quantitative evaluation
+%questions to answer here:
+%- Are the existing metrics usable for multi-instance WSOL?
+%- What are the chosen metrics telling about multi-instance WSOL?
+%- What if an image has 1 large object inistance and 1 small instance?
+%- Is the metrics only saying something about the large instance?
+%- What is the intended use of the metrics?
+%- Do you want to find all instance in an image or are you using a metric that is good at measuring localization but not good at finding all instances?
+\subsubsection{MaxBoxAccV3 metric}
+\subsubsection{PxAP metric}
+
 - Formules geven en uitleggen \\
-- Complexity analysis
 \begin{itemize}
-    \item Reason about existing versus required metrics
     \item Explain in detail how metrics are computed
     \item MaxBoxAccV3: modified version of MaxBoxAccV2 (Choe et al.,2020b) to support multiple instance WSOL
     \item PxAP (pixel average precision) when ground truth segmentation masks are available.
@@ -464,7 +496,6 @@ Proposal:
     \item Mask bounding box areas in image (e.g. with noise, zero values)
     \item Repeat until some stop criterion
 \end{itemize}
-Variant: Mask image with binarized CAMs.
 
 Possible stop criteria for iterative approach
 \begin{itemize}
@@ -473,10 +504,11 @@ Possible stop criteria for iterative approach
     \item Predefined number of iterations is reached.
 \end{itemize}
 
-code references:
+\section{Implementation references}
+We based our evaluation method on existing implementations and extended them to implement \acrlong{mwsol}. The software implementations we enhanced is listed here for reference:
 \begin{itemize}
-    \item CAM \cite{code:CAM}
-    \item MinMaxCAM \cite{code:MinMaxCAM}
-    \item WSOLevaluation\cite{code:WSOLevaluation}
-    \item PytorchCAM \cite{code:PytorchCAM}
+    \item CAM \cite{code:CAM}: The baseline CAM method.
+    \item MinMaxCAM \cite{code:MinMaxCAM}: The MinMaxCAM training algorithm.
+    \item WSOLevaluation\cite{code:WSOLevaluation}: The single-instance \acrshort{wsol} evaluation metrics.
+    \item PytorchCAM \cite{code:PytorchCAM}: Inference methods for GradCAM, GradCAM++ and ScoreCAM.
 \end{itemize}
