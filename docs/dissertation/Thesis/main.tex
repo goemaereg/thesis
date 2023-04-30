@@ -1,0 +1,42 @@
+\documentclass[we, oneside, a4paper,12pt]{uantwerpenbamathesis}  % we for Faculty of Science color scheme
+
+\input{preamble}
+% use we-en-ma-infdsai  for   Data Science and AI
+% use we-en-ma-infse    for   Software Engineering
+% use we-en-ma-infcn    for   Computer Networks
+\bamadegree{we-en-ma-infdsai}
+\title{Multiple-instances Weakly Supervised Object Localization} 
+% either don't split titles, or do so with hypen and a newline
+%\subtitle{Optional subtitle here}
+\author{Geert Goemaere}
+\supervisor{José Antonio Oramas Mogrojevo}{University of Antwerp}
+%\supervisor{Additional Supervisor here}{Assocation here}
+\cosupervisor{Benjamin Vandersmissen}{University of Antwerp}
+\academicyear{2022 - 2023}
+\begin{document}
+\maketitle
+\frontmatter
+\tableofcontents
+\input{chapters/acknowledgements}\clearpage
+\input{chapters/samenvatting}\clearpage
+\input{chapters/summary}\clearpage
+% Print list of abbreviations, list of tables and list of figures
+\printnoidxglossary[nopostdot,nonumberlist,title=List of Abbreviations]
+\listoftables
+\listoffigures
+\mainmatter
+%start of main document
+\input{chapters/introduction}
+\input{chapters/related_work}
+\input{chapters/methodology}
+\input{chapters/experiments}
+\input{chapters/discussion}
+\input{chapters/conclusion}
+\clearpage
+\nocite{*}
+\bibliographystyle{unsrt}
+\phantomsection
+\addcontentsline{toc}{chapter}{Bibliography}
+\bibliography{chapters/bibliography}
+\end{document}
+\endinput
