@@ -33,7 +33,7 @@ class ScoreCAM(BaseCAM):
             if hasattr(self, "batch_size"):
                 BATCH_SIZE = self.batch_size
             else:
-                BATCH_SIZE = 64 #16
+                BATCH_SIZE = 64
             scores = []
             it_inputs = zip(targets, input_tensor, activation_tensor)# upsampled)
             for in_index, (target, in_tensor, act_tensor) in enumerate(it_inputs):

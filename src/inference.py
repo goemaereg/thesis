@@ -140,6 +140,7 @@ class CAMComputer(object):
                 # recreate different CAM objects in a loop.
                 output_targets = [ClassifierOutputTarget(target.item()) for target in targets]
                 with self.cam_algorithm(**self.cam_args) as cam_method:
+                    cam_method.batch_size = self.config.batch_size
                     timer_cam.start()
                     # cam_method returns tuple of numpy arrays
                     # cams is already resized to 224x224 and normalized by cam_method call
