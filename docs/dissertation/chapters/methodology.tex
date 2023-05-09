@@ -460,7 +460,7 @@ We enhance the evaluation metrics of Choe \textit{et al.} to measure localizatio
 %- Is the metrics only saying something about the large instance?
 %- What is the intended use of the metrics?
 %- Do you want to find all instance in an image or are you using a metric that is good at measuring localization but not good at finding all instances?
-\subsubsection{MaxBoxAccV3 metric}
+\subsubsection{MaxBoxAccV3 metric} \label{sec:method_maxboxaccv3}
 Many datasets only provide bounding box annotations, as segmentation masks are expensive to collect. This is the case for the ImageNet dataset. For this case, we define a metric that measures how accurate ground truth bounding box annotations match with bounding boxes extracted by the \acrshort{cam} localization methods.
 
 Here, we derive the multi-instance localization metric $MaxBoxAccV3$ step by step, starting with metrics defined by Choe \textit{et al.} \cite{choe2020evaluating}.
@@ -521,7 +521,7 @@ Pixel-wise precision in Equation \ref{eq:pxprec} computes the proportion of the 
 \end{equation}
 This metric is the area under the curve of the pixel precision-recall curve. As the metric measure localization at pixel level, it can be used to evaluate multiple-instance localization, and therefore the third localization criterion is met.
 
-\section{Localization improvement}
+\section{Localization improvement} \label{sec:method_localization_improvement}
 A challenge of using a single operational threshold for masking the score map and during localization, is that not all object instances in an image may be of similar intensity. An intuition is that as the \acrshort{wsol} task is trained for classification, it will activate on the most discriminative parts of the image that are related to the targeted class. Some object instances may  have more outspoken features that activate during inference. For classification to be accurate, it's not necessary for the network to activate equally strong on all object instances.
 
 Based on the formulated intuition, we propose an iterative localization method where we mask previously found object instance locations in the original image and apply the localization method again to find additional object instance locations. The process is as follows:

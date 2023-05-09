@@ -248,3 +248,86 @@ Each method computes a score map as a weighted combination of feature maps in th
 The most computationally costly method by far is ScoreCAM. This method computes the weights for the feature maps by feeding the network with the product of each feature map with the original image to obtain the classification score after softmax. As ResNet-50 has 2048 channels in its final convolutional layer, this is an expensive operation.
 
 \section{Localization improvements}
+
+Using the iterative localization method proposed in section \ref{sec:method_localization_improvement}, we analyze the effect of this method on VGG16-GAP and ResNet-50 architectures for the synthetic and ImageNet datasets. We use the same models that were trained for the non-iterative approach.
+
+\subsection{Recall versus precision}
+The aim of the iterative approach is to maximize the accurate localization of ground truth object instances. We could have a localization method that exhaustively generates bounding boxes of different granularity. In that case, the localization method will have a high recall: it would accurately localize most object instances. At the same time that method will suffer from a lot of false positives, i.e., many localized objects would not match with the actual ground truth instances. 
+
+To measure the impact of the iterative localization method we want to measure both precision and recall. Ideally, we would like to have a localization method that has good precision and recall. If we equally care about precision and recall, the f1 score represents the harmonic mean between precision and recall.
+
+Here we illustrate how precision, recall and f1 score are determined in the experiments for iterative localization. To compute precision and recall, we need to define the confusion matrix for the localization task. 
+
+A confusion matrix is made up of 4 components, namely, \acrfull{tp}, \acrfull{tn}, \acrfull{fp} and \acrfull{fn}. To define all the components, we need to define some \acrshort{iou} threshold. If the overlap between an estimated and ground truth bounding box is at least the \acrshort{iou} threshold, we have a match and the object instance is said to be localized. The parameters of a confusion matrix are shown in Table \ref{tab:confusion_matrix}.
+\begin{table}[ht]
+\centering
+\begin{tabular}{l|l|c|c|}
+\multicolumn{2}{c}{} & \multicolumn{2}{c}{Ground truth} \\
+\cline{3-4}
+\multicolumn{2}{c|}{} & positive & negative \\
+\cline{2-4}
+\multirow{2}{*}{Predicted} & positive & TP & FP \\
+\cline{2-4}
+                           & negative & FN & TN \\
+\cline{2-4}
+\end{tabular}
+\caption[Confusion matrix]{Confusion matrix.}
+\label{tab:confusion_matrix}
+\end{table}
+
+Both for ground truth and predicted bounding boxes, there are two cases: There is a bounding box (positive) or there isn't one (negative). The confusion matrix parameters are then defined as follows
+\begin{itemize}
+    \item \textbf{TP}: A predicted bounding box that matches with a ground truth bounding box, i.e., their intersection over union is at least the \acrshort{iou} threshold.
+    \item \textbf{FP}: A predicted bounding box that overlaps less than the \acrshort{iou} threshold with the ground truth bounding boxes.
+    \item \textbf{FN}: A false negative is a ground truth object that is not localized. 
+    \item \textbf{TN}: a true negative is every part of the image where we did not predict an object. This metric is not useful for object localization, hence we ignore it by setting it to zero.
+\end{itemize}
+Now that we know what the parameters represent, we can formally define the equations for these parameters, as shown in Table \ref{tab:confusion_matrix_definitions}.
+\begin{table}[ht]
+\centering
+\begin{tabular}{lll}
+  \toprule
+  Metric & Equation & Remark\\
+  \cmidrule(ll){1-3}
+  \addlinespace[0.5em]
+  TP & $\begin{aligned} \sum^{N}_{n} \sum^{G^{(n)}}_{g}  1_{IoU(box(s(X^{(n)}),\tau),B^{(n)})\ge\delta} \end{aligned}$ & Matching predicted and ground truth boxes \\
+  \addlinespace[0.5em]
+  FP & $\begin{aligned} P - TP \end{aligned}$ & $P$ : Number of predicted boxes \\
+  \addlinespace[0.5em]
+  FN & $\begin{aligned} G - TP \end{aligned}$ & $G$: Number of ground truth boxes \\
+  \addlinespace[0.5em]
+  TN & $\begin{aligned} 0 \end{aligned}$ & Not relevant for precision and recall\\
+  \addlinespace[0.5em]
+  \bottomrule 
+\end{tabular}
+\caption[Confusion matrix definitions]{Confusion matrix definitions}
+\label{tab:confusion_matrix_definitions}
+\end{table}
+
+Recall can be defined as the proportion of ground truth objects that are correctly detected:
+\begin{equation}
+Recall = \frac{TP}{TP + FN} = \frac{TP}{G}
+\end{equation}
+When replacing TP with the definition in Table \ref{tab:confusion_matrix_definitions}, we get the definition of $BoxAccV2$ as defined in Equation \ref{eq:boxaccv2}. Hence, 
+$MaxBoxAccV3$ represents the average recall for $IoU \in (0.3, 0.5, 0.7)$ at the optimal score map threshold.
+
+Precision can be thought of as the proportion of all detected object instances that are correct:
+\begin{equation}
+Precision = \frac{TP}{TP + FP} = \frac{TP}{P}
+\end{equation}
+
+The f1 score can then be computed:
+\begin{equation}
+F1 = 2 \times \frac{Precision \times Recall}{Precision + Recall}
+\end{equation}
+
+\subsection{Evaluation on synthetic datasets}
+Here we evaluate the results of the iterative localization method for the VGG16-GAP network and the ResNet-50 network on the synthetic test datasets. We only tests the datasets that have images with a background to evaluate the effect of using different bounding box mask strategies.
+
+\subsubsection{VGG16-GAP}
+
+
+\subsubsection{ResNet-50}
+
+\subsection{Evaluation on ImageNet dataset}
+
