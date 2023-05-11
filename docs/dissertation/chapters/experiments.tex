@@ -326,6 +326,44 @@ Here we evaluate the results of the iterative localization method for the VGG16-
 
 \subsubsection{VGG16-GAP}
 
+\begin{table}[ht]
+\centering
+\begin{tabular}{llrrrrrrrrr}
+\toprule
+     &       & \multicolumn{3}{c}{recall} & \multicolumn{3}{c}{precision} & \multicolumn{3}{c}{f1} \\
+stop & merge & add & drop & unify & add & drop & unify & add & drop & unify \\
+\cmidrule(rl){1-2} \cmidrule(rl){3-5} \cmidrule(rl){6-8} \cmidrule(rl){9-11}
+\multirow[t]{3}{*}{0.25} & mean & 54.29 & 52.13 & 52.21 & \color{teal} \bfseries 54.09 & 61.21 & 61.30 & 54.19 & 56.30 & 56.39 \\
+ & random & 53.92 & 52.04 & 51.75 & 53.26 & 62.28 & 62.06 & 53.59 & 56.70 & 56.44 \\
+ & zero & \color{purple} \bfseries 52.92 & \color{purple} \bfseries 51.00 & \color{purple} \bfseries 50.96 & 53.20 & \color{teal} \bfseries 62.50 & \color{teal} \bfseries 62.31 & 53.06 & 56.17 & 56.07 \\
+\multirow[t]{3}{*}{0.5} & mean & 56.75 & 54.29 & 55.71 & 52.41 & 59.86 & 61.02 & \color{teal} \bfseries 54.49 & 56.94 & \color{teal} \bfseries 58.24 \\
+ & random & 56.88 & 54.08 & 54.54 & 52.25 & 61.45 & 61.99 & 54.46 & \color{teal} \bfseries 57.53 & 58.03 \\
+ & zero & 54.42 & 52.12 & 52.38 & 52.11 & 61.15 & 61.33 & 53.24 & 56.28 & 56.50 \\
+\multirow[t]{3}{*}{1.0} & mean & 64.25 & \color{teal} \bfseries 58.67 & 61.00 & 39.93 & 48.44 & 48.27 & 49.25 & 53.06 & 53.89 \\
+ & random & \color{teal} \bfseries 64.50 & 58.17 & \color{teal} \bfseries 64.17 & 38.93 & \color{purple} \bfseries 46.63 & 52.33 & 48.55 & \color{purple} \bfseries 51.76 & 57.65 \\
+ & zero & 62.83 & 58.08 & 59.17 & \color{purple} \bfseries 36.93 & 47.53 & \color{purple} \bfseries 45.97 & \color{purple} \bfseries 46.52 & 52.28 & \color{purple} \bfseries 51.74 \\
+\bottomrule
+\end{tabular}
+\caption[Iterative CAM localization for VGG16-GAP on synthetic dataset]{Iterative CAM localization for VGG16-GAP on synthetic dataset.}
+\label{tab:iter_metrics_vgg16_cam_synthetic}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrr}
+\toprule
+ & recall & precision & f1 \\
+method &  &  &  \\
+\cmidrule(lr){1-1} \cmidrule(lr){2-4}
+cam & \color{purple} \bfseries 55.708333 & \color{purple} \bfseries 61.017286 & \color{purple} \bfseries 58.242078 \\
+gradcam++ & 55.750000 & 61.243485 & 58.367768 \\
+minmaxcam & 55.875000 & 61.631571 & 58.612280 \\
+scorecam & \color{teal} \bfseries 57.333333 & \color{teal} \bfseries 62.902642 & \color{teal} \bfseries 59.989003 \\
+\bottomrule
+\end{tabular}
+\caption[Iterative localization methods for VGG16-GAP on synthetic dataset]{Iterative localization methods for VGG16-GAP on synthetic dataset for mask=mean, merge=unify, stop=0.5.}
+\label{tab:iter_metrics_vgg16_cam_synthetic_all}
+\end{table}
 
 \subsubsection{ResNet-50}
 
