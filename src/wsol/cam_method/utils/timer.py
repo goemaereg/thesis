@@ -1,6 +1,7 @@
 import torch
 from torchvision.models import mobilenet_v2
 import time, gc
+import numpy as np
 
 
 class Timer:
@@ -39,12 +40,16 @@ class Timer:
     def __init__(self, device, name, warm_up=False):
         self.device = device
         self.name = name
+        self.values = []
+        self.unit = 1e-3
         if 'cuda' in device:
+            self.unit = 1e-3
             self.elapsed_ms = 0.0
             self.total_elapsed_ms = 0.0
             if warm_up:
                 self.warm_up()
         else:
+            self.unit = 1e-9
             self.elapsed_ns = 0
             self.total_elapsed_ns = 0.0
 
@@ -53,6 +58,15 @@ class Timer:
             return self.total_elapsed_ms
         else:
             return self.total_elapsed_ns / 1e6
+
+    def get_sum(self):
+        return np.sum(np.asarray(self.values))
+
+    def get_mean_std(self):
+        values = np.asarray(self.values)
+        mean = np.mean(values)
+        std = np.std(values)
+        return mean, std
 
     def warm_up(self):
         if 'cuda' not in self.device:
@@ -81,13 +95,16 @@ class Timer:
             self.ender.wait()
             self.ender.synchronize()
             torch.cuda.synchronize()
+            elapsed = self.starter.elapsed_time(self.ender)
             self.elapsed_ms = self.starter.elapsed_time(self.ender)
             self.total_elapsed_ms += self.elapsed_ms
         else:
             self.counter_stop = time.monotonic_ns()
             self.elapsed_ns = self.counter_stop - self.counter_start
+            elapsed = self.counter_stop - self.counter_start
             self.total_elapsed_ns += self.elapsed_ns
         self._gc_enable()
+        self.values.append(elapsed)
 
     def __str__(self):
         return f'Timer({self.__dict__}))'

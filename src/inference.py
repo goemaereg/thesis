@@ -115,13 +115,13 @@ class CAMComputer(object):
         contexts = {}
         metrics = {}
         optimal_threshold_list = []
-        timer_cam = Timer.create_or_get_timer(self.device, 'runtime_cam', warm_up=True)
         tq0 = tqdm.tqdm(range(self.iter_max), total=self.iter_max, desc='iterative bbox extraction')
         for iter_index in tq0:
             if self.box_evaluator:
                 self.box_evaluator.reset()
             if self.mask_evaluator:
                 self.mask_evaluator.reset()
+            timer_cam = Timer.create_or_get_timer(self.device, 'runtime_cam', warm_up=True)
             xai_images = 0
             num_skipped = 0
             optimal_threshold_index = 0
@@ -211,6 +211,23 @@ class CAMComputer(object):
                 optimal_threshold_list.append(optimal_threshold)
             if self.mask_evaluator:
                 metrics |= self.mask_evaluator.compute()
+
+            mlflow.log_dict(cams_stats, f'state/{self.split}/{self.step}/cams_stats.json')
+            for name, timer in Timer.timers.items():
+                total_ms = timer.get_total_elapsed_ms()
+                mean, std = timer.get_mean_std()
+                total = timer.get_sum()
+                # normalize to ms
+                mean *= (1e-3/timer.unit)
+                std  *= (1e-3/timer.unit)
+                total  *= (1e-3/timer.unit)
+                metrics |= {
+                    name: total_ms,
+                    f'{name}_sum': total,
+                    f'{name}_mean': mean,
+                    f'{name}_std': std
+                }
+            Timer.reset()
             metrics |= {'iter_skipped': num_skipped}
             mlflow_metrics = {f'{self.split}_{metric}': value for metric, value in metrics.items()}
             mlflow.log_metrics(mlflow_metrics, step=self.step)
@@ -254,10 +271,5 @@ class CAMComputer(object):
                               log=True,
                               images_max=self.config.xai_images_max,
                               iter_index=iter_index)
-        # metrics logging
-        metric_timers = {name: timer.get_total_elapsed_ms() for name, timer in Timer.timers.items()}
-        mlflow.log_metrics(metric_timers, step=epoch)
-        mlflow.log_dict(cams_stats, f'state/{self.split}/{epoch}/cams_stats.json')
-        Timer.reset()
         # return most recent metrics (i.e. from last iteration)
-        return metrics | metric_timers
+        return metrics
