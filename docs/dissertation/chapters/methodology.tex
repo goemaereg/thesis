@@ -272,7 +272,7 @@ The advantage of \acrlong{cam} is that it is able to localize discriminative ima
 
 A disadvantage is, that the network only focuses on discriminative regions in an image, which leads to partial localization of objects. Another disadvantage of \acrshort{cam} is that it requires the network to have a \acrshort{gap} layer, which requires modifications in the network architecture. This change in an architecture causes a classification performance drop.
 
-\subsection{GradCAM}
+\subsection{Grad-CAM}
 Selvaraju \textit{et al.} \cite{selvaraju2017grad} propose a technique called \acrfull{gradcam}. This approach uses the gradients of a class score, flowing into 
 the final convolutional layer to produce a coarse localization map highlighting the important regions in the image for predicting the concept. 
 
@@ -298,7 +298,7 @@ The weight $w_{k}^{c}$ captures the importance of a feature map $k$ for a target
 
 \acrshort{gradcam} is a generalization of \acrshort{cam}. It can be proven that when \acrshort{gradcam} is applied to architectures with a \acrshort{gap} layer, it specializes to the \acrshort{cam} method. Unlike the baseline \acrshort{cam} method, \acrshort{gradcam} is applicable to a wide variety of CNN model-families as it doesn't require an architecture with \acrshort{gap} layer.
 
-\subsection{GradCAM++}
+\subsection{Grad-CAM++}
 Chattopadhay \textit{et al.} \cite{chattopadhay2018grad} propose a technique called Grad-CAM++, to provide better localization of objects
 as well as explaining occurrences of multiple objects of a class in a single image, compared with \acrshort{gradcam}. The proposed method uses a weighted combination of the positive partial derivatives of the last convolutional layer feature maps with respect to a specific class score as weights to generate a visual explanation for the class label under consideration.
 
@@ -307,7 +307,7 @@ The authors propose a more generalized method by explicitly coding the structure
     w_{k}^{c} = \sum_{i} \sum_{j} \alpha_{ij}^{kc} \dot ReLU \left( \frac{\partial{Y^c}}{\partial{A_{ij}^{k}}} \right)
 \end{equation}
 In this formulation, $w_{k}^{c}$ captures the importance of a particular activation map $A^k$. The weights are a weighted combination of the positive
-partial derivatives with respect to each pixel in an activation map $A^k$ and capture the importance of that map for class $c$. Here, the weights $w_k^c$ are a weighted average of the gradients as opposed to a global average in GradCAM. $\alpha_{ij}^{k}$ is the weight of the gradient at spatial location $(x,y)$ in the feature map $A^k$. 
+partial derivatives with respect to each pixel in an activation map $A^k$ and capture the importance of that map for class $c$. Here, the weights $w_k^c$ are a weighted average of the gradients as opposed to a global average in Grad-CAM. $\alpha_{ij}^{k}$ is the weight of the gradient at spatial location $(x,y)$ in the feature map $A^k$. 
 
 A formal derivation of the gradient weights is defined by Chattopadhay \textit{et al.} \cite{chattopadhay2018grad} and the result is given here for reference:
 \begin{equation}
@@ -327,7 +327,7 @@ The Grad-CAM++ method, compared with CAM and Grad-CAM, is illustrated in Fig. \r
     \end{center}
 \end{figure}
 
-\subsection{ScoreCAM}
+\subsection{Score-CAM}
 Wang \textit{et al.} \cite{wang2020score} argue that gradient-based \acrshort{cam} methods can suffer from saturating gradients giving the false confidence that higher weights lead to high target scores. Score-CAM gets rid of the dependence on gradients by obtaining the weight of each activation map through its forward passing score on target class. The final score map is obtained by a linear combination of weights and activation maps.
 
 In contrast to previous methods [4, 12], which use the gradient information flowing into the last convolutional layer to represent the importance of each activation map, Wang \textit{et al.} incorporate the importance as the Increase of Confidence: Given a function $Y = f(X)$ with input vector $X$ and output scalar $Y$, for a baseline input $X_b$, the contribution $c_i$ of $x_i$ towards $Y$ is the change of output by replacing the i-th entry in $X_b$ with $x_i$.
@@ -358,13 +358,13 @@ Fig. \ref{fig:scorecam} shows the pipeline for Score-CAM. Activation maps are fi
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=1.0\textwidth]{fig_scorecam.png}
-    \caption[ScoreCAM]{ScoreCAM.}
+    \caption[Score-CAM]{Score-CAM.}
     \caption*{Source: Wang \textit{et al.} \cite{wang2020score}}
     \label{fig:scorecam}
     \end{center}
 \end{figure}
 
-ScoreCAM shows more focus on object instances and is also promising for capturing the features of multiple instances in the explanation map. A major disadvantage of ScoreCAM is the computational cost because it requires as many as feature maps in the last convolutonal layer more forward passes than the baselne \acrshort{cam} method.
+Score-CAM shows more focus on object instances and is also promising for capturing the features of multiple instances in the explanation map. A major disadvantage of Score-CAM is the computational cost because it requires as many as feature maps in the last convolutonal layer more forward passes than the baselne \acrshort{cam} method.
 
 \subsection{MinMaxCAM}
 One of the most common problems of methods based on Class Activation Mapping,
@@ -426,13 +426,13 @@ Based on the design of the \acrshort{cam} methods, we can theoretically reason a
   \addlinespace[0.5em]
   CAM & $\begin{aligned} \frac{N}{B} \end{aligned}$ & $\begin{aligned}0\end{aligned}$\\
   \addlinespace[0.5em]
-  GradCAM   & $\begin{aligned} \frac{N}{B} \end{aligned}$ & $\begin{aligned} \frac{N}{B}\end{aligned}$\\
+  Grad-CAM   & $\begin{aligned} \frac{N}{B} \end{aligned}$ & $\begin{aligned} \frac{N}{B}\end{aligned}$\\
   \addlinespace[0.5em]
-  GradCAM++ & $\begin{aligned} \frac{N}{B} \end{aligned}$ & $\begin{aligned} \frac{N}{B}\end{aligned}$\\
+  Grad-CAM++ & $\begin{aligned} \frac{N}{B} \end{aligned}$ & $\begin{aligned} \frac{N}{B}\end{aligned}$\\
   \addlinespace[0.5em]
   MinMaxCAM & $\begin{aligned} \frac{N}{B} \end{aligned}$ & $\begin{aligned}0\end{aligned}$\\
   \addlinespace[0.5em]
-  ScoreCAM &  $\begin{aligned} \frac{N}{B} + N \times \frac{F}{B_F} \end{aligned}$ & $\begin{aligned}0\end{aligned}$\\
+  Score-CAM &  $\begin{aligned} \frac{N}{B} + N \times \frac{F}{B_F} \end{aligned}$ & $\begin{aligned}0\end{aligned}$\\
   \addlinespace[0.5em]
   \bottomrule 
 \end{tabular}
@@ -440,7 +440,7 @@ Based on the design of the \acrshort{cam} methods, we can theoretically reason a
 \label{tab:complexity_theoretical}
 \end{table}
 
-MinMaxCAM uses CAM as localization method, so it has the same inference time. MinMaxCAM has longer training time due to its regularization, but this is not taken into account for the localization task itself. Both CAM and MinMaxCAM have the lowest computational cost as they only require a single forward pass per batch of images. GradCAM and GradCAM++ are gradient-based methods and need an additional backward pass through the network to compute the gradients. If we take the assumption that forward pass and backward pass have the same order of complexity, then GradCAM and GradCAM++ have roughly double the run time of CAM. ScoreCAM requires many forward passes: It gets the features maps, as the other methods do. For those feature maps, it then needs a forward pass of the original images ablated with the feature maps to get the weights computed as confidence scores. It does so in batches. This explains the $\begin{aligned}N\frac{F}{B_F}\end{aligned}$ term in the number of forward passes. ScoreCAM requires $F + 1$ times more forward passes than CAM in case the image batch size $B$ and feature map batch size $B_F$ are equal. For a ResNet-50 network with 2048 feature maps in the final convolutional layer, this is a costly operation.
+MinMaxCAM uses CAM as localization method, so it has the same inference time. MinMaxCAM has longer training time due to its regularization, but this is not taken into account for the localization task itself. Both CAM and MinMaxCAM have the lowest computational cost as they only require a single forward pass per batch of images. Grad-CAM and Grad-CAM++ are gradient-based methods and need an additional backward pass through the network to compute the gradients. If we take the assumption that forward pass and backward pass have the same order of complexity, then Grad-CAM and Grad-CAM++ have roughly double the run time of CAM. Score-CAM requires many forward passes: It gets the features maps, as the other methods do. For those feature maps, it then needs a forward pass of the original images ablated with the feature maps to get the weights computed as confidence scores. It does so in batches. This explains the $\begin{aligned}N\frac{F}{B_F}\end{aligned}$ term in the number of forward passes. Score-CAM requires $F + 1$ times more forward passes than CAM in case the image batch size $B$ and feature map batch size $B_F$ are equal. For a ResNet-50 network with 2048 feature maps in the final convolutional layer, this is a costly operation.
 
 \subsection{Localization metrics} \label{sec:localization_metrics}
 To objectively evaluate and compare object localization using different \acrshort{cam} methods, we need to quantitatively determine performance using localization metrics. The papers introducing the \acrshort{cam} methods, specify different metrics: Zhou \textit{et al.} \cite{zhou2016cvpr} (\acrshort{cam}) and Selvaraju \textit{et al.} \cite{selvaraju2017grad} (\acrshort{gradcam}) use the localization error, which is defined for localization of a single object instance. Chattopadhay \textit{et al.} \cite{chattopadhay2018grad} (\acrshort{gradcam}++) evaluate localization using faithfulness based metrics. These metrics measure drop or increase of prediction scores, rather than localization of object instances. Wang \textit{et al.} \cite{wang2020score} evaluates localization from an energy-based perspective at pixel-level. None of the mentioned methods is thus usable for measuring localization performance of multiple object instances.
@@ -456,6 +456,69 @@ Choe \textit{et al.} \cite{choe2020evaluating} have defined a \acrshort{wsol} ev
 
 We enhance the evaluation metrics of Choe \textit{et al.} to measure localization of multiple object instances for the \acrshort{wsol} task, thereby meeting criterion 3.
 
+\subsubsection{Recall versus precision}
+We could have a localization method that exhaustively generates bounding boxes of different granularity. In that case, the localization method will have a high recall: It will accurately localize most object instances. At the same time that method will suffer from a lot of false positives, i.e., many localized objects would not match with the actual ground truth instances. 
+
+Ideally, we would like to have a localization method that has good precision and recall. If we equally care about precision and recall, the f1 score represents the harmonic mean between precision and recall. 
+
+Here we illustrate how precision, recall and f1 score are determined in the experiments for localization. To compute precision and recall, we need to define the confusion matrix for the localization task. 
+
+A confusion matrix is made up of 4 components, namely, \acrfull{tp}, \acrfull{tn}, \acrfull{fp} and \acrfull{fn}. To define all the components, we need to define some \acrshort{iou} threshold. If the overlap between an estimated and ground truth bounding box is at least the \acrshort{iou} threshold, we have a match and the object instance is said to be localized. The parameters of a confusion matrix are shown in Table \ref{tab:confusion_matrix}.
+\begin{table}[ht]
+\centering
+\begin{tabular}{l|l|c|c|}
+\multicolumn{2}{c}{} & \multicolumn{2}{c}{Ground truth} \\
+\cline{3-4}
+\multicolumn{2}{c|}{} & positive & negative \\
+\cline{2-4}
+\multirow{2}{*}{Predicted} & positive & TP & FP \\
+\cline{2-4}
+                           & negative & FN & TN \\
+\cline{2-4}
+\end{tabular}
+\caption[Confusion matrix]{Confusion matrix.}
+\label{tab:confusion_matrix}
+\end{table}
+
+Both for ground truth and predicted bounding boxes, there are two cases: There is a bounding box (positive) or there isn't one (negative). The confusion matrix parameters are then defined as follows
+\begin{itemize}
+    \item \textbf{TP}: A predicted bounding box that matches with a ground truth bounding box, i.e., their intersection over union is at least the \acrshort{iou} threshold.
+    \item \textbf{FP}: A predicted bounding box that overlaps less than the \acrshort{iou} threshold with the ground truth bounding boxes.
+    \item \textbf{FN}: A false negative is a ground truth object that is not localized. 
+    \item \textbf{TN}: A true negative is every part of the image for whicch we don't have a ground truth bounding box, and where we did not predict an object. This metric is not useful for object localization, hence we ignore it by setting it to zero.
+\end{itemize}
+Now that we know what the parameters represent, we can formally define the equations for these parameters, as shown in Table \ref{tab:confusion_matrix_definitions}.
+\begin{table}[ht]
+\centering
+\begin{tabular}{lll}
+  \toprule
+  Metric & & Remark\\
+  \cmidrule(lr){1-1} \cmidrule(lr){3-3}
+  $TP$ & & Number of matching predicted boxes and ground truth boxes\\
+  $\begin{aligned} FP = P - TP \end{aligned}$ & & $P$: Number of predicted boxes\\
+  $\begin{aligned} FN = G - TP \end{aligned}$ & &$G$: Number of ground truth boxes \\
+  $\begin{aligned} TN = 0 \end{aligned}$ & & Not relevant for localization task\\
+  \bottomrule 
+\end{tabular}
+\caption[Confusion matrix definitions]{Confusion matrix definitions}
+\label{tab:confusion_matrix_definitions}
+\end{table}
+
+Recall can be defined as the proportion of ground truth objects $G$ that are correctly detected:
+\begin{equation} \label{eq:recall}
+Recall = \frac{TP}{TP + FN} = \frac{TP}{G}
+\end{equation}
+
+Precision can be thought of as the proportion of all detected object instances $P$ that are correct:
+\begin{equation} \label{eq:precision}
+Precision = \frac{TP}{TP + FP} = \frac{TP}{P}
+\end{equation}
+
+The f1 score can then be computed:
+\begin{equation} \label{eq:f1}
+F1 = 2 \times \frac{Precision \times Recall}{Precision + Recall}
+\end{equation}
+
 %- What if an image has 1 large object instance and 1 small instance?
 %- Is the metrics only saying something about the large instance?
 %- What is the intended use of the metrics?
@@ -467,7 +530,7 @@ Here, we derive the multi-instance localization metric $MaxBoxAccV3$ step by ste
 
 Given a dataset with N images and ground truth boxes B, the box accuracy at score map threshold $\tau$ and a \acrshort{iou} threshold $\delta$ is defined as:
 \begin{equation} \label{eq:boxacc}
-    BoxAcc(\tau,\delta) := \frac{1}{N} \sum_{n}1_{IoU(box(s(X^{(n)}),\tau),B^{(n)})\ge\delta}
+    BoxAcc(\tau,\delta) := \frac{1}{N} \sum_{n=1}1_{IoU(box(s(X^{(n)}),\tau),B^{(n)})\ge\delta}
 \end{equation}
 where $box(s(X^{(n)})$ is the tightest bounding box around the largest-area connected component in the score map \{$(i,j)\text{ }|\text{ }s(X^{(n)}_{ij}) \ge \tau$\}. The amount of overlapping between the predicted bounding box and ground truth bounding box expresses how accurate the localization method is. The overlapping is computed as the proportion of area of the boxes that overlap versus the total area of both boxes. The \acrfull{iou} metric captures this overlap and is illustrated in Fig. \ref{fig:iou}. This metric is also used frequently in object detection challenges such as the Pascal VOC challenge \cite{everingham2009pascal}. The \acrshort{iou} produces a number between $0$ and $1$. The closer \acrshort{iou} is to 1, the better the localization is. We will use an \acrshort{iou} threshold $\tau$ to assess whether the amount of overlap is sufficient to consider the localization a true positive match.
 \begin{figure}[ht]
@@ -493,19 +556,20 @@ Choe \textit{et al.} \cite{choe2020evaluating} sets $\delta = 0.5$ for $MaxBoxAc
 
 As $MaxBoxAccV2$ considers the best match between the set of estimated and ground truth bounding boxes, it is not suited for measuring multiple-instance localization performance. We will enhance $MaxBoxAccV2$ to account for multiple instances. To this purpose, the definition of box accuracy must be revised to $BoxAccV2$:
 \begin{equation} \label{eq:boxaccv2}
-    BoxAccV2(\tau,\delta) := \frac{1}{G} \sum^{N}_{n} \sum^{G^{(n)}}_{g}  1_{IoU(box(s(X^{(n)}),\tau),B^{(n)})\ge\delta}
+    BoxAccV2(\tau,\delta) := \frac{1}{G} \sum^{N}_{n=1} \sum^{G^{(n)}}_{g=1}  1_{IoU(box(s(X^{(n)}),\tau),B^{(n)})\ge\delta}
 \end{equation}
 
 The n-th image in dataset $X$ is denoted as $X^{(n)}$. The \acrshort{cam} method produces the score map $s(X^{(n)})$ and estimated set of bounding boxes $box(s(X^{(n)}),\tau)$ at score map threshold $\tau$. The set of ground truth bounding boxes for image n is $B^{(n)}$. The number of images in the dataset is $N$, the number of ground truth boxes in image n is $G^{(n)}$ and the total number of ground truth boxes in the dataset is $G$. The major difference with Equation \ref{eq:boxacc} is that in Equation \ref{eq:boxaccv2} we have an additional inner iteration where for each ground truth bounding box in an image, we try to find a match with the set of estimated bounding boxes for that image. In this inner iteration, there can only be a single match between a ground truth box and an estimated box at any time.
 
 We then define $MaxBoxAccV3$ as:
-\begin{equation}
+\begin{equation} \label{eq:maxboxaccv3}
     MaxBoxAccV3(\tau) := \frac{1}{3} \sum_{\delta \in (0.3,0.5,0.7)} max_{\tau} BoxAccV2(\tau,\delta)
 \end{equation}
 With this definition we meet the third criterion for a metric that measures multiple-instance localization performance.
 
-\subsubsection{PxAP metric}
+$BoxAccV2$ in equation \ref{eq:boxaccv2} has in its numerator the total number of matching ground truth and predicted bounding boxes. These are the true positives, as defined in Table \ref{tab:confusion_matrix_definitions}. The denominator is the number of ground truth bounding boxes. Taking into account the definition for recall in Equation \ref{eq:recall}, we can formulate $BoxAccV2(\tau, \delta)$ as the recall at score map threshold $\tau$ and IoU threshold $\delta$. Hence, $MaxBoxAccV3$ in Equation \ref{eq:maxboxaccv3} then represents the average recall for $IoU \in (0.3, 0.5, 0.7)$ at the optimal score map threshold $\tau$.
 
+\subsubsection{PxAP metric}
 When ground truth masks are available for evaluation, pixel-wise precision and recall can be measured. These metrics allow users to choose the preferred operating score map threshold $\tau$ that provides a trade-off between precision and recall. Choe \textit{et al.} define the \textbf{pixel-wise precision and recall at threshold $\tau$} as:
 \begin{equation} \label{eq:pxprec}
     PxPrec(\tau) = \frac{\lvert \{ s^{(n)}_{ij} \ge \tau \} \cap \{ T^{(n)}_{ij} = 1 \} \rvert}{\lvert \{ s^{(n)}_{ij} \ge \tau \} \rvert}
@@ -538,5 +602,5 @@ We based our evaluation method on existing implementations and extended them to 
     \item CAM \cite{code:CAM}: The baseline CAM method.
     \item MinMaxCAM \cite{code:MinMaxCAM}: The MinMaxCAM training algorithm.
     \item WSOLevaluation\cite{code:WSOLevaluation}: The single-instance \acrshort{wsol} evaluation metrics.
-    \item PytorchCAM \cite{code:PytorchCAM}: Inference methods for GradCAM, GradCAM++ and ScoreCAM.
+    \item PytorchCAM \cite{code:PytorchCAM}: Inference methods for Grad-CAM, Grad-CAM++ and Score-CAM.
 \end{itemize}
