@@ -23,7 +23,7 @@ class TenClassesRandomFetcher(SimpleRandomFetcher):
     def uniform_random_draw(self):
         types = 10 if self.type_noise else 9
         y0 = np.random.randint(types)
-        bg_rand = np.random.randint(3)
+        bg_rand = np.random.randint(1, 3)
         return self.draw_n_instances_background_stacked(y0, bg_rand, self.n_instances)
 
     def draw_one_sample_no_background(self, y0):

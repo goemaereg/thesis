@@ -143,7 +143,7 @@ class EarlyStopping():
             self.best_loss = val_loss
             # reset counter if validation loss improves
             self.counter = 0
-        elif self.best_loss - val_loss < self.min_delta:
+        else:
             self.counter += 1
             if self.counter >= self.patience:
                 self.early_stop = True
@@ -166,10 +166,9 @@ class Trainer(object):
                       'Conv2d_3', 'Conv2d_4'],
     }
 
-    def __init__(self, args, log=True):
+    def __init__(self, args):
         self.epoch = 0
         self.args = args
-        self.log = log
         self.splits = self._set_splits(args)
         model_params = dict(
             architecture=self.args.architecture,
@@ -221,56 +220,57 @@ class Trainer(object):
         )
         method_args = vars(self.args) | {'model': self.model, 'device': self.device, 'optimizer': self.optimizer}
         self.wsol_method = wsol_methods[self.args.wsol_method](**method_args)
-        if self.log:
-            # MLFlow logging
-            # artifacts
-            mlflow.log_artifact('requirements.txt')
-            mlflow.log_artifact(self.args.config, 'config')
-            state: dict[str, Any] = vars(self.args)
-            state['data_paths'] = vars(self.args.data_paths)
-            del state['reporter']
-            if self.args.pretrained_path is None:
-                del state['pretrained_path']
-            # sort by key
-            state = dict(sorted(state.items()))
-            mlflow.log_dict(state, 'state/config.json')
-            mlflow.log_text(' '.join(sys.argv), 'state/command.txt')
-            # hyper parameters
-            params = model_params | optimizer_params
+
+        # MLFlow logging
+        # artifacts
+        mlflow.log_artifact('requirements.txt')
+        mlflow.log_artifact(self.args.config, 'config')
+        state: dict[str, Any] = vars(self.args)
+        state['data_paths'] = vars(self.args.data_paths)
+        del state['reporter']
+        if self.args.pretrained_path is None:
+            del state['pretrained_path']
+        # sort by key
+        state = dict(sorted(state.items()))
+        mlflow.log_dict(state, 'state/config.json')
+        mlflow.log_text(' '.join(sys.argv), 'state/command.txt')
+        # hyper parameters
+        params = model_params | optimizer_params
+        params |= dict(
+            epochs=self.args.epochs,
+            batch_size=self.args.batch_size,
+            iter_max = self.args.iter_max,
+            iter_stop_prob_delta=self.args.iter_stop_prob_delta,
+            bbox_mask_strategy = self.args.bbox_mask_strategy,
+            bbox_merge_strategy = self.args.bbox_merge_strategy,
+            bbox_merge_iou_threshold=self.args.bbox_merge_iou_threshold
+        )
+        if self.args.wsol_method == 'minmaxcam':
             params |= dict(
-                epochs=self.args.epochs,
-                batch_size=self.args.batch_size,
-                iter_max = self.args.iter_max,
-                iter_stop_prob_delta=self.args.iter_stop_prob_delta,
-                bbox_mask_strategy = self.args.bbox_mask_strategy,
-                bbox_merge_strategy = self.args.bbox_merge_strategy,
-                bbox_merge_iou_threshold=self.args.bbox_merge_iou_threshold
+                minmaxcam_bss=self.args.minmaxcam_batch_set_size,
+                minmaxcam_css = self.args.minmaxcam_class_set_size,
+                minmaxcam_frr = self.args.minmaxcam_frr_weight,
+                minmaxcam_crr = self.args.minmaxcam_crr_weight
             )
-            if self.args.wsol_method == 'minmaxcam':
-                params |= dict(
-                    minmaxcam_bss=self.args.minmaxcam_batch_set_size,
-                    minmaxcam_css = self.args.minmaxcam_class_set_size,
-                    minmaxcam_frr = self.args.minmaxcam_frr_weight,
-                    minmaxcam_crr = self.args.minmaxcam_crr_weight
-                )
-            mlflow.log_params(params)
-            # tags
-            tags = dict(
-                architecture=self.args.architecture,
-                architecture_type=self.args.architecture_type,
-                dataset=self.args.dataset_name,
-                dataset_spec=self.args.dataset_name_suffix,
-                experiment=self.args.experiment_name,
-                large_feature_map=self.args.large_feature_map,
-                method=self.args.wsol_method,
-                model=self.model.__class__.__name__,
-                num_classes=self._NUM_CLASSES_MAPPING[self.args.dataset_name],
-                optimizer=self.optimizer.__class__.__name__,
-                pretrained=self.args.pretrained,
-                train=self.args.train,
-                train_augment=self.args.train_augment
-            )
-            mlflow.set_tags(tags)
+        mlflow.log_params(params)
+        # tags
+        tags = dict(
+            architecture=self.args.architecture,
+            architecture_type=self.args.architecture_type,
+            dataset=self.args.dataset_name,
+            dataset_spec=self.args.dataset_name_suffix,
+            experiment=self.args.experiment_name,
+            label=self.args.label,
+            large_feature_map=self.args.large_feature_map,
+            method=self.args.wsol_method,
+            model=self.model.__class__.__name__,
+            num_classes=self._NUM_CLASSES_MAPPING[self.args.dataset_name],
+            optimizer=self.optimizer.__class__.__name__,
+            pretrained=self.args.pretrained,
+            train=self.args.train,
+            train_augment=self.args.train_augment
+        )
+        mlflow.set_tags(tags)
 
     def _set_device(self):
         device = self.args.device
@@ -378,7 +378,6 @@ class Trainer(object):
         self.lr_scheduler = scheduler
         return scheduler
 
-
     def train(self, epoch, split):
         self.model.train()
         loader = self.loaders[split]
@@ -400,7 +399,6 @@ class Trainer(object):
         mlflow_metrics = {f'{split}_loss': loss_average, f'{split}_accuracy': classification_acc}
         mlflow.log_metrics(mlflow_metrics, step=epoch)
         return dict(classification_acc=classification_acc, loss=loss_average)
-
 
     def print_performances(self):
         for split in self.splits:
@@ -619,6 +617,7 @@ def main(args):
         if trainer.early_stopping is not None:
             info |= {'early_stop': str(trainer.early_stopping.early_stop).lower()}
         mlflow.log_dict(info, 'state/training.json')
+    mlflow.log_metric("epochs", trainer.epoch)
     # mlflow.pytorch.log_model(trainer.model, 'model', pip_requirements='requirements.txt')
 
 def SIGSEGV_signal_arises(signalNum, stack):

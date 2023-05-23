@@ -305,6 +305,7 @@ def configure_parse(load_config=True):
     parser.add_argument('--train_augment', type=str2bool, nargs='?', const=True, default=True)
     parser.add_argument('--wsol', type=str2bool, nargs='?', const=True, default=True)
     parser.add_argument('--xai', type=str2bool, nargs='?', const=True, default=True)
+    parser.add_argument('--label', type=str, default='', help='MLFlow label.')
 
     args = parser.parse_args()
     if load_config and args.config is not None:

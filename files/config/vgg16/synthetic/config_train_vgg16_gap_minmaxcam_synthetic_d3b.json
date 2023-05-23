@@ -18,6 +18,7 @@
   "early_stopping": true,
   "early_stopping_min_delta": 0.0,
   "early_stopping_patience": 5,
+  "early_stopping_minimum_epochs": 30,
   "epochs": 100,
   "eval_checkpoint_type": "last",
   "experiment_name": "vgg16_gap_minmaxcam_synthetic_d3b",
@@ -45,7 +46,7 @@
   "num_val_sample_per_class": 0,
   "override_cache": true,
   "pretrained": true,
-  "pretrained_path": "models/vgg16_gap_synthetic_d3b.pt",
+  "pretrained_path": "",
   "proxy_training_set": false,
   "resize_size": 256,
   "seed": 42,
@@ -58,7 +59,7 @@
   "train": true,
   "train_augment": true,
   "weight_decay": 5e-4,
-  "workers": 0,
+  "workers": 2,
   "wsol_method": "minmaxcam",
   "xai": true
 }

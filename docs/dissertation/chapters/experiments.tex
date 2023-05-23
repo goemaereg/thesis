@@ -15,106 +15,182 @@
 \section{Localization evaluation}
 We evaluate the five \acrshort{wsol} methods that are described in detail in section \ref{lb:wsol_methods}: CAM, Grad-CAM, Grad-CAM++, Score-CAM and MinMaxCAM. All these methods, except Grad-CAM, are evaluated using a VGG-GAP network and a ResNet-50 network. Grad-CAM is a generalization of CAM that yields the same score maps as CAM in a \acrshort{cnn} with a \acrshort{gap} layer like the VGG16-GAP and ResNet-50 networks. Grad-CAM, Grad-CAM++ and Score-CAM are also evaluated using a VGG16 network. As these methods don't require an architecture with \acrshort{gap} layer, it is interesting to see how they perform on the unmodified VGG16 architecture.
 
-We evaluate the models on the synthetic datasets and on the ImageNet dataset. For the VGG16-GAP network and the ResNet-50 network, we trained two models per network on the synthetic dataset: One without regularization and one with MinMaxCAM regularization. CAM, Grad-CAM++ and Score-CAM are evaluated on the models trained without regularization and MinMaxCAM on the models with regularization. For the VGG16 network we only train one model on the synthetic dataset as MinMaxCAM is not compatible with this network. Evaluation on the ImageNet dataset is done on pre-trained networks, except for MinMaxCAM which requires training due to its regularization stage.
+The localization methods are evaluated for the mentioned networks on the synthetic datasets and on the ImageNet dataset. For the VGG16-GAP network and the ResNet-50 network, we trained two models per network on the synthetic datasets: One without regularization and one with MinMaxCAM regularization. CAM, Grad-CAM++ and Score-CAM are evaluated on the models trained without regularization and MinMaxCAM on the models with regularization. For the VGG16 network we only train one model without regularization per synthetic dataset as MinMaxCAM is not compatible with this network. Evaluation on the ImageNet dataset is done for pre-trained networks, except for MinMaxCAM which requires training due to its regularization stage.
 
 \subsection{Synthetic dataset}
 We evaluate the \acrshort{cam} methods on the synthetic datasets listed in Table \ref{tab:synthetic_datasets}, using the MaxBoxAccV3 and PxAP metrics. In following sections, results for VGG16-GAP, VGG16 and ResNet-50 architectures are discussed.
 
 \subsubsection{VGG16-GAP}
-The localization results using the multiple-instance \acrshort{wsol} metric MaxBoxAccV3 are shown in Table \ref{tab:maxboxaccv3_vgg16_gap_synthetic}. The pixel average precision results are illustrated in Table \ref{tab:pxap_vgg16_gap_synthetic}. From the results, some interesting observations can be noticed.
+The localization results using the multiple-instance \acrshort{wsol} metric MaxBoxAccV3 recall and precision are shown in Table \ref{tab:maxboxaccv3_recall_vgg16_gap_synthetic} and Table \ref{tab:maxboxaccv3_precision_vgg16_gap_synthetic}. The pixel average precision results are illustrated in Table \ref{tab:pxap_vgg16_gap_synthetic}. In each table the column-wise maximum value per dataset is highlighted in green and the column-wise minimum per dataset is marked in red. From the results, some interesting observations can be noticed.
 \begin{table}[ht]
 \centering
 \begin{tabular}{lrrrrrrrr}
 \toprule
- & \multicolumn{8}{c}{VGG16-GAP synthetic (MaxBoxAccV3)} \\
+ & \multicolumn{8}{c}{VGG16-GAP synthetic (MaxBoxAccV3 recall)} \\
 method & d1b & d1t & d2b & d2t & d3b & d3t & d4b & d4t \\
 \cmidrule(lr){1-1} \cmidrule(lr){2-9} 
-CAM & 93.67 & 91.67 & 66.58 & 65.67 & 60.94 & 59.11 & 48.67 & 54.87 \\
-GradCAM++ & 94.17 & \bfseries 92.50 & 67.33 & 65.08 & 62.50 & 59.11 & 48.42 & 55.17 \\
-MinMaxCAM & \bfseries 94.83 & 89.33 & 67.33 & 65.17 & 62.83 & 57.67 & 48.87 & 43.33 \\
-Score-CAM & 94.17 & 88.83 & \bfseries 73.00 & \bfseries 68.08 & \bfseries 69.33 & \bfseries 65.11 & \bfseries 51.37 & \bfseries 56.58 \\
+CAM & \color{purple} \bfseries 93.67 & 91.67 & \color{purple} \bfseries 66.58 & 65.67 & \color{purple} \bfseries 60.94 & 59.11 & 48.67 & 54.87 \\
+Grad-CAM++ & 94.17 & \color{teal} \bfseries 92.50 & 67.33 & \color{purple} \bfseries 65.08 & 62.50 & 59.11 & \color{purple} \bfseries 48.42 & 55.17 \\
+MinMaxCAM & \color{teal} \bfseries 94.83 & 89.33 & 67.33 & 65.17 & 62.83 & \color{purple} \bfseries 57.67 & 48.87 & \color{purple} \bfseries 43.33 \\
+Score-CAM & 94.17 & \color{purple} \bfseries 88.83 & \color{teal} \bfseries 73.00 & \color{teal} \bfseries 68.08 & \color{teal} \bfseries 69.33 & \color{teal} \bfseries 65.11 & \color{teal} \bfseries 51.37 & \color{teal} \bfseries 56.58 \\
 \bottomrule
 \end{tabular}
-\caption[MaxBoxAccV3 for VGG16-GAP on synthetic datasets]{MaxBoxAccV3 for VGG16-GAP on synthetic datasets.}
-\label{tab:maxboxaccv3_vgg16_gap_synthetic}
+\caption[MaxBoxAccV3 for VGG16-GAP on synthetic datasets]{MaxBoxAccV3 recall for VGG16-GAP on synthetic datasets.}
+\label{tab:maxboxaccv3_recall_vgg16_gap_synthetic}
 \end{table}
-\begin{table}[h]
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrrrrrrr}
+\toprule
+ & \multicolumn{8}{c}{VGG16-GAP synthetic (MaxBoxAccV3 precision)} \\
+method & d1b & d1t & d2b & d2t & d3b & d3t & d4b & d4t \\
+\cmidrule(lr){1-1} \cmidrule(lr){2-9} 
+CAM & 88.57 & 84.86 & 73.39 & 71.86 & \color{purple} \bfseries 69.34 & 65.39 & 63.22 & 63.96 \\
+Grad-CAM++ & 88.82 & \color{teal} \bfseries 86.57 & \color{purple} \bfseries 72.96 & 71.42 & 69.63 & 64.82 & \color{purple} \bfseries 62.94 & 63.56 \\
+MinMaxCAM & \color{teal} \bfseries 89.09 & 83.47 & 73.50 & \color{teal} \bfseries 72.66 & 71.91 & \color{purple} \bfseries 63.68 & 63.46 & \color{purple} \bfseries 52.37 \\
+Score-CAM & \color{purple} \bfseries 87.51 & \color{purple} \bfseries 78.66 & \color{teal} \bfseries 76.77 & \color{purple} \bfseries 71.35 & \color{teal} \bfseries 74.79 & \color{teal} \bfseries 69.70 & \color{teal} \bfseries 64.36 & \color{teal} \bfseries 63.96 \\
+\bottomrule
+\end{tabular}
+\caption[MaxBoxAccV3 for VGG16-GAP on synthetic datasets]{MaxBoxAccV3 precision for VGG16-GAP on synthetic datasets.}
+\label{tab:maxboxaccv3_precision_vgg16_gap_synthetic}
+\end{table}
+
+\begin{table}[ht]
 \centering
 \begin{tabular}{lrrrrrrrr}
 \toprule
  & \multicolumn{8}{c}{VGG16-GAP synthetic (PxAP)} \\
 method & d1b & d1t & d2b & d2t & d3b & d3t & d4b & d4t \\
 \cmidrule(lr){1-1} \cmidrule(lr){2-9} 
-CAM & 80.82 & 80.45 & 78.52 & 74.68 & 76.31 & 72.79 & 65.69 & 72.55 \\
-GradCAM++ & \bfseries 81.82 & \bfseries 81.56 & \bfseries 79.33 & \bfseries 74.96 & \bfseries 77.90 & 73.20 & 66.92 & 73.21 \\
-MinMaxCAM & 81.29 & 80.46 & 78.62 & 74.00 & 75.44 & 71.43 & 66.10 & 57.24 \\
-Score-CAM & 80.71 & 81.07 & 77.96 & 74.32 & 77.64 & \bfseries 75.10 & \bfseries 67.34 & \bfseries 73.45 \\
+CAM & 80.82 & \color{purple} \bfseries 80.45 & 78.52 & 74.68 & 76.31 & 72.79 & \color{purple} \bfseries 65.69 & 72.55 \\
+Grad-CAM++ & \color{teal} \bfseries 81.82 & \color{teal} \bfseries 81.56 & \color{teal} \bfseries 79.33 & \color{teal} \bfseries 74.96 & \color{teal} \bfseries 77.90 & 73.20 & 66.92 & 73.21 \\
+MinMaxCAM & 81.29 & 80.46 & 78.62 & \color{purple} \bfseries 74.00 & \color{purple} \bfseries 75.44 & \color{purple} \bfseries 71.43 & 66.10 & \color{purple} \bfseries 57.24 \\
+Score-CAM & \color{purple} \bfseries 80.71 & 81.07 & \color{purple} \bfseries 77.96 & 74.32 & 77.64 & \color{teal} \bfseries 75.10 & \color{teal} \bfseries 67.34 & \color{teal} \bfseries 73.45 \\
 \bottomrule
 \end{tabular}
 \caption[PxAP for VGG16-GAP on synthetic datasets]{PxAP for VGG16-GAP on synthetic datasets.}
 \label{tab:pxap_vgg16_gap_synthetic}
 \end{table}
 
-\textbf{Multi-instance localization performance} drops with increasing object instances. MaxBoxAccV3 is above or close to 90\% for the single instance datasets d1b and d1t. A significant performance difference exists for 2-instance and 3-instance datasets, compared with single instance datasets. Localization performance is worst for the dataset with four instances per image, although still about half of all object instances can be localized with a model that is trained for classification only.
+\textbf{Multi-instance localization recall and precision} drop for datasets with increasing number of object instances. MaxBoxAccV3 recall is above or close to 90\% for the single instance datasets d1b and d1t. The localization performance for the 2-instance and 3-instance datasets is =significantly lower than the performance for the single instance datasets. Localization performance is worst for the dataset with four instances per image, although still about half of all object instances can be localized with a model that is trained for classification only.
 
-\textbf{Pixel average precision} doesn't drop as significantly as MaxBoxAccV3 for images with multiple object instances. Intuitively, a reasonable explanation is a mismatch at pixel-level causes a less severe penalty than a mismatch at the coarse-grained bounding box level.
+\textbf{Pixel average precision} doesn't drop as significantly as the MaxBoxAccV3 metrics for images with multiple object instances. Intuitively, a reasonable explanation is a mismatch at pixel-level causes a less severe penalty than a mismatch at the coarse-grained bounding box level.
 
-\textbf{Best MaxBoxAccV3 for multiple instances} is obtained by Score-CAM. The promising results for multi-target visualization observed by Wang \textit{et al.} \cite{wang2020score}, seem to hold in our quantitative evaluation.
+\textbf{Best MaxBoxAccV3 recall for multiple instances} is obtained by Score-CAM. The promising results for multi-target visualization observed by Wang \textit{et al.} \cite{wang2020score}, seem to hold in our quantitative evaluation. 
+
+\textbf{Discrepancy between datasets having images with (b variant) and without background (t variant)}. When we pairwise compare datasets with the same number of object instances, we see that for nearly all cases, experiments with datasets having images with background (variant b) show better MaxBoxAccV3 precision and recall than dataset variants without background images. The datasets with four instances are the exception for CAM, Grad-CAM++ and Score-CAM. The results for these localization methods follow the same trend as they are evaluated on the same model trained without regularization. 
+
+The discrepancies can be explained by comparing the training classification and localization accuracy. Fig. \ref{fig:loc_vs_acc_vgg16_gap_cam_synthetic}  illustrates these metrics for the VGG16-GAP network trained for CAM on the datasets. Pair-wise comparison of localization accuracy for datasets with same number of object instances, shows that images with background have higher accuracy, except for d4b and d4t. Here we can see that classification and localization accuracy for d4b show a drop at training epoch 15. Because we use an early training stop criterion that quits training after five epochs if the validation loss hasn't improved (i.e. lower than best loss so far), localization accuracy cannot further improve.
+
+\begin{figure}[ht]
+    \begin{center}       
+    \includegraphics[width=\textwidth]{fig_loc_vs_acc_vgg16_gap_cam_synthetic.png}
+    \caption[Training classification versus localization accuracy for CAM on VGG16-GAP]{Training classification versus localization accuracy (MaxBoxAccV3 recall) for CAM on VGG16-GAP.}
+    \caption*{Source: Author}
+    \label{fig:loc_vs_acc_vgg16_gap_cam_synthetic}
+    \end{center}
+\end{figure}
+
+Figure \ref{fig:loc_vs_acc_vgg16_gap_minmaxcam_synthetic} shows training classification and localization accuracy for CAM models fine-tuned with MinMaxCAM regularization on the different datasets. This explains the rather flat training curves. While classification and localization accuracy for datasets having images with background (b variants) slightly increase, the metrics decrease for the datasets having images without background (t variants). This observation correlates with the metrics shown in Table \ref{tab:maxboxaccv3_recall_vgg16_gap_synthetic}. Wang \textit{et al.} \cite{wang2021minmaxcam} set out the condition for common region regularization to work, that a set of images for the same class should have different backgrounds. This clearly is not the case for the t-variant datasets. Intuitively, this explains the lower accuracy scores.
+
+\begin{figure}[ht]
+    \begin{center}       
+    \includegraphics[width=\textwidth]{fig_loc_vs_acc_vgg16_gap_minmaxcam_synthetic.png}
+    \caption[Training classification versus localization accuracy for MinMaxCAM on VGG16-GAP]{Training classification versus localization accuracy (MaxBoxAccV3 recall) for MinMaxCAM on VGG16-GAP.}
+    \caption*{Source: Author}
+    \label{fig:loc_vs_acc_vgg16_gap_minmaxcam_synthetic}
+    \end{center}
+\end{figure}
 
 \subsubsection{VGG16}
-The localization results for VGG16 on the synthetic datasets are shown in Table \ref{tab:maxboxaccv3_vgg16_base_synthetic} for the MaxBoxAccV3 metric and in Table \ref{tab:pxap_vgg16_base_synthetic} for the PxAP metric. Note that CAM and MinMaxCAM methods cannot be used on VGG16 as this architecture has no \acrshort{gap} layer. GradCAM is used here as generalization of CAM.
+The localization results for VGG16 on the synthetic datasets are shown in Table \ref{tab:maxboxaccv3_recall_vgg16_base_synthetic} for MaxBoxAccV3 recall, in Table \ref{tab:maxboxaccv3_precision_vgg16_base_synthetic} for MaxBoxAccV3 precision, and in Table \ref{tab:pxap_vgg16_base_synthetic} for the PxAP metric. Note that CAM and MinMaxCAM methods cannot be used on VGG16 as this architecture has no \acrshort{gap} layer. Grad-CAM is used here as generalization of CAM.
 
 \begin{table}[ht]
 \centering
 \begin{tabular}{lrrrrrrrr}
 \toprule
- & \multicolumn{8}{c}{VGG16 synthetic (MaxBoxAccV3)} \\
+ & \multicolumn{8}{c}{VGG16 synthetic (MaxBoxAccV3 recall)} \\
 method & d1b & d1t & d2b & d2t & d3b & d3t & d4b & d4t \\
 \cmidrule(lr){1-1} \cmidrule(lr){2-9} 
-Grad-CAM & \bfseries 82.83 & \bfseries 77.33 & \bfseries 56.08 & 37.33 & \bfseries 55.17 & 44.39 & 48.79 & 40.21 \\
-Grad-CAM++ & 77.00 & 70.83 & 40.92 & 26.83 & 47.39 & 37.33 & 40.17 & 34.08 \\
-Score-CAM & 81.83 & 74.50 & 55.00 & \bfseries 44.58 & 54.44 & \bfseries 48.56 & \bfseries 51.04 & \bfseries 45.79 \\
+Grad-CAM & \color{teal} \bfseries 82.83 & \color{teal} \bfseries 77.33 & \color{teal} \bfseries 56.08 & 37.33 & \color{teal} \bfseries 55.17 & 44.39 & 48.79 & 40.21 \\
+Grad-CAM++ & \color{purple} \bfseries 77.00 & \color{purple} \bfseries 70.83 & \color{purple} \bfseries 40.92 & \color{purple} \bfseries 26.83 & \color{purple} \bfseries 47.39 & \color{purple} \bfseries 37.33 & \color{purple} \bfseries 40.17 & \color{purple} \bfseries 34.08 \\
+Score-CAM & 81.83 & 74.50 & 55.00 & \color{teal} \bfseries 44.58 & 54.44 & \color{teal} \bfseries 48.56 & \color{teal} \bfseries 51.04 & \color{teal} \bfseries 45.79 \\
 \bottomrule
 \end{tabular}
-\caption[MaxBoxAccV3 for VGG16 on synthetic datasets]{MaxBoxAccV3 for VGG16 on synthetic datasets.}
-\label{tab:maxboxaccv3_vgg16_base_synthetic}
+\caption[MaxBoxAccV3 recall for VGG16 on synthetic datasets]{MaxBoxAccV3 recall for VGG16 on synthetic datasets.}
+\label{tab:maxboxaccv3_recall_vgg16_base_synthetic}
 \end{table}
-\begin{table}[h]
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrrrrrrr}
+\toprule
+ & \multicolumn{8}{c}{VGG16 synthetic (MaxBoxAccV3 precision)} \\
+method & d1b & d1t & d2b & d2t & d3b & d3t & d4b & d4t \\
+\cmidrule(lr){1-1} \cmidrule(lr){2-9}
+Grad-CAM & 60.23 & 47.89 & \color{teal} \bfseries 57.65 & 39.36 & 57.08 & 42.90 & 51.59 & 46.86 \\
+Grad-CAM++ & \color{purple} \bfseries 34.13 & \color{purple} \bfseries 31.95 & \color{purple} \bfseries 36.21 & \color{purple} \bfseries 21.59 & \color{purple} \bfseries 43.89 & \color{purple} \bfseries 29.09 & \color{purple} \bfseries 36.42 & \color{purple} \bfseries 30.13 \\
+Score-CAM & \color{teal} \bfseries 66.28 & \color{teal} \bfseries 57.89 & 55.51 & \color{teal} \bfseries 47.12 & \color{teal} \bfseries 57.25 & \color{teal} \bfseries 50.51 & \color{teal} \bfseries 55.35 & \color{teal} \bfseries 52.23 \\
+\bottomrule
+\end{tabular}
+\caption[MaxBoxAccV3 precision for VGG16 on synthetic datasets]{MaxBoxAccV3 precision for VGG16 on synthetic datasets.}
+\label{tab:maxboxaccv3_precision_vgg16_base_synthetic}
+\end{table}
+
+\begin{table}[ht]
 \centering
 \begin{tabular}{lrrrrrrrr}
 \toprule
  & \multicolumn{8}{c}{VGG16 synthetic (PxAP)} \\
 method & d1b & d1t & d2b & d2t & d3b & d3t & d4b & d4t \\
-\cmidrule(lr){1-1} \cmidrule(lr){2-9} 
-Grad-CAM & \bfseries 71.14 & \bfseries 65.89 & 60.66 & 42.86 & 61.69 & 46.63 & 56.26 & 50.54 \\
-Grad-CAM++ & 66.88 & 59.54 & 49.45 & 29.74 & 56.42 & 40.43 & 50.40 & 39.47 \\
-Score-CAM & 69.19 & 65.12 & \bfseries 61.79 & \bfseries 50.66 & \bfseries 62.64 & \bfseries 56.56 & \bfseries 58.82 & \bfseries 56.15 \\
+\cmidrule(lr){1-1} \cmidrule(lr){2-9}
+Grad-CAM & \color{teal} \bfseries 71.14 & \color{teal} \bfseries 65.89 & 60.66 & 42.86 & 61.69 & 46.63 & 56.26 & 50.54 \\
+Grad-CAM++ & \color{purple} \bfseries 66.88 & \color{purple} \bfseries 59.54 & \color{purple} \bfseries 49.45 & \color{purple} \bfseries 29.74 & \color{purple} \bfseries 56.42 & \color{purple} \bfseries 40.43 & \color{purple} \bfseries 50.40 & \color{purple} \bfseries 39.47 \\
+Score-CAM & 69.19 & 65.12 & \color{teal} \bfseries 61.79 & \color{teal} \bfseries 50.66 & \color{teal} \bfseries 62.64 & \color{teal} \bfseries 56.56 & \color{teal} \bfseries 58.82 & \color{teal} \bfseries 56.15 \\
 \bottomrule
 \end{tabular}
 \caption[PxAP for VGG16 on synthetic datasets]{PxAP for VGG16 on synthetic datasets.}
 \label{tab:pxap_vgg16_base_synthetic}
 \end{table}
 
-We see the same trends as noticed for the VGG16-GAP network. An additional observation is that the localization metrics for VGG16 are lower than those of the VGG16-GAP network on the same datasets. Intuitively, in the VGG16 network there is a less direct relationship between feature activation in the last convolutional layer and the predicted target due to the dense network between the convolutional backbone and the classification output.
+We see the same pair-wise discrepancies between datasets having the same object instances and different variant (with or without background image) as observed for the VGG16-GAP network. An additional observation is that the localization metrics for VGG16 are lower than those of the VGG16-GAP network on the same datasets. Intuitively, in the VGG16 network there is a less direct relationship between feature activation in the last convolutional layer and the predicted target due to the dense network between the convolutional backbone and the classification output. Another important observation is that Grad-CAM++ performs worst for all metrics.
 
 \subsubsection{ResNet-50}
-Localization performance results for the ResNet-50 network on the synthetic dataset are illustrated in Table \ref{tab:maxboxaccv3_resnet50_synthetic} for MaxBoxAccV3 and in Table \ref{tab:pxap_resnet50_synthetic} for PxAP. Here GradCAM is not evaluated as it performs the same as CAM for architectures with a \acrshort{gap} architecture.
+Localization performance results for the ResNet-50 network on the synthetic dataset are illustrated in Table \ref{tab:maxboxaccv3_recall_resnet50_synthetic} for MaxBoxAccV3 recall, in Table \ref{tab:maxboxaccv3_precision_resnet50_synthetic} for MaxBoxAccV3 precision and in Table \ref{tab:pxap_resnet50_synthetic} for PxAP. Here Grad-CAM is not evaluated as it performs the same as CAM for architectures with a \acrshort{gap} architecture.
 
 \begin{table}[ht]
 \centering
 \begin{tabular}{lrrrrrrrr}
 \toprule
- & \multicolumn{8}{c}{ResNet-50 synthetic (MaxBoxAccV3)} \\
+ & \multicolumn{8}{c}{ResNet-50 synthetic (MaxBoxAccV3 recall)} \\
 method & d1b & d1t & d2b & d2t & d3b & d3t & d4b & d4t \\
-\cmidrule(lr){1-1} \cmidrule(lr){2-9} 
+\cmidrule(lr){1-1} \cmidrule(lr){2-9}
 CAM & 82.83 & 65.50 & 62.00 & 60.67 & 63.44 & 59.61 & 57.67 & 52.62 \\
-Grad-CAM++ & \bfseries 83.83 & 67.67 & \bfseries 63.67 & 65.08 & 65.39 & 61.67 & \bfseries 60.79 & 53.58 \\
-MinMaxCAM & 75.33 & 60.67 & 57.58 & 48.92 & 52.00 & 53.72 & 54.33 & 49.92 \\
-Score-CAM & 80.50 & \bfseries 69.67 & 62.33 & \bfseries 66.25 & \bfseries 65.44 & \bfseries 63.44 & 58.83 & \bfseries 56.17 \\
+Grad-CAM++ & \color{teal} \bfseries 83.83 & 67.67 & \color{teal} \bfseries 63.67 & 65.08 & 65.39 & 61.67 & \color{teal} \bfseries 60.79 & 53.58 \\
+MinMaxCAM & \color{purple} \bfseries 75.33 & \color{purple} \bfseries 60.67 & \color{purple} \bfseries 57.58 & \color{purple} \bfseries 48.92 & \color{purple} \bfseries 52.00 & \color{purple} \bfseries 53.72 & \color{purple} \bfseries 54.33 & \color{purple} \bfseries 49.92 \\
+Score-CAM & 80.50 & \color{teal} \bfseries 69.67 & 62.33 & \color{teal} \bfseries 66.25 & \color{teal} \bfseries 65.44 & \color{teal} \bfseries 63.44 & 58.83 & \color{teal} \bfseries 56.17 \\
 \bottomrule
 \end{tabular}
-\caption[MaxBoxAccV3 for ResNet-50 on synthetic datasets]{MaxBoxAccV3 for ResNet-50 on synthetic datasets.}
-\label{tab:maxboxaccv3_resnet50_synthetic}
+\caption[MaxBoxAccV3 recall for ResNet-50 on synthetic datasets]{MaxBoxAccV3 recall for ResNet-50 on synthetic datasets.}
+\label{tab:maxboxaccv3_recall_resnet50_synthetic}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrrrrrrr}
+\toprule
+ & \multicolumn{8}{c}{ResNet-50 synthetic (MaxBoxAccV3 precision)} \\
+method & d1b & d1t & d2b & d2t & d3b & d3t & d4b & d4t \\
+\cmidrule(lr){1-1} \cmidrule(lr){2-9}
+CAM & 74.27 & 52.56 & 64.18 & 64.47 & 68.11 & 63.30 & 63.84 & 58.63 \\
+Grad-CAM++ & \color{teal} \bfseries 75.63 & 55.49 & \color{teal} \bfseries 64.77 & 68.09 & \color{teal} \bfseries 69.15 & 64.90 & \color{teal} \bfseries 65.79 & 58.81 \\
+MinMaxCAM & \color{purple} \bfseries 64.47 & \color{purple} \bfseries 45.72 & \color{purple} \bfseries 60.08 & \color{purple} \bfseries 49.78 & \color{purple} \bfseries 57.44 & \color{purple} \bfseries 56.71 & \color{purple} \bfseries 61.95 & \color{purple} \bfseries 56.49 \\
+Score-CAM & 73.90 & \color{teal} \bfseries 58.39 & 62.94 & \color{teal} \bfseries 68.44 & 68.17 & \color{teal} \bfseries 65.84 & 63.99 & \color{teal} \bfseries 61.00 \\
+\bottomrule
+\end{tabular}
+\caption[MaxBoxAccV3 precision for ResNet-50 on synthetic datasets]{MaxBoxAccV3 precision for ResNet-50 on synthetic datasets.}
+\label{tab:maxboxaccv3_precision_resnet50_synthetic}
 \end{table}
 
 \begin{table}[ht]
@@ -125,9 +201,9 @@ Score-CAM & 80.50 & \bfseries 69.67 & 62.33 & \bfseries 66.25 & \bfseries 65.44 
 method & d1b & d1t & d2b & d2t & d3b & d3t & d4b & d4t \\
 \cmidrule(lr){1-1} \cmidrule(lr){2-9} 
 CAM & 71.89 & 57.79 & 70.16 & 71.97 & 71.62 & 70.04 & 69.90 & 64.32 \\
-Grad-CAM++ & \bfseries 73.03 & 60.93 & \bfseries 71.48 & 73.88 & \bfseries 72.50 & 70.79 & \bfseries 70.55 & 64.91 \\
-MinMaxCAM & 60.47 & 48.43 & 63.95 & 55.16 & 61.16 & 61.90 & 65.72 & 59.95 \\
-Score-CAM & 72.27 & \bfseries 61.78 & 69.77 & \bfseries 74.18 & 71.30 & \bfseries 72.62 & 68.78 & \bfseries 65.77 \\
+Grad-CAM++ & \color{teal} \bfseries 73.03 & 60.93 & \color{teal} \bfseries 71.48 & 73.88 & \color{teal} \bfseries 72.50 & 70.79 & \color{teal} \bfseries 70.55 & 64.91 \\
+MinMaxCAM & \color{purple} \bfseries 60.47 & \color{purple} \bfseries 48.43 & \color{purple} \bfseries 63.95 & \color{purple} \bfseries 55.16 & \color{purple} \bfseries 61.16 & \color{purple} \bfseries 61.90 & \color{purple} \bfseries 65.72 & \color{purple} \bfseries 59.95 \\
+Score-CAM & 72.27 & \color{teal} \bfseries 61.78 & 69.77 & \color{teal} \bfseries 74.18 & 71.30 & \color{teal} \bfseries 72.62 & 68.78 & \color{teal} \bfseries 65.77 \\
 \bottomrule
 \end{tabular}
 \caption[PxAP for ResNet-50 on synthetic datasets]{PxAP for ResNet-50 on synthetic datasets.}
@@ -150,13 +226,14 @@ We modified a pre-trained VGG16 network into the VGG16-GAP network by replacing 
 
 \begin{table}[ht]
 \centering
-\begin{tabular}{lrrr}
+\begin{tabular}{lrrrr}
 \toprule
-method & MaxBoxAcc & MaxBoxAccV2 & MaxBoxAccV3 \\
-\cmidrule(lr){1-1} \cmidrule(lr){2-4}
-cam & 61.19 & 60.22 & 38.44 \\
-Grad-CAM++ & \bfseries 61.29 & \bfseries 60.43 & \bfseries 38.66 \\
-Score-CAM & 58.44 & 57.56 & 36.48 \\
+ & & & \multicolumn{2}{c}{MaxBoxAccV3} \\
+method & MaxBoxAcc & MaxBoxAccV2 & precision & recall \\
+\cmidrule(lr){1-1} \cmidrule(lr){2-5}
+CAM & 61.19 & 60.22 & \color{purple} \bfseries 36.73 & 38.44 \\
+Grad-CAM++ & \color{teal} \bfseries 61.29 & \color{teal} \bfseries 60.43 & 36.87 & \color{teal} \bfseries 38.66 \\
+Score-CAM & \color{purple} \bfseries 58.44 & \color{purple} \bfseries 57.56 & \color{teal} \bfseries 37.33 & \color{purple} \bfseries 36.48 \\
 \bottomrule
 \end{tabular}
 \caption[Metrics for VGG16-GAP on ImageNet]{Metrics for VGG16-GAP on ImageNet.}
@@ -179,14 +256,15 @@ We haven't reproduced the results of the authors of the MinMaxCAM paper \cite{wa
 
 \begin{table}[ht]
 \centering
-\begin{tabular}{lrrr}
+\begin{tabular}{lrrrr}
 \toprule
-method & MaxBoxAcc & MaxBoxAccV2 & MaxBoxAccV3 \\
-\cmidrule(lr){1-1} \cmidrule(lr){2-4}
-CAM & 57.60 & 57.25 & 36.58 \\
-Grad-CAM++ & \bfseries 59.40 & \bfseries 58.55 & \bfseries 37.53 \\
-MinMaxCAM & 58.81 & 57.26 & 36.02 \\
-Score-CAM & 56.19 & 56.35 & 35.92 \\
+ & & & \multicolumn{2}{c}{MaxBoxAccV3} \\
+method & MaxBoxAcc & MaxBoxAccV2 & precision & recall \\
+\cmidrule(lr){1-1} \cmidrule(lr){2-5}
+CAM & 57.60 & 57.25 & 30.55 & 36.58 \\
+Grad-CAM++ & \color{teal} \bfseries 59.40 & \color{teal} \bfseries 58.55 & 31.17 & \color{teal} \bfseries 37.53 \\
+MinMaxCAM & 58.81 & 57.26 & \color{teal} \bfseries 43.70 & 36.02 \\
+Score-CAM & \color{purple} \bfseries 56.19 & \color{purple} \bfseries 56.35 & \color{purple} \bfseries 29.60 & \color{purple} \bfseries 35.92 \\
 \bottomrule
 \end{tabular}
 \caption[Metrics for ResNet-50 on ImageNet]{Metrics for ResNet-50 on ImageNet.}
@@ -198,29 +276,15 @@ Score-CAM & 56.19 & 56.35 & 35.92 \\
 %- show multiple examples of each method, architecture, dataset
 %- discuss and compare results
 
-\section{Threshold calibration}
-Different \acrshort{cam} methods exhibit different localization performance distributions, as illustrated in Fig. \ref{fig:boxacc_resnet50_imagenet}. Fixing the score map threshold at a pre-defined value, can lead to increased performance of some methods and to decreased performance for others. 
-
-Under our threshold-independent performance measures MaxBoxAccV3, we observe that the methods have different optimal score map threshold (at maximum box accuracy) on ImageNet and the methods do not exhibit significantly different MaxBoxAccV3 performances.
-
-\begin{figure}[ht]
-    \begin{center}       
-    \includegraphics[width=0.7\textwidth]{fig_boxacc_resnet50_imagenet.png}
-    \caption[BoxAcc for ResNet-50 on ImageNet]{Performance at varying operating thresholds. ResNet-50 on ImageNet: BoxAcc($\tau$) versus score map threshold $\tau$.}
-    \caption*{Source: Author}
-    \label{fig:boxacc_resnet50_imagenet}
-    \end{center}
-\end{figure}
-
 \section{Classification versus localization accuracy}
-In many cases, the best localization performances are achieved at early epochs, before the classifiers are sufficiently trained. We illustrate this in Fig. \ref{fig:classification_versus_localization} for the MinMaxCAM method where we show the training curves of the classification accuracy and localization accuracy on the synthetic validation dataset for the ResNet-50 network. 
+In many cases, the best localization performances are achieved at early epochs, before the classifiers are sufficiently trained. We illustrate this in Fig. \ref{fig:classification_versus_localization2} for the MinMaxCAM method where we show the training curves of the classification accuracy and localization accuracy on the synthetic validation dataset for the ResNet-50 network. 
 
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=0.7\textwidth]{fig_class_vs_localization.png}
     \caption[Classification versus localization accuracy]{Classification versus localization accuracy comparison of MinMaxCAM method for the VGG16-GAP model on the synthetic dataset.}
     \caption*{Source: Author}
-    \label{fig:classification_versus_localization}
+    \label{fig:classification_versus_localization2}
     \end{center}
 \end{figure}
 
@@ -258,10 +322,10 @@ The most computationally costly method by far is Score-CAM. This method computes
 
 \section{Localization improvements}
 
-Using the iterative localization method proposed in section \ref{sec:method_localization_improvement}, we analyze the effect of this method on VGG16-GAP and ResNet-50 architectures for the synthetic and ImageNet datasets. We use the same models that were trained for the non-iterative approach.
+Using the iterative localization method proposed in section \ref{sec:method_localization_improvement}, we analyze the effect of this method for VGG16-GAP and ResNet-50 architectures on the synthetic and ImageNet datasets. We use the same models that were trained for the non-iterative approach.
 
 \subsection{Recall versus precision}
-The aim of the iterative approach is to maximize the accurate localization of ground truth object instances. We could have a localization method that exhaustively generates bounding boxes of different granularity. Such method would accurately localize most object instances and thus have a high recall. At the same time that method would suffer from a lot of false positives, i.e., many localized objects would not match with the actual ground truth instances.
+The aim of the iterative approach is to maximize the accurate localization of ground truth object instances. This is measured by the recall metric. If we would have a localization method that exhaustively generates bounding boxes of different granularity, then such method would accurately localize most object instances and thus have a high recall. At the same time this method would suffer from a lot of false positives, i.e., many localized objects would not match with the actual ground truth instances. Hence, the precision would be low.
 
 To measure the impact of the iterative localization method we want to measure both precision and recall. Ideally, we would like to have a localization method that has good precision and recall. If we equally care about precision and recall, the f1 score represents the harmonic mean between precision and recall.
 

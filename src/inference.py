@@ -85,7 +85,6 @@ class CAMComputer(object):
         self.log = log
         self.bboxes_meta_path = os.path.join(self.scoremap_root, self.split, 'bboxes_metadata.txt')
         self.optimal_thresholds_path = os.path.join(self.scoremap_root, self.split, 'optimal_thresholds.npy')
-        self.step = 0
         self.metadata = configure_metadata(os.path.join(config.metadata_root, split))
         self.image_sizes = get_image_sizes(self.metadata)
         cam_threshold_list = list(np.arange(0, 1, config.cam_curve_interval))
@@ -212,7 +211,7 @@ class CAMComputer(object):
             if self.mask_evaluator:
                 metrics |= self.mask_evaluator.compute()
 
-            mlflow.log_dict(cams_stats, f'state/{self.split}/{self.step}/cams_stats.json')
+            mlflow.log_dict(cams_stats, f'state/{self.split}/{iter_index}/cams_stats.json')
             for name, timer in Timer.timers.items():
                 total_ms = timer.get_total_elapsed_ms()
                 mean, std = timer.get_mean_std()
@@ -230,8 +229,8 @@ class CAMComputer(object):
             Timer.reset()
             metrics |= {'iter_skipped': num_skipped}
             mlflow_metrics = {f'{self.split}_{metric}': value for metric, value in metrics.items()}
-            mlflow.log_metrics(mlflow_metrics, step=self.step)
-            self.step += 1
+            step = epoch * self.iter_max + iter_index
+            mlflow.log_metrics(mlflow_metrics, step=step)
             # write scoremap metadata
             # format: image_id,cam_id
             if len(cams_saved) > 0 and iter_index == 0:

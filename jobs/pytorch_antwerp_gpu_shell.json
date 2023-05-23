@@ -1,0 +1,27 @@
+{
+    "name": "pytorch",
+    "description": "Used to run pytorch jobs",
+    "request": {
+        "resources": {
+            "cpus": 2,
+            "gpus": 1,
+            "cpuMemoryGb": 16,
+            "gpuModel": [ "V100", "4000" ]
+        },
+        "docker": {
+            "storage": [{
+                "hostPath": "/project_antwerp",
+                "containerPath": "/project"
+            },{
+                "containerPath": "/project_scratch"
+            },{
+                "containerPath": "/datasets_antwerp"
+            }],
+            "image": "pytorch/pytorch",
+            "command": "sleep 86400"
+        },
+        "scheduling": {
+            "interactive": true
+        }
+    }
+}

@@ -13,7 +13,7 @@ if __name__ == '__main__':
 
     if args.mode == 'prepare_data':
         parser.add_argument('--checkpoint_dir', default='checkpoint', type=str, help=None)
-        parser.add_argument('--project', default='proj4', type=str, help=None)
+        parser.add_argument('--project', default='proj', type=str, help=None)
         parser.add_argument('--n_classes', default=10, type=int, help=None)
         parser.add_argument('--n_samples', default=1000, type=int, help=None)
         parser.add_argument('--data_mode', default='train', type=str, help=None)
@@ -25,8 +25,4 @@ if __name__ == '__main__':
 
         args, unknown = parser.parse_known_args()
         dargs = vars(args)  # is a dictionary
-        config = zip(['train', 'val', 'test'], [1000, 200, 200])
-        for mode, samples in config:
-            dargs['data_mode'] = mode
-            dargs['n_samples'] = samples
-            prepare_data(dargs)
+        prepare_data(dargs)
