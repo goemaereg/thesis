@@ -36,12 +36,12 @@ import tqdm
 import mlflow
 from munch import Munch
 import sys
-from wsol.method import AcolMethod, ADLMethod, BaseMethod, CAMMethod, CutMixMethod, HASMethod, MinMaxCAMMethod, SPGMethod
+from wsol.method import AcolMethod, ADLMethod, BaseMethod, CutMixMethod, HASMethod, MinMaxCAMMethod, SPGMethod
 
 wsol_methods = {
     # 'acol': AcolMethod,
     # 'adl': ADLMethod,
-    'cam': CAMMethod,
+    'cam': BaseMethod,
     'minmaxcam': MinMaxCAMMethod,
     'gradcam': BaseMethod,
     'gradcam++': BaseMethod,

@@ -17,6 +17,7 @@
   "device": "cuda",
   "early_stopping": true,
   "early_stopping_min_delta": 0.0,
+  "early_stopping_minimum_epochs": 30,
   "early_stopping_patience": 5,
   "epochs": 100,
   "eval_checkpoint_type": "last",
@@ -30,7 +31,7 @@
   ],
   "large_feature_map": false,
   "lr": 1e-4,
-  "lr_classifier_ratio": 10,
+  "lr_classifier_ratio": 1,
   "lr_scheduler": "MultiStepLR",
   "lr_scheduler_multisteplr_milestones": [50, 100],
   "mask_root": "data/maskdata",
@@ -58,7 +59,7 @@
   "train": true,
   "train_augment": true,
   "weight_decay": 5e-4,
-  "workers": 0,
+  "workers": 2,
   "wsol_method": "minmaxcam",
   "xai": true
 }

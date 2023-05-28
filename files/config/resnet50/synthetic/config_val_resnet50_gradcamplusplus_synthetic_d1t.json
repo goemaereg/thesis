@@ -4,7 +4,7 @@
   "adl_threshold": 0.9,
   "architecture": "resnet50",
   "architecture_type": "cam",
-  "batch_size": 64,
+  "batch_size": 128,
   "bbox_metric": "MaxBoxAccV3",
   "cam_curve_interval": 0.01,
   "config": "files/config/resnet50/synthetic/config_val_resnet50_gradcamplusplus_synthetic_d1t.json",
@@ -58,7 +58,7 @@
   "train": false,
   "train_augment": true,
   "weight_decay": 1e-4,
-  "workers": 0,
+  "workers": 2,
   "wsol_method": "gradcam++",
   "xai": true
 }

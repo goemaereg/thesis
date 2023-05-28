@@ -6,7 +6,7 @@
             "cpus": 2,
             "gpus": 1,
             "cpuMemoryGb": 16,
-            "gpuModel": [ "V100", "4000" ]
+            "gpuModel": [ "V100", "4000", "A100" ]
         },
         "docker": {
             "storage": [{

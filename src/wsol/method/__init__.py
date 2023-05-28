@@ -11,5 +11,4 @@ from .base_method import BaseMethod
 from .cutmix import CutMixMethod
 from .has import HASMethod
 from .spg import SPGMethod
-from .cam import CAMMethod
 from .minmaxcam import MinMaxCAMMethod
