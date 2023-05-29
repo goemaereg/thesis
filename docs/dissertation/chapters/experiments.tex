@@ -249,7 +249,7 @@ Grad-CAM++ and Score-CAM localization methods perform better than CAM, both for 
 The MinMaxCAM-regularized model has lower localization performance than the non-regularized one for the ResNet-50 network. There is room for improvement as we haven't optimized the hyper parameters for MinMaxCAM. Still, it can be observed that both Grad-CAM++ and Score-CAM both improve on the CAM localization results.
 
 \subsection{ImageNet dataset}
-In this section we evaluate the localization methods on the ImageNet validation dataset. Multi-instance localization metrics MaxBoxAccV3 recall and precision are used as in previous sections. In addition we illustrate the MaxBoxAcc and MaxBoxAccV2 metrics to benchmark our trained models with results provided by Choe \textit{et al.} \cite{choe2020evaluating} where appropriate. \acrfull{pxap} cannot be used as localization metric as the ImageNet dataset has no ground truth segmentation masks. In following sections, results for VGG16-GAP and ResNet-50 architectures are discussed.
+In this section we evaluate the localization methods on the ImageNet validation dataset. Multi-instance localization metrics MaxBoxAccV3 recall and precision are used as in previous sections. In addition we report the MaxBoxAcc and MaxBoxAccV2 metrics to benchmark our trained models with results provided by Choe \textit{et al.} \cite{choe2020evaluating} where appropriate. \acrfull{pxap} cannot be used as localization metric as the ImageNet dataset has no ground truth segmentation masks. In following sections, results for VGG16-GAP and ResNet-50 architectures are discussed.
 
 \subsubsection{VGG16-GAP}
 We modified a pre-trained VGG16 network into the VGG16-GAP network by replacing the dense network of VGG16 with a \acrshort{gap} layer followed by a single fully connected layer. This newly constructed network is fine-tuned until the loss of the validation dataset hasn't decreased for five consecutive training epochs. The localization results of VGG16-GAP on the ImageNet validation dataset are illustrated in Table \ref{tab:metrics_vgg16_gap_imagenet}.
@@ -272,17 +272,23 @@ Score-CAM & \color{purple} \bfseries 58.44 & \color{purple} \bfseries 57.56 & \c
 
 The values for the metrics MaxBoxAcc ($61.19$) and MaxBoxAccV2 ($60.22$) for the \acrshort{cam} method closely match the results reported by Choe \textit{et al.} \cite{choe2020evaluating}. Our VGG16-GAP model is thus able to reproduce the results in the \acrshort{wsol} evaluation paper.
 
-MaxBoxAccV3 recall for Score-CAM is 2 percentage points lower than CAM and Grad-CAM++. An intuitive explanation for lower Score-CAM score could be that Score-CAM tends to generate more focused score maps than Grad-CAM++, resulting in less accurate bounding box estimations. 
+The MaxBoxAccV3 precision and recall values for VGG16-GAP on the ImageNet dataset are much lower than the values for the synthetic dataset. This is to be expected as the ImageNet dataset is fare more complex: It has 1000 different classes and a training dataset of 1.2 million images, where the synthetic datasets have only 9 different classes with a training dataset of 1000 images. The model trained on the ImageNet dataset has a classification accuracy of 67.1\%, where classification accuracy for models trained on the synthetic datasets is close to 100\%. 
+
+MaxBoxAccV3 recall for Score-CAM is about 2 percentage points lower than CAM and Grad-CAM++. An intuitive explanation for the lower Score-CAM score could be that Score-CAM tends to generate more focused score maps than Grad-CAM++, resulting in less accurate bounding box estimations. 
+
+The multi-instance localization metrics are expected to be determined predominantly by single-instance images in the ImageNet dataset as they are the majority of images in the validation dataset (Fig. \ref{fig:imagenet_instance_distribution}. It would be interesting to split up the ImageNet training and validation datasets along the number of object instances in images to evaluate localization performance in function of the number of object instances. We see this as future work.
 
 Due to time constraints, we haven't trained a MinMaxCAM-regularized model for the VGG16-GAP network on ImageNet.
 
 \subsubsection{ResNet-50}
 
-For the ResNet-50 network we evaluate four different localization methods on the ImageNet validation dataset. The results of these experiments are illustrated in Table \ref{tab:metrics_resnet50_imagenet}. The MaxBoxAcc and MaxBoxAccV2 metrics for the CAM method have lower scores than those reported by Choe \textit{et al.} (57.60 and 57.25 versus 64.2 and 63.7). An explanation for this discrepancy, could be that we used a pre-trained ResNet-50 model where the authors of the mentioned paper did a grid search on hyper parameters to improve localization. 
+For the ResNet-50 network we evaluate four different localization methods on the ImageNet validation dataset. CAM, Grad-CAM++ and Score-CAM are evaluated on a model trained without regularization, and  CAM is also evaluated on a model trained with MinMaxCAM regularization. The results of these experiments are illustrated in Table \ref{tab:metrics_resnet50_imagenet}, where the method denoted as MinMaxCAM shows the results for the MinMaxCAM-regularized model evaluated with the CAM method. 
 
-The MaxBoxAccV3 metric has slightly lower values than those that we reported for the VGG16-GAP network, but the same trend can be observed. Grad-CAM++ is the best performing method and Score-CAM score is nearly two percentage points below the Grad-CAM++ one. MinMaxCAM performs slightly worse than CAM. This is opposite to the results noted by Wang \textit{et al.} \cite{wang2021minmaxcam}, who illustrated that MinMaxCAM improves MaxBoxAcc by 2.5 percentage points compared to CAM. 
+The MaxBoxAcc and MaxBoxAccV2 metrics for the CAM method have lower scores than those reported by Choe \textit{et al.} (57.60 and 57.25 versus 64.2 and 63.7). An explanation for this discrepancy, most likely is that we used a pre-trained ResNet-50 model where the authors of the mentioned paper did a grid search on hyper parameters to improve localization. 
 
-We haven't reproduced the results of the authors of the MinMaxCAM paper \cite{wang2021minmaxcam}, due to lack of reference values for the regularization weights. Given the values to reproduce the author's results, the multi-instance localization metric MaxBoxAccV3 could be further improved for MinMaxCAM.
+The MaxBoxAccV3 metric has slightly lower values than the ones we reported for the VGG16-GAP network, but the same trend can be observed: The hightest recall is obtained by the Grad-CAM++ method and and Score-CAM score is nearly two percentage points below Grad-CAM++'s recall value. 
+
+MinMaxCAM performs slightly worse than CAM. This is opposite to the results noted by Wang \textit{et al.} \cite{wang2021minmaxcam}, who illustrated that MinMaxCAM improves MaxBoxAcc by 2.5 percentage points compared to CAM. We haven't reproduced the results of the authors of the MinMaxCAM paper \cite{wang2021minmaxcam}, due to lack of reference values for the regularization weights. Given the values to reproduce the author's results, the multi-instance localization metric MaxBoxAccV3 could be further improved for MinMaxCAM.
 
 \begin{table}[ht]
 \centering
@@ -297,18 +303,16 @@ MinMaxCAM & 58.81 & 57.26 & \color{teal} \bfseries 43.70 & 36.02 \\
 Score-CAM & \color{purple} \bfseries 56.19 & \color{purple} \bfseries 56.35 & \color{purple} \bfseries 29.60 & \color{purple} \bfseries 35.92 \\
 \bottomrule
 \end{tabular}
-\caption[Metrics for ResNet-50 on ImageNet]{Metrics for ResNet-50 on ImageNet.}
+\caption[Localization metrics for ResNet-50 on ImageNet]{Localization metrics for ResNet-50 on ImageNet. Column-wise minimum and maximum are highlighted in red and green.}
 \label{tab:metrics_resnet50_imagenet}
 \end{table}
 
-%- MaxBoxAcc, PxAP for (vgg16, resnet50), (synthetic, imagenet), CAM methods
-%- discuss and explain differences
-%- show multiple examples of each method, architecture, dataset
-%- discuss and compare results
-
-
 \section{Computational complexity}
-In this section we evaluation the computational complexity of \acrshort{cam} methods used in our experiments. We measure the localization method runtime for ResNet-50 network on the ImageNet validation dataset. The mean runtime and standard deviation per batch of images, and the aggregated runtime for the complete  dataset is computed. The results for each method is illustrated in Table \ref{tab:runtime_resnet50_imagenet}.
+In this section we evaluate the computational complexity of localization methods CAM, Grad-CAM++ and Score-CAM. MinMaxCAM and Grad-CAM are not measured as MinMaxCAM uses the same localization method as CAM and Grad-CAM has the same order of complexity as Grad-CAM++ due to the equal number of forward and backward passes (see Table \ref{tab:complexity_theoretical}). We measure the localization method runtime for ResNet-50 network on the 50000 images of the ImageNet validation dataset. 
+
+The runtime of the localization methods is measured as the time it takes to compute the score map of the images. For efficiency reasons, we process batches of images for score map computation, thus the runtime measurements are also performed on batches of images. Mean and standard deviation are then computed over all batches of the dataset, and total runtime is the sum of the runtime of all batches. Runtime computation excludes operations to load and preprocess the images. 
+
+The results for each method are illustrated in Table \ref{tab:runtime_resnet50_imagenet}. The batch size is listed per method as it should be taken into consideration when interpreting the mean and standard deviation values.
 
 \begin{table}[ht]
 \centering
@@ -320,18 +324,18 @@ method & batch size (bytes) & sum & mean & std \\
 CAM & 512 & 309209 & 3155 & 225 \\
 Grad-CAM++ & 128 & 804349 & 2057 & 140 \\
 MinMaxCAM & 512 & 299392 & 3055 & 982 \\
-Score-CAM & 512 & \bfseries 97763413 & 997585 & 34463\\
+Score-CAM & 512 & \color{teal} \bfseries 97763413 & \color{teal} \bfseries 997585 & \color{teal} \bfseries 34463\\
 \bottomrule
 \end{tabular}
-\caption[Method runtime for ResNet-50 on ImageNet validation dataset]{Method runtime for ResNet-50 on ImageNet validation dataset.}
+\caption[Method runtime for ResNet-50 on ImageNet validation dataset]{Method runtime for ResNet-50 on ImageNet validation dataset.  Column-wise maximum is highlighted in bold green.}
 \label{tab:runtime_resnet50_imagenet}
 \end{table}
 
-The runtime is measured as the time it takes to compute score maps for the 50000 images in the ImageNet validation dataset. Runtime exludes operations to load and preprocess the images. Grad-CAM was not measured as this method specializes to the CAM method for ResNet-50. However, it has the same order of complexity as Grad-CAM++ due to the equal number of forward and backward passes. Grad-CAM++ takes nearly three times the runtime of the CAM method. This could indicate that backward passes more costly than forward passes.
+We observe that Grad-CAM++ takes nearly three times the runtime of the CAM method. The major difference is that Grad-CAM++ requires a backward pass after each forward pass to compute gradients. This indicates that backward passes are more costly than forward passes.
 
-Each method computes a score map as a weighted combination of feature maps in the final convolutional layer. CAM (MinMaxCAM uses the CAM method for computing score maps), takes as weights the parameters learned in the single fully connected layer, which is a very cheap operation. Grad-CAM and Grad-CAM++ compute weights from the backprogagated gradients in the final convolutional layer. Similarly this operation is not computationally expensive.
+Each method computes a score map as a weighted combination of feature maps in the final convolutional layer. CAM computes as weights the parameters learned in the single fully connected layer, which is a very cheap operation. Grad-CAM and Grad-CAM++ compute weights from feature activations and the back-propagated gradients in the final convolutional layer.
 
-The most computationally costly method by far is Score-CAM. This method computes the weights for the feature maps by feeding the network with the product of each feature map with the original image to obtain the classification score after softmax. As ResNet-50 has 2048 channels in its final convolutional layer, this is an expensive operation.
+The most computationally costly method by far is Score-CAM. This method computes the weights for the feature maps by feeding the network with the product of each feature map with the original image to obtain the classification score after softmax. The classification scores are then used as weights. As ResNet-50 has 2048 channels in its final convolutional layer, this is an expensive operation.
 
 \section{Localization improvements}
 
@@ -342,15 +346,43 @@ The aim of the iterative approach is to maximize the accurate localization of gr
 
 To measure the impact of the iterative localization method we want to measure both precision and recall. Ideally, we would like to have a localization method that has good precision and recall. If we equally care about precision and recall, the f1 score represents the harmonic mean between precision and recall.
 
-\subsection{Evaluation on synthetic datasets}
-Here we evaluate the results of the iterative localization method for the VGG16-GAP network and the ResNet-50 network on the synthetic test datasets. We only tests the datasets that have images with a background to evaluate the effect of using different bounding box mask strategies.
+\subsection{Evaluation approach}
 
-\subsubsection{VGG16-GAP}
-The combinations of datasets, localization methods, mask strategies, merge strategies and iteration stop criteria is too large to draw conclusions from. Therefore we graphically represent the result as follows:
+As illustrated in Table \ref{tab:iterative_localizaton_parameters}, the number parameter combinations for iterative localization experiments is too large to draw conclusions from in a single table overview. 
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{ll}
+\toprule
+Parameter & Values\\
+\cmidrule(lr){1-2}
+Localization method & CAM, Grad-CAM++, Score-CAM, MinMaxCAM \\
+Mask strategy & zero, mean, random \\
+Merge strategy & add, drop, unify \\
+Classification score drop threshold & 0.25, 0.5, 1.0 \\
+\bottomrule
+\end{tabular}
+\caption[Parameters for the iterative localization approach]{Parameters for the iterative localization approach.}
+\label{tab:iterative_localizaton_parameters}
+\end{table}
+
+Therefore we graphically represent and interpret the results as follows:
 \begin{itemize}
-    \item Per dataset and localization method, we plot a two-dimensional plot with precision and recall axes for the different mask strategies, merge strategies and stop criteria.
-    \item The precision and recall for the non-iterative approach is plotted as two orthogonal lines
+    \item Per dataset, network and localization method, we plot a two-dimensional plot with precision on the  vertical axis and recall on the horizontal axis for the different mask strategies, merge strategies and stop criteria.
+    \item The precision and recall for the non-iterative approach is plotted as two orthogonal lines: A horizontal line for precision and vertical line for recall. We use the precision and recall from the non-iterative approach as baseline to compare with results from the iterative approach.
+    \item The horizontal and vertical lines of the baseline create four quadrants which allow easy graphical interpretation of iterative localization results, depending in which quadrant a result is plotted.
+    \begin{itemize}
+        \item Bottom left: Precision and recall are worse than the baseline.
+        \item Top left: Precision is better and recall is worse than baseline.
+        \item Bottom right: Recall is better and precision is worse than baseline.
+        \item Top right: Precision and recall are better than the baseline.
+    \end{itemize}
 \end{itemize}
+
+\subsection{Evaluation for VGG16-GAP on synthetic datasets}
+Here we evaluate the results of the iterative localization for the VGG16-GAP network on the synthetic test datasets. We only tests the datasets that have images with a background to evaluate the effect of using different bounding box mask strategies. The localization methods used are CAM, Grad-CAM++, Score-CAM and MinMaxCAM. The former three methods are evaluated on a model trained without regularization while the latter is evaluated on a model trained with MinMaxCAM regularization.
+
+The MaxBoxAccV3 precision and recall of the iterative localization experiments for the different localization methods, mask strategies, merge strategies and iteration stop criteria on the synthetic dataset d1b, are illustrated in Fig. \ref{fig:prec_iter_vgg16_gap_syn_d1b}.
 
 \begin{figure}[ht]
     \begin{center}       
@@ -361,6 +393,12 @@ The combinations of datasets, localization methods, mask strategies, merge strat
     \end{center}
 \end{figure}
 
+For all methods we observe that precision is worse than the baseline as no result exists above the baseline precision line. Recall is improved by the iterative localization for CAM, Grad-CAM++ and Score-CAM when using the drop or add merge strategy. The 'add' strategy comes at a greater precision cost, as this strategy will create more false positives. The 'drop' strategy improves recall at the smallest precision cost when the classification score drop threshold 0.25 or 0.5 is used. As threshold 1.0 actually means that there is no stop criterion, it's easy to see that this threshold has the worst precision for any mask or merge strategy. The small gain in recall is to be expected for a dataset with single-instance object images where the non-iterative approach already has a high localization performance.
+
+Iterative localization results for the d2b dataset are shown in Fig. \ref{fig:prec_iter_vgg16_gap_syn_d2b}. Looking at the upper right quadrant, we can observe that there are iterative localization methods that improve both precision and recall. The iterative methods applying the mean mask strategy, unify merge strategy and a stop criterion with classification drop threshold of 0.25 or 0.5 provide the best precision and recall improvements. 
+
+The add merge strategy combined without iteration drop criterion (i.e. threshold `1.0) gives the highest recall improvement but at the cost of severe precision drop. The worst performing approach is the unify merge strategy without drop criterion. Intuitively, masking images with bounding boxes found in previous iterations, and unifying newly predicted bounding boxes with overlapping boxes of previous iterations, increases the risk of no longer matching predicted bounding boxes with ground truth boxes, and thus impacting the recall.
+
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=1.0\textwidth]{images/fig_iter_vgg16_gap_syn_d2b.png}
@@ -369,6 +407,8 @@ The combinations of datasets, localization methods, mask strategies, merge strat
     \label{fig:prec_iter_vgg16_gap_syn_d2b}
     \end{center}
 \end{figure}
+
+The iterative localization results for the d3b dataset are illustrated in Fig. \ref{fig:prec_iter_vgg16_gap_syn_d3b}. We see that the iterative approach can improve both precision and recall for the CAM and Grad-CAM++ method when applying the mean mask strategy combined with unify merge strategy and stop criterion threshold of 0.25 or 0.5. These combinations also improved both recall and precision for the d2b dataset. For MinMaxCAM and Score-CAM, recall can be improved, but always at the cost of decreased precision.
 
 \begin{figure}[ht]
     \begin{center}       
@@ -379,6 +419,8 @@ The combinations of datasets, localization methods, mask strategies, merge strat
     \end{center}
 \end{figure}
 
+The iterative localization metrics for the d4b dataset are shown in Fig. \ref{fig:prec_iter_vgg16_gap_syn_d4b}. Grad-CAM++ is the only method where both precision and recall can be improved by applying the drop or unify merge strategy combined with zero mask strategy and a classification score drop threshold of 0.25. All other combinations improve recall at the cost of decreasing the precision.
+
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=1.0\textwidth]{images/fig_iter_vgg16_gap_syn_d4b.png}
@@ -388,9 +430,11 @@ The combinations of datasets, localization methods, mask strategies, merge strat
     \end{center}
 \end{figure}
 
-\subsubsection{ResNet-50}
-
 \subsection{Evaluation for ResNet-50 on ImageNet dataset}
+
+The iterative localization methods for the ResNet-50 network evaluated on the ImageNet validation dataset, are shown in Fig. \ref{fig:prec_iter_resnet50_imagenet}. The best performing iterative localization methods are those that are positioned closest to the upper right corner of the plot. Observing the plots for all localization methods, we can see two distinct groups of iterative approaches: One group that improves recall at the cost of decreasing precision, and another group that performs worse for both precision and recall when compared to the baseline.
+
+The first group consists of the methods that apply as merge strategy either 'drop' or 'add', where the add strategy gives a substantially higher gain in recall, but at a higher drop in precision. In this group, there is an almost linear relationship between precision and recall and the applied classification score drop threshold for a certain merge strategy. In the second group are the iterative localization methods that apply a unify merge strategy. Intuitively, unifying predicted bounding boxes from previous iterations with newly predicted bounding boxes increases the risk generating larger but few bounding boxes, and thus impacting both precision and recall.
 
 \begin{figure}[ht]
     \begin{center}       

@@ -4,7 +4,7 @@
   "adl_threshold": 0.9,
   "architecture": "vgg16",
   "architecture_type": "cam",
-  "batch_size": 256,
+  "batch_size": 512,
   "bbox_metric": "MaxBoxAccV3",
   "cam_curve_interval": 0.01,
   "config": "files/config/vgg16/imagenet/config_train_vgg16_gap_cam_imagenet.json",
@@ -17,6 +17,7 @@
   "device": "cuda",
   "early_stopping": true,
   "early_stopping_min_delta": 0.0,
+  "early_stopping_minimum_epochs": 30,
   "early_stopping_patience": 5,
   "epochs": 100,
   "eval_checkpoint_type": "last",
@@ -58,7 +59,7 @@
   "train": true,
   "train_augment": true,
   "weight_decay": 1e-4,
-  "workers": 8,
+  "workers": 2,
   "wsol_method": "cam",
   "xai": true
 }
