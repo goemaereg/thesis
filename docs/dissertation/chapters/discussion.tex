@@ -21,20 +21,9 @@ In some cases, the best localization performances are achieved before convergenc
 
 \begin{figure}[ht]
 \begin{center}
-    \includegraphics[width=0.4\textwidth]{images/fig_loc_vs_acc_resnet50_cam_d1b.png}
-    \caption[Classification versus CAM localization accuracy on VGG16-GAP for d1b dataset]{Classification versus CAM localization accuracy on VGG16-GAP for d1b dataset.}
+    \includegraphics[width=0.6\textwidth]{images/fig_loc_vs_acc_resnet50_cam_d1b.png}
+    \caption[Classification versus CAM localization accuracy on ResNet-50 for d1b dataset]{Classification versus CAM localization accuracy on ResNet-50 for d1b dataset.}
     \caption*{Source: Author}
     \label{fig:loc_vs_acc_resnet50_cam_d1b}
 \end{center}
 \end{figure}
-
-% The second example is shown in Fig. \ref{fig:loc_vs_acc_vgg16_gap_minmaxcam_synthetic}.
-
-Rework:
-% We illustrate this in Fig. \ref{fig:classification_versus_localization} for the MinMaxCAM method where we show the training curves of the classification accuracy and localization accuracy on the synthetic validation dataset for the ResNet-50 network. 
-
-%During the early training epochs, both classification accuracy and localization accuracy improve. But in further epochs, classification accuracy keeps improving, while localization performance drops until they both converge.
-
-%The result shows that localization and classification performance may not necessarily correlate and further classification training may hurt localization performance. As classification accuracy improves, the model focuses on learning the most discriminative parts of an object to classify the image correctly. These discriminative parts only partially cover an object. As the localization objective is to cover the full object region, improving classification performance decreases localization accuracy. 
-
-%Therefore, it's important to use localization-only metrics like MaxBoxAccV3 and PxAP for model selection and evaluation of WSOL methods. To avoid learning a model which focuses on optimizing classification performance only, we stop the learning process when the validation loss hasn't decreased for five consecutive epochs.
