@@ -43,7 +43,7 @@
   "multi_contour_eval": true,
   "multi_iou_eval": true,
   "num_val_sample_per_class": 0,
-  "override_cache": false,
+  "override_cache": true,
   "pretrained": true,
   "pretrained_path": "models/vgg16_gap_synthetic_d1b.pt",
   "proxy_training_set": false,

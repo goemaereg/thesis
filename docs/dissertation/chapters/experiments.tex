@@ -1,4 +1,4 @@
-\chapter{Experiments}
+\chapter{Experiments} \label{ch:experiments}
 
 \section{Localization evaluation}
 We evaluate the five \acrshort{wsol} methods that are described in detail in section \ref{lb:wsol_methods}: CAM, Grad-CAM, Grad-CAM++, Score-CAM and MinMaxCAM. All these methods, except Grad-CAM, are evaluated using a VGG-GAP network and a ResNet-50 network. Grad-CAM is a generalization of CAM that yields the same score maps as CAM in a \acrshort{cnn} with a \acrshort{gap} layer like the VGG16-GAP and ResNet-50 networks. Grad-CAM, Grad-CAM++ and Score-CAM are also evaluated using a VGG16 network. As these methods don't require an architecture with \acrshort{gap} layer, it is interesting to see how they perform on the unmodified VGG16 architecture.
@@ -85,7 +85,7 @@ The discrepancies can be explained by comparing the training classification and 
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=\textwidth]{fig_loc_vs_acc_vgg16_gap_cam_synthetic.png}
-    \caption[Training classification versus CAM localization accuracy on VGG16-GAP]{Training classification versus CAM localization accuracy (MaxBoxAccV3 recall) on VGG16-GAP.}
+    \caption[Classification versus CAM localization accuracy on VGG16-GAP for synthetic datasets]{Classification versus CAM localization accuracy on VGG16-GAP for synthetic datasets.}
     \caption*{Source: Author}
     \label{fig:loc_vs_acc_vgg16_gap_cam_synthetic}
     \end{center}
@@ -96,7 +96,7 @@ Figure \ref{fig:loc_vs_acc_vgg16_gap_minmaxcam_synthetic} shows training classif
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=\textwidth]{fig_loc_vs_acc_vgg16_gap_minmaxcam_synthetic.png}
-    \caption[Training classification versus localization accuracy for MinMaxCAM on VGG16-GAP]{Training classification versus localization accuracy (MaxBoxAccV3 recall) for MinMaxCAM on VGG16-GAP.}
+    \caption[Classification versus MinMaxCAM localization accuracy on VGG16-GAP for synthetic datasets]{Classification versus MinMaxCAM localization accuracy on VGG16-GAP for synthetic datasets.}
     \caption*{Source: Author}
     \label{fig:loc_vs_acc_vgg16_gap_minmaxcam_synthetic}
     \end{center}
