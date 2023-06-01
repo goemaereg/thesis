@@ -1,1 +1,9 @@
 \chapter*{Samenvatting}
+
+Weakly-supervised object localization (WSOL) heeft aan populariteit gewonnen wegens de eigenschap dat netwerk modellen, getrained met beeldbestanden waarvoor enkel class labels beschikbaar zijn, kunnen gebruikt worden voor object localisatie. De class activation mapping (CAM) familie van localisatie methodes, focust op verschillende strategieën om objecten te bevatten en localiseren. Echter, deze methodes gebruiken vaak verschillende metrieken om object localisatie te meten. Deze metrieken zijn geen goede maat voor het meten van localisatie van  meerdere object instanties in beelden.
+
+In dit werk stellen we een multi-instance object localisatie evaluatie protocol voor. Dit protocol breidt bestaande metrieken uit om het meten van localisatie van meerdere object instanties mogelijk te maken. Deze methode maakt gebruik van de standaard classificatie taak en vereist geen wijzigingen van netwerken.
+
+We stellen vast dat, gebruik makend van ons evaluatie protocol voor gebruikte CAM-gebaseerde localizatie modellen, de localisatie performantie daalt naarmate er meer object instanties aanwezig zijn in beelden. Dit toont aan dat onze metrieken localisatie nauwkeurigheid kwantitatief meten. We zullen de geëvalueerde modellen gebruiken als basis voor het evalueren van localisie verbeteringen.
+
+Om localisatie nauwkeurigheid te verbeteren, introduceren we een iteratieve localisatie methode. Hiervoor gebruiken we reeds gevonden localisatie informatie uit vorige iteraties, om beelden te maskeren en voor het vinden van niewe object instanties. We tonen aan dat de manier waarop we localisatie informatie uit verschillende iteraties samenvoegen, de localisatie nauwkeurigheid behoorlijk kan verbeteren. Dit gaat wel vaak ten koste van de localisatie precisie, waarbij meer en meer localisaties foutief objecten aanduiden. Als toekomstig werk geven we het gebied aan waarop gefocust kan worden voor het verbeteren van localisatie precisie.

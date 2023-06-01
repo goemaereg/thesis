@@ -1,2 +1,9 @@
 \chapter*{Summary}
 
+Weakly-supervised object localization (WSOL) has gained popularity for its promise to train localization models with only image-level labels. The class activation mapping (CAM) family of localization methods focus on different strategies to cover and localize objects. However, these methods use different metrics to measure object localization. Moreover, these metrics do not quantitatively measure localization of multiple object instances in images.
+
+In this work we propose a multi-instance object localization evaluation protocol. This protocol enhances existing metrics to take into account localization of multiple instances. Our method uses the standard classification task and requires no additional modifications to networks.
+
+We observe that under our evaluation protocol, evaluated CAM-based localization models show decreasing performance for images with increasing number of object instances per image, demonstrating that our metrics quantitatively capture object localization accuracy. We use the evaluated models as baseline for further localization improvements.
+
+To improve localization accuracy, we introduce an iterative localization approach, where we use predicted localization annotations found during previous iterations, to mask input images and to find additional object instances. We demonstrate that the merge strategy to combine localization information of multiple iterations can improve localization accuracy substantially, but often at the cost of decreased precision. Finally we point out future work to improve both localization accuracy and precision.

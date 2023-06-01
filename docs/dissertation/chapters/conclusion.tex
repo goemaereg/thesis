@@ -1,9 +1,8 @@
 \chapter{Conclusion}
 
 % feedback Benjamin
+In this work we introduce a new method to evaluate \acrfull{mwsol}. We have argued that none of existing \acrshort{wsol} evaluation metrics are suited to quantitatively measure multi-instance localization performance. We have then proposed a new evaluation methodology to measure multi-instance object localization accuracy. Our method relies only on standard classification models. Using this protocol, we've evaluated different CAM-based localization methods on synthetic datasets and on ImageNet.
 
--	Afronden \\
--	Kort het verhaal uitleggen \\
--	In this thesis we instroduced a new method to evaluate multi-instance wsol \\
--	This are our conclusions... \\
--	Bestaande methodes niet voldoende maar onze methode doet het beter in die en die opzichten. \\
+We show that multi-instance localization precision and recall metrics decrease for images with increasing number of object instances, and that this is valid for both networks without and with MinMaxCAM-regularization. We also argued that classification and localization accuracy are correlated while training a model, and the importance of using a trained network that has converged to reliably measure localization performance.
+
+Finally, we propose a novel iterative localization approach using previously predicted object localization annotations as input to improve localization accuracy. We demonstrate that localization accuracy can be improved using the right strategy to combine iterative predictions. We then formulate future work for improving the localization precision of the iterative approach.

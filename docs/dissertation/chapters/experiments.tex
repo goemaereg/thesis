@@ -337,18 +337,15 @@ Each method computes a score map as a weighted combination of feature maps in th
 
 The most computationally costly method by far is Score-CAM. This method computes the weights for the feature maps by feeding the network with the product of each feature map with the original image to obtain the classification score after softmax. The classification scores are then used as weights. As ResNet-50 has 2048 channels in its final convolutional layer, this is an expensive operation.
 
-\section{Localization improvements}
+\section{Localization improvements} \label{sec:exp_loc_improvements}
 
 Using the iterative localization method proposed in section \ref{sec:method_localization_improvement}, we analyze the effect of this method for VGG16-GAP and ResNet-50 architectures on the synthetic and ImageNet datasets. We use the same models that were trained for the non-iterative approach.
 
 \subsection{Recall versus precision}
-The aim of the iterative approach is to maximize the accurate localization of ground truth object instances. This is measured by the recall metric. If we would have a localization method that exhaustively generates bounding boxes of different granularity, then such method would accurately localize most object instances and thus have a high recall. At the same time this method would suffer from a lot of false positives, i.e., many localized objects would not match with the actual ground truth instances. Hence, the precision would be low.
-
-To measure the impact of the iterative localization method we want to measure both precision and recall. Ideally, we would like to have a localization method that has good precision and recall. If we equally care about precision and recall, the f1 score represents the harmonic mean between precision and recall.
+The aim of the iterative approach is to improve the accurate localization of ground truth object instances. This localization accuracy is measured by the MaxBoxAccV3 metric, i.e. the recall. If we would have a localization method that exhaustively generates bounding boxes of different granularity, then such method would accurately localize most object instances and thus have a high recall value. At the same time this method would suffer from a lot of false positives, i.e., many of the predicted object localization instances would not match with the actual ground localization annotations. Hence, precision would be very low. To measure the impact of the iterative localization method we want to measure both precision and recall. Ideally, we would like to have a localization method that has good precision and recall.
 
 \subsection{Evaluation approach}
-
-As illustrated in Table \ref{tab:iterative_localizaton_parameters}, the number parameter combinations for iterative localization experiments is too large to draw conclusions from in a single table overview. 
+In our iterative localization approach, we apply different mask strategies, bounding box merge strategies and iteration stop criteria in our experiments. The different parameters and their possible values are illustrated in Table \ref{tab:iterative_localizaton_parameters}. Due to the number of possible parameter combinations, we have to compare a lot of results. It is not feasible to represent these results in a single table and draw conclusions from it.
 
 \begin{table}[ht]
 \centering
@@ -368,9 +365,9 @@ Classification score drop threshold & 0.25, 0.5, 1.0 \\
 
 Therefore we graphically represent and interpret the results as follows:
 \begin{itemize}
-    \item Per dataset, network and localization method, we plot a two-dimensional plot with precision on the  vertical axis and recall on the horizontal axis for the different mask strategies, merge strategies and stop criteria.
+    \item Per dataset, network and localization method, we create a two-dimensional plot with recall on the horizontal axis and precision on the vertical axis. In this plot, for each of the different combinations of mask strategies, merge strategies and stop criteria, an experiment is run and its resulting precision and recall are added to the plot.
     \item The precision and recall for the non-iterative approach is plotted as two orthogonal lines: A horizontal line for precision and vertical line for recall. We use the precision and recall from the non-iterative approach as baseline to compare with results from the iterative approach.
-    \item The horizontal and vertical lines of the baseline create four quadrants which allow easy graphical interpretation of iterative localization results, depending in which quadrant a result is plotted.
+    \item The horizontal and vertical lines of the baseline create four quadrants which allow easy graphical interpretation of iterative localization results depending in which quadrant a result is situated.
     \begin{itemize}
         \item Bottom left: Precision and recall are worse than the baseline.
         \item Top left: Precision is better and recall is worse than baseline.
@@ -380,51 +377,51 @@ Therefore we graphically represent and interpret the results as follows:
 \end{itemize}
 
 \subsection{Evaluation for VGG16-GAP on synthetic datasets}
-Here we evaluate the results of the iterative localization for the VGG16-GAP network on the synthetic test datasets. We only tests the datasets that have images with a background to evaluate the effect of using different bounding box mask strategies. The localization methods used are CAM, Grad-CAM++, Score-CAM and MinMaxCAM. The former three methods are evaluated on a model trained without regularization while the latter is evaluated on a model trained with MinMaxCAM regularization.
+Here we evaluate the results of the iterative localization for the VGG16-GAP network on the synthetic test datasets. We only evaluate datasets that have images with a background to analyse the effect of using different bounding box mask strategies. The localization methods used are CAM, Grad-CAM++, Score-CAM and MinMaxCAM. The former three methods are evaluated on a model trained without regularization while the latter is evaluated on a model trained with MinMaxCAM regularization.
 
 The MaxBoxAccV3 precision and recall of the iterative localization experiments for the different localization methods, mask strategies, merge strategies and iteration stop criteria on the synthetic dataset d1b, are illustrated in Fig. \ref{fig:prec_iter_vgg16_gap_syn_d1b}.
 
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=1.0\textwidth]{images/fig_iter_vgg16_gap_syn_d1b.png}
-    \caption[Iterative localization performance for VGG16-GAP on synthetic dataset d1b]{Iterative localization performance for VGG16-GAP on synthetic datasets d1b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
+    \caption[Iterative localization performance for VGG16-GAP on synthetic dataset d1b]{Iterative localization performance for VGG16-GAP on synthetic dataset d1b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
     \caption*{Source: Author}
     \label{fig:prec_iter_vgg16_gap_syn_d1b}
     \end{center}
 \end{figure}
 
-For all methods we observe that precision is worse than the baseline as no result exists above the baseline precision line. Recall is improved by the iterative localization for CAM, Grad-CAM++ and Score-CAM when using the drop or add merge strategy. The 'add' strategy comes at a greater precision cost, as this strategy will create more false positives. The 'drop' strategy improves recall at the smallest precision cost when the classification score drop threshold 0.25 or 0.5 is used. As threshold 1.0 actually means that there is no stop criterion, it's easy to see that this threshold has the worst precision for any mask or merge strategy. The small gain in recall is to be expected for a dataset with single-instance object images where the non-iterative approach already has a high localization performance.
+When comparing with the baseline, we observe that for all methods except MinMaxCAM, both precision and recall can be improved by using the 'drop' merge strategy, when the classification score drop threshold 0.25 is used. As threshold 1.0 actually means that there is no stop criterion, it's easy to see that this threshold has the worst precision for any mask or merge strategy. The 'add' merge strategy improves recall but at a decreased precision cost, as this strategy will create more false positives. The relatively small gain in recall is to be expected for a dataset with single-instance object images where the baseline already has a high localization performance.
 
-Iterative localization results for the d2b dataset are shown in Fig. \ref{fig:prec_iter_vgg16_gap_syn_d2b}. Looking at the upper right quadrant, we can observe that there are iterative localization methods that improve both precision and recall. The iterative methods applying the mean mask strategy, unify merge strategy and a stop criterion with classification drop threshold of 0.25 or 0.5 provide the best precision and recall improvements. 
+Iterative localization results for the d2b dataset are shown in Fig. \ref{fig:prec_iter_vgg16_gap_syn_d2b}. Looking at the upper right quadrant, we can observe that there are iterative localization methods that improve both precision and recall. The iterative methods applying the mean mask strategy, unify merge strategy and a stop criterion with classification drop threshold of 0.25 or 0.5 provide the best precision and recall improvements compared to the baseline.
 
-The add merge strategy combined without iteration drop criterion (i.e. threshold `1.0) gives the highest recall improvement but at the cost of severe precision drop. The worst performing approach is the unify merge strategy without drop criterion. Intuitively, masking images with bounding boxes found in previous iterations, and unifying newly predicted bounding boxes with overlapping boxes of previous iterations, increases the risk of no longer matching predicted bounding boxes with ground truth boxes, and thus impacting the recall.
+The 'add' merge strategy combined with iteration drop criterion 1.0 gives the highest recall improvement but at the cost of severe precision drop. The worst performing approach is the 'unify' merge strategy with drop criterion 1.0. Intuitively, masking images with bounding boxes found in previous iterations, and unifying newly predicted bounding boxes with overlapping boxes of previous iterations, increases the risk of no longer matching predicted bounding boxes with ground truth boxes, and thus impacting recall.
 
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=1.0\textwidth]{images/fig_iter_vgg16_gap_syn_d2b.png}
-    \caption[Iterative localization performance for VGG16-GAP on synthetic dataset d2b]{Iterative localization performance for VGG16-GAP on synthetic datasets d2b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
+    \caption[Iterative localization performance for VGG16-GAP on synthetic dataset d2b]{Iterative localization performance for VGG16-GAP on synthetic dataset d2b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
     \caption*{Source: Author}
     \label{fig:prec_iter_vgg16_gap_syn_d2b}
     \end{center}
 \end{figure}
 
-The iterative localization results for the d3b dataset are illustrated in Fig. \ref{fig:prec_iter_vgg16_gap_syn_d3b}. We see that the iterative approach can improve both precision and recall for the CAM and Grad-CAM++ method when applying the mean mask strategy combined with unify merge strategy and stop criterion threshold of 0.25 or 0.5. These combinations also improved both recall and precision for the d2b dataset. For MinMaxCAM and Score-CAM, recall can be improved, but always at the cost of decreased precision.
+Fig. \ref{fig:prec_iter_vgg16_gap_syn_d3b} illustrates the iterative localization results for the d3b dataset. We see that the iterative approach can improve both precision and recall for all localization methods. Applying the 'mean' mask strategy, 'unify' merge strategy and stop criterion threshold of 0.25 or 0.5 seems to be the best combination. This combination also improved both recall and precision for the d2b dataset.
 
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=1.0\textwidth]{images/fig_iter_vgg16_gap_syn_d3b.png}
-    \caption[Iterative localization performance for VGG16-GAP on synthetic dataset d3b]{Iterative localization performance for VGG16-GAP on synthetic datasets d3b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
+    \caption[Iterative localization performance for VGG16-GAP on synthetic dataset d3b]{Iterative localization performance for VGG16-GAP on synthetic dataset d3b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
     \caption*{Source: Author}
     \label{fig:prec_iter_vgg16_gap_syn_d3b}
     \end{center}
 \end{figure}
 
-The iterative localization metrics for the d4b dataset are shown in Fig. \ref{fig:prec_iter_vgg16_gap_syn_d4b}. Grad-CAM++ is the only method where both precision and recall can be improved by applying the drop or unify merge strategy combined with zero mask strategy and a classification score drop threshold of 0.25. All other combinations improve recall at the cost of decreasing the precision.
+The iterative localization metrics for the d4b dataset are shown in Fig. \ref{fig:prec_iter_vgg16_gap_syn_d4b}. Both precision and recall can be improved for all methods but MinMaxCAM, by applying the drop or unify merge strategy combined with zero mask strategy and a classification score drop threshold of 0.25. The 'add' merge strategy with stop threshold 1.0 provides the highest gain in recall at the cost of substantially decreasing precision.
 
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=1.0\textwidth]{images/fig_iter_vgg16_gap_syn_d4b.png}
-    \caption[Iterative localization performance for VGG16-GAP on synthetic dataset d4b]{Iterative localization performance for VGG16-GAP on synthetic datasets d4b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
+    \caption[Iterative localization performance for VGG16-GAP on synthetic dataset d4b]{Iterative localization performance for VGG16-GAP on synthetic dataset d4b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
     \caption*{Source: Author}
     \label{fig:prec_iter_vgg16_gap_syn_d4b}
     \end{center}
@@ -432,9 +429,9 @@ The iterative localization metrics for the d4b dataset are shown in Fig. \ref{fi
 
 \subsection{Evaluation for ResNet-50 on ImageNet dataset}
 
-The iterative localization methods for the ResNet-50 network evaluated on the ImageNet validation dataset, are shown in Fig. \ref{fig:prec_iter_resnet50_imagenet}. The best performing iterative localization methods are those that are positioned closest to the upper right corner of the plot. Observing the plots for all localization methods, we can see two distinct groups of iterative approaches: One group that improves recall at the cost of decreasing precision, and another group that performs worse for both precision and recall when compared to the baseline.
+The results of the iterative localization methods for the ResNet-50 network, evaluated on the ImageNet validation dataset, are shown in Fig. \ref{fig:prec_iter_resnet50_imagenet}. The best performing methods are those that are positioned closest to the upper right corner of the plot. Observing the plots for all localization methods, we can see two distinct groups: One group that improves recall at the cost of decreasing precision, and another group that performs worse for both precision and recall when compared to the baseline.
 
-The first group consists of the methods that apply as merge strategy either 'drop' or 'add', where the add strategy gives a substantially higher gain in recall, but at a higher drop in precision. In this group, there is an almost linear relationship between precision and recall and the applied classification score drop threshold for a certain merge strategy. In the second group are the iterative localization methods that apply a unify merge strategy. Intuitively, unifying predicted bounding boxes from previous iterations with newly predicted bounding boxes increases the risk generating larger but few bounding boxes, and thus impacting both precision and recall.
+The first group consists of the methods that apply as merge strategy either 'drop' or 'add', where the 'add' strategy gives a substantially higher gain in recall, but at a higher drop in precision. In this group, there is an almost linear relationship between precision and recall and the applied classification score drop threshold for a certain merge strategy. In the second group are the iterative localization methods that apply a unify merge strategy. Intuitively, unifying predicted bounding boxes from previous iterations with newly predicted bounding boxes increases the risk generating larger but few bounding boxes, and thus impacting both precision and recall.
 
 \begin{figure}[ht]
     \begin{center}       
@@ -444,3 +441,4 @@ The first group consists of the methods that apply as merge strategy either 'dro
     \label{fig:prec_iter_resnet50_imagenet}
     \end{center}
 \end{figure}
+
