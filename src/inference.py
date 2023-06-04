@@ -127,8 +127,8 @@ class CAMComputer(object):
             bbox_mask_strategy = self.config.bbox_mask_strategy if iter_index > 0 else None
             loader = get_eval_loader(
                 self.split, self.data_root, self.metadata_root, self.config.batch_size, self.config.workers,
-                self.config.crop_size,
-                bboxes_path=self.bboxes_meta_path, bbox_mask_strategy=bbox_mask_strategy)
+                self.config.crop_size, bboxes_path=self.bboxes_meta_path, bbox_mask_strategy=bbox_mask_strategy,
+                filter_instances=self.config.filter_instances)
             tq1 = tqdm.tqdm(loader, total=len(loader), desc='evaluate cams batches')
             self.db = lmdb.open(self.lmdb_scoremaps_path, subdir=False,
                                 map_size=68719476736, readonly=False,  # map_size 68 GB
@@ -234,7 +234,7 @@ class CAMComputer(object):
             # write scoremap metadata
             # format: image_id,cam_id
             if len(cams_saved) > 0 and iter_index == 0:
-                metadata = dict(sorted(cams_saved.items()))
+                metadata = dict(cams_saved.items())
                 lines = [f'{image_id},{cam_id}' for image_id, cam_id in metadata.items()]
                 scoremap_meta_path = os.path.join(self.scoremap_root, self.split, 'scoremap_metadata.txt')
                 if not os.path.exists(os.path.dirname(scoremap_meta_path)):
@@ -260,10 +260,12 @@ class CAMComputer(object):
             self.db.sync()
             self.db.close()
             if self.config.xai and save_xai:
+                image_ids = list(cams_saved)
                 metadata_root = os.path.join(self.config.metadata_root, self.split)
                 metadata = configure_metadata(metadata_root)
                 xai_save_cams(xai_root=self.config.xai_root,
                               split=self.split,
+                              image_ids=image_ids,
                               metadata=metadata,
                               data_root=self.config.data_paths[self.split],
                               scoremap_root=self.config.scoremap_root,

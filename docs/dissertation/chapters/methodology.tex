@@ -550,7 +550,7 @@ For score map threshold independence, the box accuracy is reported at the optima
 \end{equation}
 
 Choe \textit{et al.} \cite{choe2020evaluating} sets $\delta = 0.5$ for $MaxBoxAcc$ to follow prior works. The authors developed an improved version called $MaxBoxAccV2$ that is better for two reasons: $MaxBoxAcc$ measures performance at fixed \acrshort{iou} threshold ($\delta = 0.5$). $MaxBoxAccV2$ averages performance across $\delta \in$ {0.3, 0.5, 0.7} to account for different levels of localization fineness. $MaxBoxAcc$ takes the largest connected component in the score map for estimating the bounding box, assuming that the object of interest will be large. This assumption is dropped by $MaxBoxAccV2$, which considers the best match between the set of detected bounding boxes and ground truth bounding boxes. Choe \textit{et al.} encourage to use $MaxBoxAccV2$ for future \acrshort{wsol} research. $MaxBoxAccV2$ is thus defined as:
-\begin{equation}
+\begin{equation} \label{eq:maxboxaccv2}
     MaxBoxAccV2(\tau) := \frac{1}{3} \sum_{\delta \in (0.3,0.5,0.7)} max_{\tau} BoxAcc(\tau,\delta)
 \end{equation}
 

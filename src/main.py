@@ -260,6 +260,7 @@ class Trainer(object):
             dataset=self.args.dataset_name,
             dataset_spec=self.args.dataset_name_suffix,
             experiment=self.args.experiment_name,
+            filter_instances=self.args.filter_instances,
             label=self.args.label,
             large_feature_map=self.args.large_feature_map,
             method=self.args.wsol_method,

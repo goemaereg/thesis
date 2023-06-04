@@ -888,12 +888,11 @@ def xai_save_cam_inference(xai_root, metadata, split, image_id, image, size_orig
         mlflow.log_artifact(img_path, f'xai/{split}')
         mlflow.log_artifact(img_cam_path, f'xai/{split}')
 
-def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, log=False, images_max=100, iter_index=None):
+def xai_save_cams(xai_root, split, image_ids, metadata, data_root, scoremap_root, log=False, images_max=100, iter_index=None):
     optimal_thresholds_path = os.path.join(scoremap_root, split, 'optimal_thresholds.npy')
     thresholds = np.load(optimal_thresholds_path)
     optimal_threshold = thresholds[-1]
     image_sizes = get_image_sizes(metadata)
-    image_ids = list(image_sizes)
     gt_bbox_dict = get_bounding_boxes(metadata)
     est_bbox_dict = get_bounding_boxes_from_file(os.path.join(scoremap_root, split, 'bboxes_metadata.txt'))
     est_bbox_dict = scale_bounding_boxes(est_bbox_dict, image_sizes, (224,224))
@@ -902,9 +901,9 @@ def xai_save_cams(xai_root, split, metadata, data_root, scoremap_root, log=False
     color_red = (0, 0, 255)  # BGR
     color_green = (0, 255, 0)  # BGR
     tq0 = tqdm.tqdm(cam_loader, total=len(cam_loader), desc='xai_cam_batches')
-    for cams, image_ids in tq0:
+    for cams, img_ids in tq0:
         cams = t2n(cams)
-        cams_it = zip(cams, image_ids)
+        cams_it = zip(cams, img_ids)
         for cam, image_id in cams_it:
             images_num += 1
             if images_num > images_max:

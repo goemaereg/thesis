@@ -173,6 +173,7 @@ def configure_parse(load_config=True):
     parser.add_argument('--data_root', metavar='/PATH/TO/DATASET',
                         default='data/dataset',
                         help='path to dataset images')
+    parser.add_argument('--filter_instances', default=0, type=int, help='filter images with specified number of instances')
     parser.add_argument('--metadata_root', type=str, default='data/metadata')
     parser.add_argument('--mask_root', metavar='/PATH/TO/MASKS',
                         default='data/maskdata',

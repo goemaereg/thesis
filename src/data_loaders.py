@@ -31,7 +31,6 @@ import torch
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from torchvision import transforms
-import torchvision.transforms.functional as TF
 from torch.utils.data import Sampler
 from typing import Iterator, List
 
@@ -175,7 +174,7 @@ def get_image_sizes(metadata):
 
 class WSOLImageLabelDataset(Dataset):
     def __init__(self, data_root, metadata_root, transform, normalize, proxy, num_sample_per_class=0,
-                 bboxes_path=None, bbox_mask_strategy=None):
+                 bboxes_path=None, bbox_mask_strategy=None, filter_instances=0):
         self.data_root = data_root
         self.metadata = configure_metadata(metadata_root)
         self.transform = transform
@@ -192,6 +191,19 @@ class WSOLImageLabelDataset(Dataset):
         self.num_channels = len(self.dataset_mean)
         if bboxes_path is not None and os.path.exists(bboxes_path):
             self.computed_bboxes = get_bounding_boxes_from_file(bboxes_path)
+        self.filter_instance = filter_instances
+        if filter_instances > 0:
+            image_ids = []
+            image_labels = {}
+            bboxes_gt_dict = get_bounding_boxes(self.metadata)
+            for image_id, bboxes in bboxes_gt_dict.items():
+                instances = len(bboxes)
+                if instances != filter_instances:
+                    continue
+                image_ids.append(image_id)
+                image_labels[image_id] = self.image_labels[image_id]
+            self.image_ids = image_ids
+            self.image_labels = image_labels
 
     def _adjust_samples_per_class(self):
         if self.num_sample_per_class == 0:
@@ -442,7 +454,7 @@ def get_cam_lmdb_loader(scoremap_root, image_ids, split):
 
 
 def get_eval_loader(split, data_root, metadata_root, batch_size, workers,
-                    resize_size, bboxes_path=None, bbox_mask_strategy=None):
+                    resize_size, bboxes_path=None, bbox_mask_strategy=None, filter_instances=0):
     metadata_root_split = os.path.join(metadata_root, split)
     mean_std = _CAT_IMAGE_MEAN_STD[metadata_root_split]
     mean = mean_std['mean']
@@ -458,7 +470,8 @@ def get_eval_loader(split, data_root, metadata_root, batch_size, workers,
         normalize=dataset_normalize,
         proxy=False,
         bboxes_path=bboxes_path,
-        bbox_mask_strategy=bbox_mask_strategy)
+        bbox_mask_strategy=bbox_mask_strategy,
+        filter_instances=filter_instances)
     return DataLoader(dataset, batch_size=batch_size, num_workers=workers)
 
 def get_data_loader(splits, data_roots, metadata_root, batch_size, workers,
