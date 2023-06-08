@@ -11,12 +11,12 @@ VGG16 is a \acrshort{cnn} proposed by K. Simonyan \textit{et al.} \cite{simonyan
     \begin{center}       
     \includegraphics[width=1.0\textwidth]{fig_vgg16_arch.png}
     \caption[VGG16 architecture]{VGG16 architecture.}
-    \caption*{Source: \href{https://neurohive.io/en/popular-networks/vgg16}{https://neurohive.io/en/popular-networks/vgg16}}
+    \caption*{Source: \href{https://www.kaggle.com/code/blurredmachine/vggnet-16-architecture-a-complete-guide}{https://www.kaggle.com/code/blurredmachine/vggnet-16-architecture-a-complete-guide}}
     \label{fig:vgg16_arch}
     \end{center}
 \end{figure}
 
-The VGG16 network architecture is shown in Fig. \ref{fig:vgg16_arch}. The 16 in VGG16 refers to 16 layers that have trainable weights. In VGG16 there are thirteen convolutional layers, five maximum pooling layers, and three dense layers. In Fig. \ref{fig:vgg16_arch}, each layer in the network is tagged with the dimensions of its output in a color that represents its function. Fig. \ref{fig:vgg16_layers_auth} tags the network layers with unique names that we will use to refer to those layers. Convolutional layers are organized in a number of sequences of layers. Layers within a sequence have the same number of filters.
+The VGG16 network architecture is shown in Fig. \ref{fig:vgg16_arch}. The 16 in VGG16 refers to 16 layers that have trainable weights. In VGG16 there are thirteen convolutional layers, five maximum pooling layers, and three dense layers. In Fig. \ref{fig:vgg16_arch}, a convolutional layer is labeled with its kernel size and number of filters  (e.g. 3x3 conv. 64). Identical layers are shown with the same color. Fully connected layers are labeled with the number of neurons (e.g. fc-4096). Each first layer in a group of identical layers in the network is tagged with the dimensions of its input. Fig. \ref{fig:vgg16_layers_auth} tags the network layers with unique names that we will use to refer to those layers. Convolutional layers are organized in a number of sequences of layers. Layers within a sequence have the same number of filters.
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=1.0\textwidth]{fig_vgg16_layers_auth.png}
@@ -190,14 +190,15 @@ The \acrshort{cnn} is a feed-forward network. During the training process, the n
 Image preprocessing and image augmentations are two key processes taking place before images are fed to a neural network.
 
 \subsubsection{Image preprocessing}
-Image preprocessing are manipulations applied to images to create a common representations of different content. Following preprocessing operations are performed:
+Image preprocessing are manipulations applied to images to create a common representations of different content. This preprocessing is done both for training and for inference of images. Following preprocessing operations are performed:
 \begin{itemize}
-    \item Resize: This operation resizes images to 256$\times$256 dimension for training and 224$\times$224 for inference.
+    \item Resize: This operation resizes images to 256$\times$256 dimension for training and 224$\times$224 for inference. For training, data augmentation (section \ref{sec:training_augmentation}) ensures that image size will be 224$\times$224.
     \item ToTensor: This operation converts an image's values in the range $[0, 255]$ to a tensor in the range $[0.0, 1.0]$.
+    \item Normalize: Data normalization is an important step to achieve faster convergence, by ensuring that input data is transformed to a uniform mean of 0 and standard deviation of 1. Each image channel is normalized by subtracting the channel-wise mean of all images in a dataset from the input data and then dividing it by the channel-wise standard deviation of the images in the dataset.
 \end{itemize}
 
-\subsubsection{Data augmentation}
-Image augmentation are manipulations applied to images to create different versions of similar content in order to expose the model to a wider array of training examples. For example, randomly altering rotation, brightness, or scale of an input image requires that a model consider what an image subject looks like in a variety of situations. Following augmentation operations are performed:
+\subsubsection{Data augmentation} \label{sec:training_augmentation}
+Image augmentation are manipulations applied to images to create different versions of similar content in order to expose the model to a wider array of training examples. For example, randomly altering rotation, brightness, or scale of an input image requires that a model consider what an image subject looks like in a variety of situations. Image augmentation is only performed for images in the training dataset and is performed after image resizing and before the ToTensor operation during image preprocessing. Following augmentation operations are performed:
 \begin{itemize}
     \item RandomCrop: Crops a given image at a random location to the size 224$\times$224.
     \item RandomHorizontalFlip: Horizontally flips a given image randomly with a given probability.
@@ -323,13 +324,25 @@ A formal derivation of the gradient weights is defined by Chattopadhay \textit{e
 \begin{equation}
     \alpha_{ij}^{kc} = \frac{\frac{\partial^{2}{Y^c}}{\left( \partial{A_{ij}^{k}} \right)^2}}{2\frac{\partial^{2}{Y^c}}{\left( \partial{A_{ij}^{k}} \right)^2} + \sum_a \sum_b A_{ab}^{k} {\frac{\partial^{3}{Y^c}}{\left( \partial{A_{ij}^{k}} \right)^3}} }
 \end{equation}
-The time overhead for calculating higher order derivatives is of the same order as Grad-CAM as no cross higher-order derivatives are computed. The class-discriminative map for a given class $c$ is then computed as:
+In their computation analysis, Chattopadhay \textit{et al.} \cite{chattopadhay2018grad} prove that the time overhead for calculating higher order derivatives is of the same order as Grad-CAM, and that the gradient weights can be computed with a single backward pass in the network. The class-discriminative map for a given class $c$ is then computed as:
 \begin{equation}
     L_{ij}^{c} = ReLU \left( \sum_{k}w_{k}^{c} A_{ij}^{k} \right)
 \end{equation}
 
 \subsection{Score-CAM}
 Wang \textit{et al.} \cite{wang2020score} argue that gradient-based \acrshort{cam} methods can suffer from saturating gradients giving the false confidence that higher weights lead to high target scores. Score-CAM gets rid of the dependence on gradients by obtaining the weight of each activation map through its forward passing score on target class. The final score map is obtained by a linear combination of weights and activation maps.
+
+Fig. \ref{fig:scorecam} shows the pipeline for Score-CAM. In phase 1, activation maps are first extracted. Then in phase 2, for each activation map extracted in phase 1, the original image is masked with the activation map and fed to the network. The classification score obtained for the target class is then used as the weight of the activation map. Finally, the score map is generated by the weighted combination of activation maps extracted in phase 1. Phase 1 and phase 2 share the same CNN module as feature extractor. 
+\begin{figure}[h]
+    \begin{center}       
+    \includegraphics[width=1.0\textwidth]{fig_scorecam.png}
+    \caption[Score-CAM]{Score-CAM.}
+    \caption*{Source: Wang \textit{et al.} \cite{wang2020score}}
+    \label{fig:scorecam}
+    \end{center}
+\end{figure}
+
+Score-CAM shows more focus on object instances and is also promising for capturing the features of multiple instances in the explanation map. A major disadvantage of Score-CAM is the computational cost because it requires as many as feature maps in the last convolutional layer more forward passes than the baseline \acrshort{cam} method.
 
 In contrast to previous methods [4, 12], which use the gradient information flowing into the last convolutional layer to represent the importance of each activation map, Wang \textit{et al.} incorporate the importance as the Increase of Confidence: Given a function $Y = f(X)$ with input vector $X$ and output scalar $Y$, for a baseline input $X_b$, the contribution $c_i$ of $x_i$ towards $Y$ is the change of output by replacing the i-th entry in $X_b$ with $x_i$.
 \begin{equation}
@@ -341,7 +354,7 @@ Given a CNN model Y = f(X) that takes an input $X$ and outputs a scalar $Y$. We 
 k-th channel of $A_l$ by $A^k_l$ . For a known baseline input $X_b$,
 the contribution $A^k_l$ towards $Y$ is defined as:
 \begin{equation}
-    C(A^k_l) = f(X o H^k_l) - f(X_b)
+    C(A^k_l) = f(X \odot H^k_l) - f(X_b)
 \end{equation}
 where
 \begin{equation}
@@ -355,17 +368,6 @@ where
 \begin{equation}
     \alpha^{c}_{k} = C(A^k_l)
 \end{equation}
-Fig. \ref{fig:scorecam} shows the pipeline for Score-CAM. Activation maps are first extracted in Phase 1. For each activation map then, the original image is masked with the original image in phase 2 and fed to the network again. The obtains score on the target class is then used as the weight of the activation maps. Finally, the score map is generated by the weighted combination of activation maps. Phase 1 and Phase 2 share the same CNN module as feature extractor. 
-\begin{figure}[h]
-    \begin{center}       
-    \includegraphics[width=1.0\textwidth]{fig_scorecam.png}
-    \caption[Score-CAM]{Score-CAM.}
-    \caption*{Source: Wang \textit{et al.} \cite{wang2020score}}
-    \label{fig:scorecam}
-    \end{center}
-\end{figure}
-
-Score-CAM shows more focus on object instances and is also promising for capturing the features of multiple instances in the explanation map. A major disadvantage of Score-CAM is the computational cost because it requires as many as feature maps in the last convolutional layer more forward passes than the baseline \acrshort{cam} method.
 
 \subsection{MinMaxCAM}
 One of the most common problems of methods based on Class Activation Mapping,
@@ -376,24 +378,22 @@ The idea of the Common region regularization (CRR) is that different images depi
 \begin{equation}
     CRR = \frac{1}{S(S-1)} \sum^{S-1}_{i=0} \sum^{S-1}_{j=0} \lVert f_i - f_j \rVert^2_2
 \end{equation}
-CRR calculates the pair-wise distance of the feature of $IoH$. The goal of CRR is to localize the common region of a set of images from the same class. By minimizing it, it can minimize the activations on the localization map, i.e. suppress the activations in non-object regions of the images.
+CRR calculates the pair-wise distance of the feature of $I \odot H$. The goal of CRR is to localize the common region of a set of images from the same class. By minimizing it, it can minimize the activations on the localization map, i.e. suppress the activations in non-object regions of the images.
 
 For the case of the failed localization on the most discriminative region, the authors propose Full region regularization (FRR) to enlarge the localization map.
 
 \begin{equation}
     FRR = \frac{1}{S} \sum^{S-1}_{i=0}\lVert f_i - f^o_i \rVert^2_2
 \end{equation}
-$f^o$ is the feature of the original image $I$, i.e. $f^o=B(I)$. FRR calculates the distance of the feature between the $IoH$ and $I$. Minimizing FRR has the effect of maximizing the activations on the localization map.
+$f^o$ is the feature of the original image $I$, i.e. $f^o=B(I)$. FRR calculates the distance of the feature between the $I \odot H$ and $I$. Minimizing FRR has the effect of maximizing the activations on the localization map.
 
-The learning process has two stages. For stage I, it takes $N x S$ images as input. The model is trained for the classification task, i.e. update the backbone and linear layer via the cross-entropy loss. It is the same as CAM.
-
-For stage II, the backbone B is frozen as a feature extractor. It receives the images multiplied by the localization map $(I \odot H)$ as input.
+The learning process illustrated in Fig. \ref{fig:minmaxcam}, has two stages. For stage I (shown in top half of figure), it takes $N \times S$ images as input. The model is trained for the classification task, i.e. update the backbone and linear layer via the cross-entropy loss $L_{S1}$. It is the same as CAM. For stage II (shown in bottom half of figure), the backbone B is frozen as a feature extractor. It receives the images multiplied by the localization map $(I \odot H)$ as input.
 
 The features ($f$ and $f^o$) extracted by B are used for the two regularizations. The loss only updates the weights of the linear layer, by minimizing CRR and FRR:
 \begin{equation}
     L_{S2} = \lambda_{1}CRR + \lambda_{2}FRR
 \end{equation} 
-LS1 and LS2 update the model every mini-batch. Fig. \ref{fig:minmaxcam} shows the proposed method.
+$L_{S1}$ and $L_{S2}$ update the model every mini-batch.
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=1.0\textwidth]{fig_minmaxcam.png}
@@ -458,13 +458,21 @@ Choe \textit{et al.} \cite{choe2020evaluating} have defined a \acrshort{wsol} ev
 We enhance the evaluation metrics of Choe \textit{et al.} to measure localization of multiple object instances for the \acrshort{wsol} task, thereby meeting criterion 3.
 
 \subsubsection{Recall versus precision}
-We could have a localization method that exhaustively generates bounding boxes of different granularity. In that case, the localization method will have a high recall: It will accurately localize most object instances. At the same time that method will suffer from a lot of false positives, i.e., many localized objects would not match with the actual ground truth instances. 
+Any localization method that predicts bounding boxes of different granularity at different locations of an image will have a high recall metric: It will accurately localize most object instances. But it will also produce many false positives predictions, i.e., many localized objects will not match with the ground truth annotations. It is therefore important to have a metric that measures the precision, i.e., how many of localization predictions are actually correct.
 
-Ideally, we would like to have a localization method that has good precision and recall. If we equally care about precision and recall, the f1 score represents the harmonic mean between precision and recall. 
+We need to define what it means to have a match between bounding boxes. Therefore, we define a metric measuring the overlap between a predicted and ground truth bounding box: The \acrfull{iou} measures the proportion of the areas of two bounding boxes that overlaps. Fig. \ref{fig:iou} illustrates this metric.  We can then say that two bounding boxes match if the \acrshort{iou} is equal or larger than some acrshort{iou} threshold parameter.
 
-Here we illustrate how precision, recall and f1 score are determined in the experiments for localization. To compute precision and recall, we need to define the confusion matrix for the localization task. 
+\begin{figure}[ht]
+    \begin{center}       
+    \includegraphics[width=0.3\textwidth]{fig_iou.png}
+    \caption[The IoU equation]{The Intersection over Union equation.}
+    \caption*{Source: \href{https://pyimagesearch.com/2016/11/07/intersection-over-union-iou-for-object-detection}{https://pyimagesearch.com/2016/11/07/intersection-over-union-iou-for-object-detection}}
+    \label{fig:iou}
+    \end{center}
+\end{figure}
 
-A confusion matrix is made up of 4 components, namely, \acrfull{tp}, \acrfull{tn}, \acrfull{fp} and \acrfull{fn}. To define all the components, we need to define some \acrshort{iou} threshold. If the overlap between an estimated and ground truth bounding box is at least the \acrshort{iou} threshold, we have a match and the object instance is said to be localized. The parameters of a confusion matrix are shown in Table \ref{tab:confusion_matrix}.
+To define precision and recall, we will first define the parameters that measure how many localization predictions are correct or incorrect. These parameters are often visually represented in a table called a confusion matrix, as shown in Table \ref{tab:confusion_matrix}. This confusion matrix  consists of four components, i.e., \acrfull{tp}, \acrfull{tn}, \acrfull{fp} and \acrfull{fn}.
+
 \begin{table}[ht]
 \centering
 \begin{tabular}{l|l|c|c|}
@@ -515,11 +523,6 @@ Precision can be thought of as the proportion of all detected object instances $
 Precision = \frac{TP}{TP + FP} = \frac{TP}{P}
 \end{equation}
 
-The f1 score can then be computed:
-\begin{equation} \label{eq:f1}
-F1 = 2 \times \frac{Precision \times Recall}{Precision + Recall}
-\end{equation}
-
 %- What if an image has 1 large object instance and 1 small instance?
 %- Is the metrics only saying something about the large instance?
 %- What is the intended use of the metrics?
@@ -534,14 +537,6 @@ Given a dataset with N images and ground truth boxes B, the box accuracy at scor
     BoxAcc(\tau,\delta) := \frac{1}{N} \sum_{n=1}1_{IoU(box(s(X^{(n)}),\tau),B^{(n)})\ge\delta}
 \end{equation}
 where $box(s(X^{(n)}))$ is the tightest bounding box around the largest-area connected component in the score map \{$(i,j)\text{ }|\text{ }s(X^{(n)}_{ij}) \ge \tau$\}. The amount of overlapping between the predicted bounding box and ground truth bounding box expresses how accurate the localization method is. The overlapping is computed as the proportion of area of the boxes that overlap versus the total area of both boxes. The \acrfull{iou} metric captures this overlap and is illustrated in Fig. \ref{fig:iou}. This metric is also used frequently in object detection challenges such as the Pascal VOC challenge \cite{everingham2009pascal}. The \acrshort{iou} produces a number between $0$ and $1$. The closer \acrshort{iou} is to 1, the better the localization is. We will use an \acrshort{iou} threshold $\tau$ to assess whether the amount of overlap is sufficient to consider the localization a true positive match.
-\begin{figure}[ht]
-    \begin{center}       
-    \includegraphics[width=0.3\textwidth]{fig_iou.png}
-    \caption[The IoU equation]{The Intersection over Union equation.}
-    \caption*{Source: href{https://pyimagesearch.com/2016/11/07/intersection-over-union-iou-for-object-detection}{https://pyimagesearch.com/2016/11/07/intersection-over-union-iou-for-object-detection}}
-    \label{fig:iou}
-    \end{center}
-\end{figure}
 
 We then count the number of images where the predicted bounding box overlaps with ground truth box $B$ with $IoU \ge \delta$, and average the count over the number of images. This gives a box accuracy score between $0$ and $1$. For datasets with images where more than one ground truth bounding box is provided, e.g. ImageNet, we count the number of images where box prediction overlaps with at least one of the ground truth bounding boxes with $IoU \ge \delta$. When $\tau$ is 0.5, the metric is commonly-called GT-known localization accuracy. 
 
