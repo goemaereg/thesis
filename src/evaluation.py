@@ -414,13 +414,16 @@ class BoxEvaluator(LocalizationEvaluator):
                         max_iou = multiple_iou[max_iou_index]
                         boxa = context['thresh_boxes'][i][max_iou_index[0]]
                         boxb = thresh_boxes[i][max_iou_index[1]]
-                        if max_iou >= self.bbox_merge_iou_threshold or is_bbox_in_bbox(boxa, boxb):
-                            if self.bbox_merge_strategy == 'drop':
-                                bboxes_index_drop_list.append(max_iou_index[1])
-                            elif self.bbox_merge_strategy == 'unify':
-                                bboxes_index_unify_list.append(max_iou_index)
-                        else:
+                        if self.bbox_merge_strategy == 'add':
                             bboxes_index_add_list.append(max_iou_index[1])
+                        elif self.bbox_merge_strategy in ('drop', 'unify'):
+                            if max_iou >= self.bbox_merge_iou_threshold or is_bbox_in_bbox(boxa, boxb):
+                                if self.bbox_merge_strategy == 'drop':
+                                    bboxes_index_drop_list.append(max_iou_index[1])
+                                elif self.bbox_merge_strategy == 'unify':
+                                    bboxes_index_unify_list.append(max_iou_index)
+                            else:
+                                bboxes_index_add_list.append(max_iou_index[1])
                         # mark newly estimated bbox with max IOU as unavailable to other combinations
                         multiple_iou[max_iou_index[0], :] = -1
                         multiple_iou[:, max_iou_index[1]] = -1
@@ -438,7 +441,7 @@ class BoxEvaluator(LocalizationEvaluator):
                     context['thresh_boxes_areas'][i] = np.concatenate(
                         [context['thresh_boxes_areas'][i], thresh_boxes_areas[i][bboxes_index_add_list]], axis=0)
                     context['thresh_boxes_num'][i] += len(bboxes_index_add_list)
-                    # drop: just don't add boxes in bboxes_index_drop_list
+                    # drop: just ignore boxes in bboxes_index_drop_list
         return context
 
     def _accumulate_maxboxacc_v1_2(self, multiple_iou, number_of_box_list, metric):

@@ -134,6 +134,8 @@ class CAMComputer(object):
                                 map_size=68719476736, readonly=False,  # map_size 68 GB
                                 meminit=False, map_async=True)
             self.db_txn = self.db.begin(write=True)
+            cam_pixels = np.asarray([])
+            cam_energy = np.asarray([])
             for images, targets, image_ids in tq1:
                 # Using the with statement ensures the context is freed, and you can
                 # recreate different CAM objects in a loop.
@@ -144,8 +146,10 @@ class CAMComputer(object):
                     # cam_method returns tuple of numpy arrays
                     # cams is already resized to 224x224 and normalized by cam_method call
                     cams, outputs = cam_method(images, output_targets)
-                    cams = cams.astype('float')
+                    cams = cams.astype('float') 
                     timer_cam.stop()
+                cam_pixels = np.concatenate([cam_pixels, (cams > 0).mean((1,2))])
+                cam_energy = np.concatenate([cam_energy, cams.mean((1,2))])
                 cams_it = zip(cams, outputs, output_targets, image_ids, images)
                 for cam, output, output_target, image_id, image in cams_it:
                     if self.config.xai and save_xai:
@@ -204,6 +208,11 @@ class CAMComputer(object):
                         cams_stats[image_id]['skip'].append(skip)
                     if skip:
                         num_skipped += 1
+
+            metrics |= {
+                'cam_pixels_mean': cam_pixels.mean(), 'cam_pixels_std': cam_pixels.std(),
+                'cam_energy_mean': cam_energy.mean(), 'cam_energy_std': cam_energy.std(),
+            }
             if self.box_evaluator:
                 metrics |= self.box_evaluator.compute()
                 optimal_threshold, optimal_threshold_index = self.box_evaluator.compute_optimal_cam_threshold(50)

@@ -426,6 +426,8 @@ class Trainer(object):
         total_loss = 0.0
         num_correct = 0
         num_images = 0
+        score_pred = np.asarray([])
+        score_target = np.asarray([])
         with torch.no_grad():
             for images, targets, image_ids in loader:
                 images = images.to(self.device) #.cuda()
@@ -433,21 +435,33 @@ class Trainer(object):
                 output_dict = self.model(images)
                 logits = output_dict['logits']
                 preds = logits.argmax(dim=1)
+                score_softmax = torch.nn.Softmax(dim=-1)(logits)
+                score_pred = np.concatenate([score_pred,
+                                             score_softmax.gather(1, preds.view(-1,1)).view(-1).numpy(force=True)])
+                score_target = np.concatenate([score_target,
+                                               score_softmax.gather(1, targets.view(-1, 1)).view(-1).numpy(force=True)])
                 loss = self.cross_entropy_loss(logits, targets)
                 total_loss += loss.item() * images.size(0)
                 num_correct += (preds == targets).sum().item()
                 num_images += images.size(0)
         loss_average = total_loss / float(num_images)
         classification_acc = num_correct / float(num_images)  # * 100
-        return loss_average, classification_acc
+        score_pred_mean, score_pred_std = np.mean(score_pred), np.std(score_pred)
+        score_target_mean, score_target_std = np.mean(score_target), np.std(score_target)
+        return loss_average, classification_acc, score_pred_mean, score_pred_std, score_target_mean, score_target_std
 
     def evaluate_classification(self, epoch, split):
         # print("Evaluate epoch {}, split {}".format(epoch, split))
         self.model.eval()
-        loss, accuracy = self._compute_loss_accuracy(loader=self.loaders[split])
+        loss, accuracy, score_pred_mean, score_pred_std, score_target_mean, score_target_std = \
+            self._compute_loss_accuracy(loader=self.loaders[split])
         self.performance_meters[split]['loss'].update(loss)
         self.performance_meters[split]['classification'].update(accuracy)
-        eval_metrics = { 'loss': loss, 'accuracy': accuracy}
+        eval_metrics = {
+            'loss': loss, 'accuracy': accuracy,
+            'score_pred_mean': score_pred_mean, 'score_pred_std': score_pred_std,
+            'score_target_mean': score_target_mean, 'score_target_std': score_target_std
+        }
         mlflow_metrics = {f'{split}_{metric}':value for metric, value in eval_metrics.items()}
         mlflow.log_metrics(mlflow_metrics, step=epoch)
         return eval_metrics
