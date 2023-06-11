@@ -146,7 +146,7 @@ class CAMComputer(object):
                     # cam_method returns tuple of numpy arrays
                     # cams is already resized to 224x224 and normalized by cam_method call
                     cams, outputs = cam_method(images, output_targets)
-                    cams = cams.astype('float') 
+                    cams = cams.astype('float')
                     timer_cam.stop()
                 cam_pixels = np.concatenate([cam_pixels, (cams > 0).mean((1,2))])
                 cam_energy = np.concatenate([cam_energy, cams.mean((1,2))])

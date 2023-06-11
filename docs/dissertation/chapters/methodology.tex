@@ -1,9 +1,9 @@
 \chapter{Methodology} \label{ch:methodology}
 
-In this chapter, our \acrshort{wsol} evaluation methodology is explained in detail. We specify the different networks and datasets used to train models and evaluate localization methods. Then, we explain how training of the models is done. The localization in general and specifically for each localization method is discussed in detail. Finally we define how we aim to improve localization of multiple-instances for the \acrshort{wsol} task.
+In this chapter, our \acrshort{wsol} evaluation methodology is explained in detail. We specify the different networks and datasets used to train models and evaluate localization methods. Then, we explain how training of the models is done. Following, the localization in general and specifically for each localization method is discussed in detail. Finally we define how we aim to improve localization of multiple object instances for the \acrshort{wsol} task.
 
 \section{Networks}
-The \acrshort{cam}-based \acrshort{wsol} methods require a \acrshort{cnn} model to classify images and localize objects in those images. We use the VGG16 and ResNet-50 network. The VGG16 and a variant with \acrshort{gap} layer, are used in a many papers \cite{zhou2016cvpr, selvaraju2017grad, chattopadhyay2017grad, wang2020score, wang2021minmaxcam} of the \acrshort{cam} family of methods. It is therefore a good reference for benchmarking \acrshort{wsol}. ResNet-50 is more recent than VGG16 and is used for experiments with MinMaxCAM by Wang, Kaili \textit{et al.} \cite{wang2021minmaxcam}.
+The \acrshort{cam}-based \acrshort{wsol} methods require a \acrshort{cnn} model to classify images and localize objects in those images. We use the VGG16 and ResNet-50 networks to train models for evaluating localization. The VGG16 and a variant with \acrshort{gap} layer, are used in a many papers \cite{zhou2016cvpr, selvaraju2017grad, chattopadhyay2017grad, wang2020score, wang2021minmaxcam} of the \acrshort{cam} family of methods. It is therefore a good reference for benchmarking \acrshort{wsol}. ResNet-50 is more recent than VGG16 and is used for experiments with MinMaxCAM by Wang, Kaili \textit{et al.} \cite{wang2021minmaxcam}.
 
 \subsection{VGG16}
 VGG16 is a \acrshort{cnn} proposed by K. Simonyan \textit{et al.} \cite{simonyan2014very}. It is one of the most popular models for image classification and it achieves high test accuracy for ImageNet, which is a very large dataset with 1000 different classes.
@@ -16,7 +16,9 @@ VGG16 is a \acrshort{cnn} proposed by K. Simonyan \textit{et al.} \cite{simonyan
     \end{center}
 \end{figure}
 
-The VGG16 network architecture is shown in Fig. \ref{fig:vgg16_arch}. The 16 in VGG16 refers to 16 layers that have trainable weights. In VGG16 there are thirteen convolutional layers, five maximum pooling layers, and three dense layers. In Fig. \ref{fig:vgg16_arch}, a convolutional layer is labeled with its kernel size and number of filters  (e.g. 3x3 conv. 64). Identical layers are shown with the same color. Fully connected layers are labeled with the number of neurons (e.g. fc-4096). Each first layer in a group of identical layers in the network is tagged with the dimensions of its input. Fig. \ref{fig:vgg16_layers_auth} tags the network layers with unique names that we will use to refer to those layers. Convolutional layers are organized in a number of sequences of layers. Layers within a sequence have the same number of filters.
+The VGG16 network architecture is shown in Fig. \ref{fig:vgg16_arch}. The 16 in VGG16 refers to 16 layers that have trainable weights. In VGG16 there are thirteen convolutional layers, five maximum pooling layers, and three dense layers. In Fig. \ref{fig:vgg16_arch}, a convolutional layer is labeled with its kernel size and number of filters  (e.g. 3x3 conv. 64). Identical layers are shown with the same color. Fully connected layers are labeled with the number of neurons (e.g. fc-4096). Each first layer in a group of identical layers in the network is tagged with the dimensions of its input. 
+
+Fig. \ref{fig:vgg16_layers_auth} tags the network layers with unique names that we will use to refer to those layers. Convolutional layers are organized in a number of sequences of layers. Layers within a sequence have the same number of filters.
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=1.0\textwidth]{fig_vgg16_layers_auth.png}
@@ -28,26 +30,26 @@ The VGG16 network architecture is shown in Fig. \ref{fig:vgg16_arch}. The 16 in 
 
 In subsequent sections, we describe the different parts of the architecture.
 \subsubsection{Input}
-The model expects as input images of fixed size and color channels. The dimensions are 224$\times$224$\times$3, standing for width$\times$height$\times$color channels. Typically images in popular datasets (e.g., ImageNet) have different sizes, requiring transformation of the images to resize them to the expected input shape.
+The model expects as input images of fixed size and three color channels. The dimensions are 224$\times$224$\times$3, standing for width$\times$height$\times$color channels. Typically, images in popular datasets (e.g., ImageNet) have different sizes, requiring transformation of the images to resize them to the expected input shape.
 
 \subsubsection{Convolutional layers}
-The convolutional layers use a small kernel size of 3$\times$3 in all layers, which enables the network to go deeper \cite{simonyan2014very}. Conv-1 has 2 layers with 64 filters, Conv-2 has 2 layers with 128 filters, Conv-3 has 3 layers with 256 filters, Conv-4 and Conv-5 each have 3 layers with 512 filters. The number of filters represents the output channels of each layer.
+The convolutional layers use a small kernel size of 3$\times$3 in all layers, which enables the network to go deeper \cite{simonyan2014very}. Conv-1 has 2 layers with 64 filters, Conv-2 has 2 layers with 128 filters, Conv-3 has 3 layers with 256 filters, Conv-4 and Conv-5 each have 3 layers with 512 filters. The number of filters represents the number of output channels of each layer.
 
 \subsubsection{Activation function}
 Each convolutional layer is followed by a \acrfull{relu} component. This activation function is a non-linear function that provides a matching output for positive inputs and outputs zero for negative inputs. Deep \acrshort{cnn}s with \acrshort{relu}s learn faster than equivalent activation functions with saturating neurons as indicated by Krizhevsky \textit{et al.} \cite{krizhevsky2017imagenet}.
 
 \subsubsection{Pooling layers}
-A pooling layer follows a sequence of convolutional layers with the same kernel size. Pooling helps to reduce the size of the feature maps created by each convolution step. When the number of filters doubles, also the number of feature maps doubles. A pooling window of 2$\times$2 reduces the size of feature maps by four, keeping computational complexity balanced as we go deeper in the network.
+A pooling layer follows a sequence of convolutional layers with the same kernel size. Pooling helps to reduce the size of the feature maps created by each convolution step. When the number of filters doubles, the number of feature maps also doubles. A pooling window of 2$\times$2 reduces the size of feature maps by four, keeping computational complexity balanced as we go deeper in the network.
 
 \subsubsection{Fully connected layers}
-Three \acrfull{fc} layers follow a stack of convolutional layers: The first two have 4096 channels each, the third performs 1000-way  classification and thus contains 1000 units (one for each class). The final layer is the soft-max layer. This layer ensures that the output values are transformed into confidence scores: Each output value is between 0 and 1 and the total sum of all outputs is 1.
+Three \acrfull{fc} layers follow a stack of convolutional layers: The first two have 4096 channels each, and the third layer performs 1000-way classification and thus contains 1000 units (one for each class). The final layer is the soft-max layer. This layer ensures that the output values are transformed into confidence scores: Each output value is between 0 and 1 and the total sum of all outputs is 1.
 
 Due to its depth and number of fully-connected nodes, VGG16 has 138 million weights with a storage size over 533MB. This puts high computational and storage requirements on training and storing a VGG16 model.
 
 \subsection{VGG16-GAP}
 Zhou \textit{et al.} \cite{zhou2016cvpr} found that convolutional units are able to localize objects despite being trained on image-level labels. Despite this fact, this ability is lost when fully-connected layers are used for classification. The authors concluded that by adding a \acrfull{gap} layer and modifying the dense layers, the localization ability of a \acrshort{cnn} can be kept until the final convolutional layer. We refer to this tweaked version of a VGG16 network as the VGG16-GAP network.
 
-Zhou \textit{et al.} specified that the localization ability of the network improved when the last convolutional layer before \acrshort{gap} has a higher spatial resolution. Therefore VGG16 is tweaked as illustrated in Fig. \ref{fig:vgg16_gap_layers_auth}. The pooling layer and \acrshort{fc} layers after Conv-5 are removed, resulting in a feature map with resolution 14$\times$14. Then a convolutional layer Conv6-1 is added with kernel size 3$\times$3 and 1024 units, followed by a GAP layer and a \acrshort{fc} and softmax layer.
+Zhou \textit{et al.} specified that the localization ability of the network improved when the last convolutional layer before \acrshort{gap} has a higher spatial resolution. Therefore VGG16 is tweaked as illustrated in Fig. \ref{fig:vgg16_gap_layers_auth}. When compared to Fig. \ref{fig:vgg16_layers_auth}, the pooling layer and \acrshort{fc} layers after Conv-5 are removed, resulting in a feature map with resolution 14$\times$14. Then a convolutional layer Conv6-1 is added with kernel size 3$\times$3 and 1024 units, followed by a GAP layer and a \acrshort{fc} and softmax layer.
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=1.0\textwidth]{fig_vgg16_gap_layers_auth.png}
@@ -62,7 +64,7 @@ Note that removing fully-connected layers largely decreases the number of traina
 \subsection{ResNet-50 network}
 Network depth is of crucial importance in neural network architectures. The residual learning framework eases the training of these networks and enables them to be substantially deeper, leading to improved performance in both visual and non-visual tasks. These residual networks are much deeper than their ‘plain’ counterparts, yet they require a similar number of parameters (weights).
 
-VGG16 introduced the concept of increasing the number of layers to improve accuracy. However, deeper networks are more difficult to train. He \textit{et al.} \cite{he2016deep} states that with network depth increasing, accuracy gets saturated and then degrades rapidly. This degradation leads to higher training error. The authors propose a solution to a deeper network that by construction should not have a higher training error than more shallow networks: The layers are copied from a learned shallower model and added layers are an identity mapping. The basic building block of residual networks is shown in Fig. \ref{fig:resnet_block}. The original non-residual mapping is cast into a residual mapping that should be easier to optimize. This basic building block is used in residual networks with 18 or 34 trainable layers. 
+VGG16 introduced the concept of increasing the number of layers to improve accuracy. However, deeper networks are more difficult to train. He \textit{et al.} \cite{he2016deep} state that with network depth increasing, accuracy gets saturated and then degrades rapidly. This degradation leads to higher training error. The authors propose a solution to a deeper network that by construction should not have a higher training error than more shallow networks: The layers are copied from a learned shallower model and added layers are an identity mapping. The basic building block of residual networks is shown in Fig. \ref{fig:resnet_block}. The original non-residual mapping is cast into a residual mapping that should be easier to optimize. This basic building block is used in residual networks with 18 or 34 trainable layers. 
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=0.4\textwidth]{fig_resnet_block.png}
@@ -93,13 +95,13 @@ The detailed architecture of ResNet-50 and other variants are shown in Fig. \ref
 \end{figure}
 
 \section{Datasets}
-As most research papers evaluating \acrshort{cam}-related \acrshort{wsol} methods use the ImageNet dataset, we will use this dataset as well. Because ImageNet is a vast dataset and the our models (VGG16 and ResNet-50) are computationally demanding to train, we will also use a smaller synthetic dataset. This allows us to more quickly evaluate our assumptions and implementations.
+As most research papers evaluating \acrshort{cam}-related \acrshort{wsol} methods use the ImageNet dataset, we will use this dataset as well. Because ImageNet is a vast dataset and our models (VGG16 and ResNet-50) are computationally demanding to train, we will also use smaller synthetic datasets. This allows us to more quickly evaluate our assumptions and implementations.
 
 \subsection{Synthetic dataset}
-By using a synthetic dataset we limit computational requirements for training and evaluating our models. As we are evaluating localization of multiple object instances, using this synthetic dataset we have control over image structure, number of object instances and ground truth data. 
+By using a synthetic dataset we limit computational requirements for training and evaluating our models. In addition, as we are evaluating localization of multiple object instances, we have control over image structure, number of object instances and ground truth data as well.
 
 \subsubsection{Baseline}
-For generation of the images, we took inspiration from Tjoa, E. \textit{et al.} \cite{tjoa2022quantifying}. The authors provide algorithms for generating synthetic image datasets to quantify explainability of heatmaps in \acrshort{dnn}. The images can be generated along with the ground-truth segmentation masks for objective quantitative assessment. Each sample data is an image of a cell with easily recognized features that are matched with a localization ground-truth mask.
+For generation of the images, we took inspiration from Tjoa, E. \textit{et al.} \cite{tjoa2022quantifying}. The authors provide algorithms for generating synthetic image datasets to quantify explainability of heatmaps in \acrshort{dnn}. The images can be generated along with the ground truth segmentation masks for objective quantitative assessment. Each sample data is an image of a cell with easily recognized features that are matched with a localization ground truth mask.
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=1.0\textwidth]{fig_synthethic_paper_samples.jpeg}
@@ -109,7 +111,7 @@ For generation of the images, we took inspiration from Tjoa, E. \textit{et al.} 
     \end{center}
 \end{figure}
 
-Example data can be seen in Fig. \ref{fig:synthetic_paper_samples}. Ten different classes of cells are shown along the columns. Three types of backgrounds are given to increase the variation of dataset, as shown separately in the first three rows. The segmentation masks of the objects are shown in the bottom half of the figure. The classes are described in Table \ref{tab:synthetic_classes}.
+Example data is illustrated in Fig. \ref{fig:synthetic_paper_samples}. Ten different classes of cells are shown along the columns, and are further described in Table \ref{tab:synthetic_classes}. Three types of backgrounds are given to increase the variation of dataset, as shown separately in the first three rows. The segmentation masks of the objects are shown in the bottom half of the figure.
 \begin{table}[ht]
 \centering
 \begin{tabular}{rl}
@@ -139,13 +141,13 @@ As the baseline dataset only contains single object instances, we changed the al
     \item We generate multiple datasets, each with a varying number of object instances and presence or absence of a background.
     \item Each dataset only has images with a fixed number of object instances. I.e., dataset 1 contains single-instance images, dataset 2 images only have 2 object instances, etc.
     \item All instances in an image are of the same class.
-    \item For each image, we create bounding box and a segmentation mask annotations to evaluate localization performance.
+    \item For each image, we create bounding box and segmentation mask annotations to enable localization performance evaluation.
     \item The segmentation masks cover the full object instance region. We don't make a distinction between edge and body of an object.
 \end{itemize}
-We extend the baseline dataset by generating datasets with multiple object instances in the synthetic images. In addition, bounding boxes and segmentation masks covering all object instances are created.
 
 \subsubsection{Datasets}
-According to the criteria in previous section, we have 8 different synthetic datasets as defined in Table \ref{tab:synthetic_datasets}.
+According to the criteria in previous section, we have 8 different synthetic datasets as defined in Table \ref{tab:synthetic_datasets}. Each dataset has a train, validation and test split of respectively 1000, 200 and 200 images.
+
 \begin{table}[ht]
 \centering
 \begin{tabular}{lrll}
@@ -166,12 +168,10 @@ According to the criteria in previous section, we have 8 different synthetic dat
 \label{tab:synthetic_datasets}
 \end{table}
 
-Each dataset has a train, validation and test dataset of 1000, 200 and 200 images.
-
 \subsection{ImageNet dataset}
-Deng \textit{et al.} \cite{deng2009imagenet} introduced a database called "ImageNet”, a large scale ontology of images. It contains real, natural images with diverse objects covering 1000 distinct classes. We use the dataset that was used in the \acrfull{ilsvrc} competition for object localization. The dataset has images with multiple instances and ground-truth image-level labels and bounding boxes. It is a very popular dataset used in many papers.
+Deng \textit{et al.} \cite{deng2009imagenet} introduced a database called "ImageNet”, a large scale ontology of images. It contains real, natural images with diverse objects covering 1000 distinct classes. We use the dataset that was used in the \acrfull{ilsvrc} competition for object localization. The dataset has images with multiple instances and ground truth image-level labels and bounding boxes. It is a very popular dataset used in many papers.
 
-We use the ImageNet dataset for the classification with localization tasks as defined for the \acrfull{ilsvrc} competition of 2012. The validation dataset consists of 50,000 photographs, collected from flickr and other search engines, hand labeled with the presence or absence of 1000 object categories and with bounding boxes. The training dataset is the subset of ImageNet containing the 1000 categories and 1.2 million images. The distribution of object instances over the images in the validation dataset is show in Fig. \ref{fig:imagenet_instance_distribution}.
+We use the ImageNet dataset for the classification with localization tasks as defined for the \acrfull{ilsvrc} competition of 2012. The validation dataset consists of 50,000 photographs, collected from flickr and other search engines, hand labeled with the presence or absence of 1000 object categories and with bounding boxes. The training dataset is the subset of ImageNet containing the 1000 categories and 1.2 million images. The distribution of object instances over the images in the validation dataset is shown in Fig. \ref{fig:imagenet_instance_distribution}.
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=0.7\textwidth]{fig_imagenet_distrib.png}
@@ -182,23 +182,23 @@ We use the ImageNet dataset for the classification with localization tasks as de
 \end{figure}
 
 \section{Training}
-For the \acrlong{wsol} task, we only provide image-level labels to train a model for classification. At test time we will provide ground-truth bounding boxes and segmentation masks  to measure localization performance.
+For the \acrlong{wsol} task, we only provide image-level labels to train a model for classification. At test time we will provide ground truth bounding boxes and segmentation masks  to measure localization performance.
 
-The \acrshort{cnn} is a feed-forward network. During the training process, the network will process the input through all the layers, compute the loss to understand how far the predicted label of the image is falling from the correct one, and propagate the gradients of network weights back into the network to update the weights of the layers. By iterating over a large dataset of inputs, the network will learn to set its weights to achieve the best results. The goal of training is to minimize the loss function. This optimization process requires iterating over the training data a number of times. One full iteration over the dataset is called an epoch.
+The \acrshort{cnn} is a feed-forward network. During the training process, the network will process the input through all the layers, compute the loss to understand how far the predicted label of the image is from the correct one, and propagate the gradients of network weights back into the network to update the weights of the layers. By iterating over a large dataset of inputs, the network will learn to set its weights to achieve the best results. The goal of training is to minimize the loss function. This optimization process requires iterating over the training data a number of times. One full iteration over the training dataset is called an epoch.
 
 \subsection{Data preprocessing}
-Image preprocessing and image augmentations are two key processes taking place before images are fed to a neural network.
+Image preprocessing and image augmentation are two key processes taking place before images are fed to a neural network.
 
 \subsubsection{Image preprocessing}
-Image preprocessing are manipulations applied to images to create a common representations of different content. This preprocessing is done both for training and for inference of images. Following preprocessing operations are performed:
+Image preprocessing are manipulations applied to images to create a common representation of different images. This preprocessing is done both for training and for inference of images. Following preprocessing operations are performed:
 \begin{itemize}
-    \item Resize: This operation resizes images to 256$\times$256 dimension for training and 224$\times$224 for inference. For training, data augmentation (section \ref{sec:training_augmentation}) ensures that image size will be 224$\times$224.
-    \item ToTensor: This operation converts an image's values in the range $[0, 255]$ to a tensor in the range $[0.0, 1.0]$.
+    \item Resize: This operation resizes images to a 256$\times$256 dimension for training and 224$\times$224 for inference. For training, data augmentation (section \ref{sec:training_augmentation}) ensures that the image size will be 224$\times$224.
+    \item ToTensor: This operation converts an image's values from the range $[0, 255]$ to a tensor in the range $[0.0, 1.0]$.
     \item Normalize: Data normalization is an important step to achieve faster convergence, by ensuring that input data is transformed to a uniform mean of 0 and standard deviation of 1. Each image channel is normalized by subtracting the channel-wise mean of all images in a dataset from the input data and then dividing it by the channel-wise standard deviation of the images in the dataset.
 \end{itemize}
 
 \subsubsection{Data augmentation} \label{sec:training_augmentation}
-Image augmentation are manipulations applied to images to create different versions of similar content in order to expose the model to a wider array of training examples. For example, randomly altering rotation, brightness, or scale of an input image requires that a model consider what an image subject looks like in a variety of situations. Image augmentation is only performed for images in the training dataset and is performed after image resizing and before the ToTensor operation during image preprocessing. Following augmentation operations are performed:
+Image augmentations are manipulations applied to images to create different versions of similar content in order to expose the model to a wider array of training examples. For example, randomly altering rotation, brightness, or scale of an input image requires a model to consider what an image subject looks like in a variety of situations. Image augmentation is only performed for images in the training dataset and is performed after image resizing and before the ToTensor operation during image preprocessing. Following augmentation operations are performed:
 \begin{itemize}
     \item RandomCrop: Crops a given image at a random location to the size 224$\times$224.
     \item RandomHorizontalFlip: Horizontally flips a given image randomly with a given probability.
@@ -222,7 +222,7 @@ For training a model on the ImageNet dataset, we will use pre-trained model para
 For training a model on the synthetic dataset, we will need to train the networks from scratch as this is a new dataset and thus no pre-trained network exists.
 
 \subsubsection{Model training}
-Supervised classification is an optimization problem where we want to minimize the loss, i.e. the difference between predicted and ground-truth class for the images in a dataset.
+Supervised classification is an optimization problem where we want to minimize the loss, i.e. the difference between predicted and ground truth class for the images in a dataset.
 
 We use stochastic gradient descent for optimization of the loss function. We stop the learning process when the loss of the model on the validation dataset hasn't decreased for five subsequent training episodes.
 
@@ -230,11 +230,11 @@ We use stochastic gradient descent for optimization of the loss function. We sto
 To localize object instances in images, we will benchmark a set of \acrshort{cam} related methods using models trained for classification on the synthetic and ImageNet datasets. The general process for localization is the same for all \acrshort{cam} methods. For each image of the validation or test dataset, following steps are performed:
 \begin{enumerate}
     \item The neural network takes an image as input and returns a class prediction score.
-    \item A score map is computed as a weighted combination of the feature maps in the final convolutional layer of the \acrshort{nn}. The weights are related to the ground-truth class of the image. The method to compute the weights is specific to the \acrshort{cam} method.
+    \item A score map is computed as a weighted combination of the feature maps in the final convolutional layer of the \acrshort{nn}. The weights are related to the ground truth class of the image. The method to compute the weights is specific to the \acrshort{cam} method.
     \item The score map is normalized to values between 0 and 1.
     \item The normalized score map is binarized using a score map threshold. We use 100 different thresholds ranging from 0 to 1 with a step of 0.01, yielding 100 binarized score cams.
     \item For each binarized score map, we compute all self-contained contours. For those contours, bounding boxes are extracted. Bounding boxes are defined as a tuple with four coordinates ($(x_1, y_1, x_2, y_2)$ with $(x_1, y_1)$ the top-left coordinate and $(x_2, y_2)$ the bottom-right coordinate of the bounding box.
-    \item For each score map, we keep track of the true positives and false positives, both for bounding boxes compared to ground-truth bounding boxes, and for binarized score maps compared to ground-truth segmentation masks.
+    \item For each score map, we keep track of the true positives and false positives, both for bounding boxes compared to ground truth bounding boxes, and for binarized score maps compared to ground truth segmentation masks.
     \item Localization accuracy is computed by counting predicted and ground truth label matches in the evaluation dataset
 \end{enumerate}
 When metrics are collected for all images, localization performance can be computed. The computation and evaluation of localization metrics are discussed in section \ref{sec:localization_metrics}. In the next sections we discuss the different \acrshort{cam}-based localization methods.
@@ -449,11 +449,11 @@ To objectively evaluate and compare object localization using different \acrshor
 We set out following criteria for choosing localization metrics:
 \begin{enumerate}
     \item The metrics must be applicable to all evaluated \acrshort{cam} methods
-    \item Metrics must be applicable for datasets with bounding boxes ground-truth and for datasets with segmentation mask ground-truth
+    \item Metrics must be applicable for datasets with bounding boxes ground truth and for datasets with segmentation mask ground truth
     \item Localization accuracy of multiple object instances is measured
 \end{enumerate}
 
-Choe \textit{et al.} \cite{choe2020evaluating} have defined a \acrshort{wsol} evaluation protocol, defining metrics that are applicable to all evaluated \acrshort{cam} methods, meeting criterion 1. The authors defined a metric that measures maximum box accuracy for datasets with ground-truth bounding boxes, and a metric that measures pixel average precision for datasets with ground-truth segmentation masks. This covers criterion 2. However, criterion 3 is not met, as the maximum box accuracy doesn't take into account measuring of multiple instances.
+Choe \textit{et al.} \cite{choe2020evaluating} have defined a \acrshort{wsol} evaluation protocol, defining metrics that are applicable to all evaluated \acrshort{cam} methods, meeting criterion 1. The authors defined a metric that measures maximum box accuracy for datasets with ground truth bounding boxes, and a metric that measures pixel average precision for datasets with ground truth segmentation masks. This covers criterion 2. However, criterion 3 is not met, as the maximum box accuracy doesn't take into account measuring of multiple instances.
 
 We enhance the evaluation metrics of Choe \textit{et al.} to measure localization of multiple object instances for the \acrshort{wsol} task, thereby meeting criterion 3.
 
@@ -600,3 +600,5 @@ We based our evaluation method on existing implementations and extended them to 
     \item WSOLevaluation\cite{code:WSOLevaluation}: The single-instance \acrshort{wsol} evaluation metrics.
     \item PytorchCAM \cite{code:PytorchCAM}: Inference methods for Grad-CAM, Grad-CAM++ and Score-CAM.
 \end{itemize}
+
+Source code, models and datasets used in this work are available at:\\ \url{https://github.com/goemaereg/thesis}.
