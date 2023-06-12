@@ -227,21 +227,21 @@ Supervised classification is an optimization problem where we want to minimize t
 We use stochastic gradient descent for optimization of the loss function. We stop the learning process when the loss of the model on the validation dataset hasn't decreased for five subsequent training episodes.
 
 \section{Localization} \label{lb:wsol_methods}
-To localize object instances in images, we will benchmark a set of \acrshort{cam} related methods using models trained for classification on the synthetic and ImageNet datasets. The general process for localization is the same for all \acrshort{cam} methods. For each image of the validation or test dataset, following steps are performed:
+To localize object instances in images, we will benchmark a set of \acrshort{cam}-based localization methods on models trained for classification on the synthetic and ImageNet datasets. The general process for localization is the same for all \acrshort{cam}-based methods. For each image of the validation or test dataset, following steps are performed:
 \begin{enumerate}
     \item The neural network takes an image as input and returns a class prediction score.
-    \item A score map is computed as a weighted combination of the feature maps in the final convolutional layer of the \acrshort{nn}. The weights are related to the ground truth class of the image. The method to compute the weights is specific to the \acrshort{cam} method.
+    \item A score map is computed as a weighted combination of the feature maps in the final convolutional layer of the \acrshort{nn}. These weights are related to the ground truth class of the image, and the method to compute the weights is specific to the \acrshort{cam} method.
     \item The score map is normalized to values between 0 and 1.
-    \item The normalized score map is binarized using a score map threshold. We use 100 different thresholds ranging from 0 to 1 with a step of 0.01, yielding 100 binarized score cams.
-    \item For each binarized score map, we compute all self-contained contours. For those contours, bounding boxes are extracted. Bounding boxes are defined as a tuple with four coordinates ($(x_1, y_1, x_2, y_2)$ with $(x_1, y_1)$ the top-left coordinate and $(x_2, y_2)$ the bottom-right coordinate of the bounding box.
-    \item For each score map, we keep track of the true positives and false positives, both for bounding boxes compared to ground truth bounding boxes, and for binarized score maps compared to ground truth segmentation masks.
-    \item Localization accuracy is computed by counting predicted and ground truth label matches in the evaluation dataset
+    \item The normalized score map is binarized using a score map threshold. We use 100 different thresholds ranging from 0 to 1 with a step of 0.01, yielding 100 binarized score maps.
+    \item For each binarized score map, we compute all self-contained contours, and for each of those contours, a bounding box is computed. Bounding boxes are defined as a tuple with four coordinates ($(x_1, y_1, x_2, y_2)$ with $(x_1, y_1)$ the top-left coordinate and $(x_2, y_2)$ the bottom-right coordinate of the bounding box.
+    \item For each score map, we keep track of the matches and mismatches, both for bounding boxes compared to ground truth bounding boxes, and for binarized score maps compared to ground truth segmentation masks.
+    \item Localization metrics are then computed from the matches and mismatches between  predicted and ground truth matches and mismatches for the evaluated dataset.
 \end{enumerate}
-When metrics are collected for all images, localization performance can be computed. The computation and evaluation of localization metrics are discussed in section \ref{sec:localization_metrics}. In the next sections we discuss the different \acrshort{cam}-based localization methods.
+When metrics are collected for all images, localization performance can be computed. The computation and evaluation of localization metrics is discussed in section \ref{sec:localization_metrics}. In the next sections we discuss the different \acrshort{cam}-based localization methods.
 
 \subsection{CAM} \label{sec:cam}
-Zhou \textit{et al.} proposes a general technique called \acrfull{cam} for \acrshort{cnn}s with \acrshort{gap} layer. A class activation map for a particular category indicates the discriminative image regions used by the
-\acrshort{cnn} to identify that category. The procedure used for generating these maps is shown in Fig. \ref{fig:cam}. The \acrshort{gap} layer outputs the spatial average of the feature map of each channel of the last convolutional layer. The class-specific weights related to the \acrshort{gap} layer units, are then used to compute the weighted combination of the feature maps yielding the class activation map (or score map).
+Zhou \textit{et al.} propose a general technique called \acrfull{cam} for \acrshort{cnn}s with \acrshort{gap} layer. A class activation map for a particular category indicates the discriminative image regions used by the
+\acrshort{cnn} to identify that category. The procedure used for generating these maps is shown in Fig. \ref{fig:cam}. The \acrshort{gap} layer outputs the spatial average of each feature map in the last convolutional layer. The class-specific weights related to the \acrshort{gap} layer units, are then used to compute the weighted combination of the feature maps yielding the class activation map (also known as the score map).
 
 \begin{figure}[h]
     \begin{center}       
@@ -252,7 +252,7 @@ Zhou \textit{et al.} proposes a general technique called \acrfull{cam} for \acrs
     \end{center}
 \end{figure}
 
-We describe more formally how the \acrshort{cam} is computed. Let $f_{k}(x,y)$ be the activation of unit k in the final convolutional layer at spatial location $(x,y)$. Then, for unit k, the result of the \acrshort{gap} layer is:
+We now more formally describe how the score map is computed. Let $f_{k}(x,y)$ be the activation of unit k in the final convolutional layer at spatial location $(x,y)$. Then, for unit k, the result of the \acrshort{gap} layer is:
 \begin{equation} \label{eq:cam_gap}
     F^{k} = \sum_{x,y}f_{k}(x,y)
 \end{equation}
@@ -270,35 +270,35 @@ Then the definition of the class activation map for class c for each spatial ele
     L_{CAM}^{c}(x,y) = \sum_{k}w_{k}^{c}f_{k}(x,y)
 \end{equation}
 
-The advantage of \acrlong{cam} is that it is able to localize discriminative image regions despite being trained for solving a classification task. In additon, it has low computational complexity as it needs only a single forward pass through the network to obtain the score map.
+The advantage of \acrlong{cam} is that it is able to localize discriminative image regions despite being trained for solving a classification task. In addition, it has low computational complexity as it only needs a single forward pass through the network to obtain the score map.
 
-A disadvantage is, that the network only focuses on discriminative regions in an image, which leads to partial localization of objects. Another disadvantage of \acrshort{cam} is that it requires the network to have a \acrshort{gap} layer, which requires modifications in the network architecture. This change in an architecture causes a classification performance drop.
+A disadvantage is that the network only focuses on discriminative regions in an image, which leads to partial localization of objects. Another disadvantage of \acrshort{cam} is that it requires the network to have a \acrshort{gap} layer, requiring modifications in the network architecture. This change in architecture causes a classification performance drop.
 
 \subsection{Grad-CAM}
 Selvaraju \textit{et al.} \cite{selvaraju2017grad} propose a technique called \acrfull{gradcam}. This approach uses the gradients of a class score, flowing into 
-the final convolutional layer to produce a coarse localization map highlighting the important regions in the image for predicting the concept. 
+the final convolutional layer, to produce a coarse localization map highlighting the important regions in an image for predicting the concept. 
 
-\acrshort{gradcam} uses the final convolutional layer for localization as convolutional features retain spatial information that is lost in fully-connected layers and because the final convolutional layer can be expected to have the best compromise between high-level semantics and detailed spatial information. \acrshort{gradcam} uses the gradients of the neurons in the final convolutional layer to indicate the importance of each neuron for a predicted class.
+\acrshort{gradcam} uses the final convolutional layer for localization as convolutional features retain spatial information that is lost in fully-connected layers, and because the final convolutional layer can be expected to have the best compromise between high-level semantics and detailed spatial information. \acrshort{gradcam} uses the gradients of the neurons in the final convolutional layer to indicate the importance of each neuron for a predicted class.
 
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=1.0\textwidth]{fig_gradcam.png}
-    \caption[Grad-CAM]{Grad-CAM. After forwarding an image through the network, a class score is obtained. The gradients of the desired class is then backpropagated to the feature maps of interest, which are combined using the average gradients per feature map as weights, yielding the \acrshort{gradcam} localization map.}
+    \caption[Grad-CAM]{Grad-CAM. After forwarding an image through the network, a class score is obtained. The gradients of the desired class are then back-propagated to the feature maps of interest. Those feature maps are then combined using the averaged gradients per feature map as weights, yielding the \acrshort{gradcam} score map.}
     \caption*{Source: Selvaraju \textit{et al.} \cite{selvaraju2017grad}}
     \label{fig:gradcam}
     \end{center}
 \end{figure}
-Fig. \ref{fig:gradcam} shows how the class-discriminative localization map is obtained. First the gradient of the score $Y^c$ for class $c$ is computed with respect to feature maps $A^k$ of a convolutional layer, i.e. $\frac{\partial{Y^c}}{\partial{A^k}}$. These gradients are then averaged to obtain the neuron importance weights $w_{k}^{c}$:
+Fig. \ref{fig:gradcam} shows how the class-discriminative score map is obtained. First the gradient of the score $Y^c$ for class $c$ is computed with respect to feature maps $A^k$ of a convolutional layer, i.e. $\frac{\partial{Y^c}}{\partial{A^k}}$. These gradients are then averaged to obtain the neuron importance weights $w_{k}^{c}$:
 \begin{equation}
     w_{k}^{c} = \frac{1}{Z}\sum_{i}\sum_{j}\frac{\partial{Y^c}}{\partial{A_{ij}^{k}}}
 \end{equation}
 
-The weight $w_{k}^{c}$ captures the importance of a feature map $k$ for a target class $c$. The \acrshort{gradcam} localization map is then calculated as the weighted combination of feature maps, followed by a \acrshort{relu} activation function as we are only interested in features that have positive influence on the class of interest:
+The weight $w_{k}^{c}$ captures the importance of a feature map $k$ for a target class $c$. The \acrshort{gradcam} score map is then calculated as the weighted combination of feature maps, followed by a \acrshort{relu} activation function as we are only interested in features that have positive influence on the class of interest:
 \begin{equation}
     L_{Grad-CAM}^{c} = ReLU \left( \sum_{k}w_{k}^{c} A^{k} \right)
 \end{equation}
 
-\acrshort{gradcam} is a generalization of \acrshort{cam}. It can be proven that when \acrshort{gradcam} is applied to architectures with a \acrshort{gap} layer, it specializes to the \acrshort{cam} method. Unlike the baseline \acrshort{cam} method, \acrshort{gradcam} is applicable to a wide variety of CNN model-families as it doesn't require an architecture with \acrshort{gap} layer.
+\acrshort{gradcam} is a generalization of \acrshort{cam}: It can be proven that when \acrshort{gradcam} is applied to architectures with a \acrshort{gap} layer, it specializes to the \acrshort{cam} method. Unlike the baseline \acrshort{cam} method, \acrshort{gradcam} is applicable to a wide variety of CNN model-families as it doesn't require an architecture with \acrshort{gap} layer.
 
 \subsection{Grad-CAM++}
 Chattopadhay \textit{et al.} \cite{chattopadhay2018grad} propose a technique called Grad-CAM++, to provide better localization of objects
@@ -330,7 +330,7 @@ In their computation analysis, Chattopadhay \textit{et al.} \cite{chattopadhay20
 \end{equation}
 
 \subsection{Score-CAM}
-Wang \textit{et al.} \cite{wang2020score} argue that gradient-based \acrshort{cam} methods can suffer from saturating gradients giving the false confidence that higher weights lead to high target scores. Score-CAM gets rid of the dependence on gradients by obtaining the weight of each activation map through its forward passing score on target class. The final score map is obtained by a linear combination of weights and activation maps.
+Wang \textit{et al.} \cite{wang2020score} argue that gradient-based \acrshort{cam} methods can suffer from saturating gradients giving the false confidence that higher weights lead to high target scores. Score-CAM gets rid of the dependence on gradients by obtaining the weight of each activation map through its forward passing score for the target class. The final score map is obtained by a linear combination of weights and activation maps.
 
 Fig. \ref{fig:scorecam} shows the pipeline for Score-CAM. In phase 1, activation maps are first extracted. Then in phase 2, for each activation map extracted in phase 1, the original image is masked with the activation map and fed to the network. The classification score obtained for the target class is then used as the weight of the activation map. Finally, the score map is generated by the weighted combination of activation maps extracted in phase 1. Phase 1 and phase 2 share the same CNN module as feature extractor. 
 \begin{figure}[h]
@@ -342,7 +342,7 @@ Fig. \ref{fig:scorecam} shows the pipeline for Score-CAM. In phase 1, activation
     \end{center}
 \end{figure}
 
-Score-CAM shows more focus on object instances and is also promising for capturing the features of multiple instances in the explanation map. A major disadvantage of Score-CAM is the computational cost because it requires as many as feature maps in the last convolutional layer more forward passes than the baseline \acrshort{cam} method.
+Score-CAM shows more focus on object instances than prior methods, and is also promising for capturing the features of multiple instances in the explanation map. A major disadvantage of Score-CAM is the computational cost because, compared to the baseline CAM method, it requires an additional number of forward passes through the network, linearly depending on the number of feature maps in the last convolutional layer.
 
 In contrast to previous methods [4, 12], which use the gradient information flowing into the last convolutional layer to represent the importance of each activation map, Wang \textit{et al.} incorporate the importance as the Increase of Confidence: Given a function $Y = f(X)$ with input vector $X$ and output scalar $Y$, for a baseline input $X_b$, the contribution $c_i$ of $x_i$ towards $Y$ is the change of output by replacing the i-th entry in $X_b$ with $x_i$.
 \begin{equation}
@@ -374,20 +374,20 @@ One of the most common problems of methods based on Class Activation Mapping,
 is caused either by localization maps which focus, exclusively, on the most discriminative region of the objects of interest, or by activations occurring
 in background regions. To address these two problems, Wang \textit{et al.} \cite{wang2021minmaxcam} propose two representation regularization mechanisms: Full Region Regularization which tries to maximize the coverage of the localization map inside the object region, and Common Region Regularization which minimizes the activations occurring in background regions.
 
-The idea of the Common region regularization (CRR) is that different images depicting foreground objects of the same class should share similar features. The localized-object features can be obtained by applying the normalized Class Activation Map (CAM) $H$ (extracted as is done for the CAM method in section \ref{sec:cam}) on the image $I$ and extract the feature of $I \odot H$, denoted as $f$. Therefore, $f = B(I \odot H)$, where $\odot$ refers to the element-wise multiplication. To save computational resources, we use the same backbone B both for CAM computation and regularization. Given S different images from the same class, we have:
+The idea of the Common region regularization (CRR) is that different images depicting foreground objects of the same class should share similar features. The localized object features can be obtained by applying the normalized Class Activation Map (CAM) $H$ (i.e. the score map extracted as is done for the CAM method in section \ref{sec:cam}) on the image $I$ and extract the feature of $I \odot H$, denoted as $f$. Therefore, $f = B(I \odot H)$, where $\odot$ refers to the element-wise multiplication. To save computational resources, we use the same backbone B both for CAM computation and regularization. Given S different images from the same class, we have:
 \begin{equation}
     CRR = \frac{1}{S(S-1)} \sum^{S-1}_{i=0} \sum^{S-1}_{j=0} \lVert f_i - f_j \rVert^2_2
 \end{equation}
-CRR calculates the pair-wise distance of the feature of $I \odot H$. The goal of CRR is to localize the common region of a set of images from the same class. By minimizing it, it can minimize the activations on the localization map, i.e. suppress the activations in non-object regions of the images.
+CRR calculates the pair-wise distance of the feature of $I \odot H$. The goal of CRR is to localize the common region of a set of images from the same class. By minimizing it, it can minimize the activations in the score map, i.e. suppress the activations in non-object regions of the images.
 
-For the case of the failed localization on the most discriminative region, the authors propose Full region regularization (FRR) to enlarge the localization map.
+For the case of the failed localization on the most discriminative region, the authors propose Full region regularization (FRR) to enlarge the localization map (i.e. score map).
 
 \begin{equation}
     FRR = \frac{1}{S} \sum^{S-1}_{i=0}\lVert f_i - f^o_i \rVert^2_2
 \end{equation}
 $f^o$ is the feature of the original image $I$, i.e. $f^o=B(I)$. FRR calculates the distance of the feature between the $I \odot H$ and $I$. Minimizing FRR has the effect of maximizing the activations on the localization map.
 
-The learning process illustrated in Fig. \ref{fig:minmaxcam}, has two stages. For stage I (shown in top half of figure), it takes $N \times S$ images as input. The model is trained for the classification task, i.e. update the backbone and linear layer via the cross-entropy loss $L_{S1}$. It is the same as CAM. For stage II (shown in bottom half of figure), the backbone B is frozen as a feature extractor. It receives the images multiplied by the localization map $(I \odot H)$ as input.
+The learning process illustrated in Fig. \ref{fig:minmaxcam}, has two stages. For stage I (shown in top half of figure), it takes $N \times S$ images as input. The model is trained for the classification task, i.e. it updates the backbone and linear layer via the cross-entropy loss $L_{S1}$. It is the same training process as for CAM. For stage II (shown in bottom half of figure), the backbone B is frozen as a feature extractor, i.e. the weights of the feature extractor are not updated during this second stage. It receives the images multiplied by the localization map $(I \odot H)$ as input.
 
 The features ($f$ and $f^o$) extracted by B are used for the two regularizations. The loss only updates the weights of the linear layer, by minimizing CRR and FRR:
 \begin{equation}
@@ -405,12 +405,12 @@ $L_{S1}$ and $L_{S2}$ update the model every mini-batch.
 
 \section{Evaluation}
 \subsection{Computational complexity} \label{sec:computational_complexity}
-An important aspect of any algorithm is its computational complexity, i.e., a measure of the amount of computing resources (time and space) that a particular algorithm consumes when it runs. While the initial focus in research may be on maximizing accuracy of an algorithm, it is also important to focus on maximizing the inference efficiency. The efficiency of an algorithm may determine whether it is a viable solution. In this section we specify the metrics we use to measure the algorithm complexity in our experiments. From a theoretical perspective, we reason about the complexity of the different \acrshort{cam} methods used for localization.
+An important aspect of any algorithm is its computational complexity, i.e., a measure of the amount of computing resources (time and space) that a particular algorithm consumes when it runs. While the initial focus in research may be on maximizing accuracy of an algorithm, it is also important to focus on maximizing the inference efficiency. The efficiency of an algorithm may determine whether it is a viable solution. In this section we specify the metrics we use to measure the algorithm complexity in our experiments. From a theoretical perspective, we reason about the complexity of the different \acrshort{cam}-based methods used for localization.
 
 \subsubsection{Complexity metric}
 Geifman \cite{article:FLOPSvsRuntime} reasons that it is wrong to assume that \acrfull{flop} can serve as an accurate proxy for any kind of efficiency, including run-time. Due to high parallelization capabilities of the \acrshort{gpu}, parallelizable operations will run faster. Moreover, some operations may require the same number of \acrshort{flop}s, but different run time, depending on how well the operations can be accelerated on a \acrshort{gpu}. Another problem is that many \acrshort{flop} count tools only measure forward passes in a model. This is not sufficient for gradient-based \acrshort{cam} methods which require backward passes through the model to compute gradients.
 
-This is why we measure the run time of \acrshort{cam} methods. Given equal hardware and parallelization capabilities, a fair comparison can be made between algorithms. To correctly measure the run time of the \acrshort{cam} methods we take into account following aspects:
+This is why we measure the run time of localization methods. Given equal hardware and parallelization capabilities, a fair comparison can be made between algorithms. To correctly measure the run time of the \acrshort{cam} methods we take into account following aspects:
 \begin{enumerate}
     \item We don't measure \acrshort{gpu} warm-up time, i.e. the time a \acrshort{gpu} device needs to go from low-power state to operational state. We don't measure that time, because it is not relevant for the comparison of the methods. Before measuring starts, we send random data through a dummy model to force the \acrshort{gpu} in its operational state.
     \item Data loading, pre-processing and transferring between \acrshort{cpu} and \acrshort{gpu} is not measured.
@@ -441,7 +441,7 @@ Based on the design of the \acrshort{cam} methods, we can theoretically reason a
 \label{tab:complexity_theoretical}
 \end{table}
 
-MinMaxCAM uses CAM as localization method, so it has the same inference time. MinMaxCAM has longer training time due to its regularization, but this is not taken into account for the localization task itself. Both CAM and MinMaxCAM have the lowest computational cost as they only require a single forward pass per batch of images. Grad-CAM and Grad-CAM++ are gradient-based methods and need an additional backward pass through the network to compute the gradients. If we take the assumption that forward pass and backward pass have the same order of complexity, then Grad-CAM and Grad-CAM++ have roughly double the run time of CAM. Score-CAM requires many forward passes: It gets the features maps, as the other methods do. For those feature maps, it then needs a forward pass of the original images ablated with the feature maps to get the weights computed as confidence scores. It does so in batches. This explains the $\begin{aligned}N\frac{F}{B_F}\end{aligned}$ term in the number of forward passes. Score-CAM requires $F + 1$ times more forward passes than CAM in case the image batch size $B$ and feature map batch size $B_F$ are equal. For a ResNet-50 network with 2048 feature maps in the final convolutional layer, this is a costly operation.
+MinMaxCAM uses CAM as localization method, so it has the same inference time. MinMaxCAM has longer training time due to its regularization, but this is not taken into account for the localization task itself. Both CAM and MinMaxCAM have the lowest computational cost as they only require a single forward pass per batch of images. Grad-CAM and Grad-CAM++ are gradient-based methods and need an additional backward pass through the network to compute the gradients. If we take the assumption that forward pass and backward pass have the same order of complexity, then Grad-CAM and Grad-CAM++ have roughly double the run time of CAM. Score-CAM requires many forward passes: It gets the features maps, as the other methods do. For those feature maps, it then needs a forward pass of the original images ablated with the feature maps to get the weights computed as confidence scores. It does so in batches. This explains the $\begin{aligned}N\frac{F}{B_F}\end{aligned}$ term in the number of forward passes. Score-CAM requires $F + 1$ times the forward passes for CAM in case the image batch size $B$ and feature map batch size $B_F$ are equal. For a ResNet-50 network with 2048 feature maps in the final convolutional layer, this is a costly operation.
 
 \subsection{Localization metrics} \label{sec:localization_metrics}
 To objectively evaluate and compare object localization using different \acrshort{cam} methods, we need to quantitatively determine performance using localization metrics. The papers introducing the \acrshort{cam} methods, specify different metrics: Zhou \textit{et al.} \cite{zhou2016cvpr} (\acrshort{cam}) and Selvaraju \textit{et al.} \cite{selvaraju2017grad} (\acrshort{gradcam}) use the localization error, which is defined for localization of a single object instance. Chattopadhay \textit{et al.} \cite{chattopadhay2018grad} (\acrshort{gradcam}++) evaluate localization using faithfulness based metrics. These metrics measure drop or increase of prediction scores, rather than localization of object instances. Wang \textit{et al.} \cite{wang2020score} evaluates localization from an energy-based perspective at pixel-level. None of the mentioned methods is thus usable for measuring localization performance of multiple object instances.
@@ -453,14 +453,14 @@ We set out following criteria for choosing localization metrics:
     \item Localization accuracy of multiple object instances is measured
 \end{enumerate}
 
-Choe \textit{et al.} \cite{choe2020evaluating} have defined a \acrshort{wsol} evaluation protocol, defining metrics that are applicable to all evaluated \acrshort{cam} methods, meeting criterion 1. The authors defined a metric that measures maximum box accuracy for datasets with ground truth bounding boxes, and a metric that measures pixel average precision for datasets with ground truth segmentation masks. This covers criterion 2. However, criterion 3 is not met, as the maximum box accuracy doesn't take into account measuring of multiple instances.
+Choe \textit{et al.} \cite{choe2020evaluating} have defined a \acrshort{wsol} evaluation protocol, defining metrics that are applicable to all evaluated \acrshort{cam} methods, meeting criterion 1. The authors defined a metric that measures maximum box accuracy for datasets with ground truth bounding boxes, and a metric that measures pixel average precision for datasets with ground truth segmentation masks. This covers criterion 2. However, criterion 3 is not met, as the maximum box accuracy doesn't take into account measuring localization of multiple instances.
 
 We enhance the evaluation metrics of Choe \textit{et al.} to measure localization of multiple object instances for the \acrshort{wsol} task, thereby meeting criterion 3.
 
 \subsubsection{Recall versus precision}
 Any localization method that predicts bounding boxes of different granularity at different locations of an image will have a high recall metric: It will accurately localize most object instances. But it will also produce many false positives predictions, i.e., many localized objects will not match with the ground truth annotations. It is therefore important to have a metric that measures the precision, i.e., how many of localization predictions are actually correct.
 
-We need to define what it means to have a match between bounding boxes. Therefore, we define a metric measuring the overlap between a predicted and ground truth bounding box: The \acrfull{iou} measures the proportion of the areas of two bounding boxes that overlaps. Fig. \ref{fig:iou} illustrates this metric.  We can then say that two bounding boxes match if the \acrshort{iou} is equal or larger than some acrshort{iou} threshold parameter.
+We need to define what it means to have a match between bounding boxes. Therefore, we define a metric measuring the overlap between a predicted and ground truth bounding box: The \acrfull{iou} measures the proportion of the areas of two bounding boxes that overlaps. Fig. \ref{fig:iou} illustrates this metric.  We can then say that two bounding boxes match if the \acrshort{iou} is equal or larger than some \acrshort{iou} threshold parameter.
 
 \begin{figure}[ht]
     \begin{center}       
@@ -536,9 +536,9 @@ Given a dataset with N images and ground truth boxes B, the box accuracy at scor
 \begin{equation} \label{eq:boxacc}
     BoxAcc(\tau,\delta) := \frac{1}{N} \sum_{n=1}1_{IoU(box(s(X^{(n)}),\tau),B^{(n)})\ge\delta}
 \end{equation}
-where $box(s(X^{(n)}))$ is the tightest bounding box around the largest-area connected component in the score map \{$(i,j)\text{ }|\text{ }s(X^{(n)}_{ij}) \ge \tau$\}. The amount of overlapping between the predicted bounding box and ground truth bounding box expresses how accurate the localization method is. The overlapping is computed as the proportion of area of the boxes that overlap versus the total area of both boxes. The \acrfull{iou} metric captures this overlap and is illustrated in Fig. \ref{fig:iou}. This metric is also used frequently in object detection challenges such as the Pascal VOC challenge \cite{everingham2009pascal}. The \acrshort{iou} produces a number between $0$ and $1$. The closer \acrshort{iou} is to 1, the better the localization is. We will use an \acrshort{iou} threshold $\tau$ to assess whether the amount of overlap is sufficient to consider the localization a true positive match.
+where $box(s(X^{(n)}))$ is the tightest bounding box around the largest-area connected component in the score map \{$(i,j)\text{ }|\text{ }s(X^{(n)}_{ij}) \ge \tau$\}. The amount of overlapping between the predicted bounding box and ground truth bounding box expresses how accurate the localization method is. The overlapping is computed as the proportion of area of the boxes that overlap versus the total area of both boxes. The \acrfull{iou} metric captures this overlap and is illustrated in Fig. \ref{fig:iou}. This metric is also used frequently in object detection challenges such as the Pascal VOC challenge \cite{everingham2009pascal}. The \acrshort{iou} produces a number between $0$ and $1$. The closer \acrshort{iou} is to 1, the better the localization is. We will use an \acrshort{iou} threshold $\delta$ to assess whether the amount of overlap is sufficient to consider the localization a true positive match.
 
-We then count the number of images where the predicted bounding box overlaps with ground truth box $B$ with $IoU \ge \delta$, and average the count over the number of images. This gives a box accuracy score between $0$ and $1$. For datasets with images where more than one ground truth bounding box is provided, e.g. ImageNet, we count the number of images where box prediction overlaps with at least one of the ground truth bounding boxes with $IoU \ge \delta$. When $\tau$ is 0.5, the metric is commonly-called GT-known localization accuracy. 
+We then count the number of images where the predicted bounding box overlaps with ground truth box $B$ with $IoU \ge \delta$, and average the count over the number of images. This gives a box accuracy score between $0$ and $1$. For datasets with images where more than one ground truth bounding box is provided, e.g. ImageNet, we count the number of images where box prediction overlaps with at least one of the ground truth bounding boxes with $IoU \ge \delta$. When $\delta$ is 0.5, the metric is commonly-called GT-known localization accuracy. 
 
 For score map threshold independence, the box accuracy is reported at the optimal threshold $\tau$, i.e., the \textbf{maximal box accuracy}:
 \begin{equation}
@@ -593,7 +593,7 @@ Based on the formulated intuition, we propose an iterative localization method w
 \end{enumerate}
 
 \section{Implementation references}
-We based our evaluation method on existing implementations and extended them to implement \acrlong{mwsol}. The software implementations we enhanced is listed here for reference:
+We based our evaluation method on existing implementations and extended them to implement \acrlong{mwsol}. The software implementations we enhanced are listed here for reference:
 \begin{itemize}
     \item CAM \cite{code:CAM}: The baseline CAM method.
     \item MinMaxCAM \cite{code:MinMaxCAM}: The MinMaxCAM training algorithm.
