@@ -182,6 +182,19 @@ Another important observation is that Score-CAM is the best performing localizat
     \end{center}
 \end{figure}
 
+To prove our indication that Grad-CAM++ activates on larger areas, we measured the the number of activated pixels and the average pixel value of each score map computed using the CAM-based methods for VGG16 on the synthetic datasets. We then averaged all pixel activation counts and call this metric the average pixel activations in the score map. We also computed the average of score map average pixel values for the dataset and call this metric the average energy for the score maps. Both average pixel count and average energy enable us to compare the mean of  activated areas in the score map for the different CAM-based methods.
+
+Fig. \ref{fig:vgg16_base_pixel_energy} illustrated the average pixel activation counts and the average pixel energy in the score maps for each dataset. We clearly observer that Grad-CAM++ has the highest number of activated pixels and the highest average pixel value, backing our assumption that Grad-CAM++ activates on larger areas, which is impacting precision and recall.
+
+\begin{figure}[h]
+    \begin{center}       
+    \includegraphics[width=0.95\textwidth]{fig_vgg16_base_pixel_energy.png}
+    \caption[Average pixel activations and energy for CAM-based methods in VGG16]{Average pixel activations and energy for CAM-based methods in VGG16.}
+    \caption*{Source: Author}
+    \label{fig:vgg16_base_pixel_energy}
+    \end{center}
+\end{figure}
+
 Finally, we see a similar trend in pair-wise discrepancies between b-variant and t-variant datasets having the same number of object instances as observed for the VGG16-GAP network.  
 
 \subsubsection{ResNet-50}
@@ -207,7 +220,7 @@ Score-CAM & \color{purple} \bfseries \underline{79.00} & \color{teal} \bfseries 
 \label{tab:maxboxaccv3_recall_resnet50_synthetic}
 \end{table}
 
-\begin{table}[H]
+\begin{table}[h]
 \centering
 \begin{tabular}{lrrrrrrrr}
 \toprule
@@ -227,7 +240,7 @@ Score-CAM & \color{purple} \bfseries \underline{68.87} & \color{teal} \bfseries 
 \label{tab:maxboxaccv3_precision_resnet50_synthetic}
 \end{table}
 
-\begin{table}[h]
+\begin{table}[H]
 \centering
 \begin{tabular}{lrrrrrrrr}
 \toprule
@@ -414,7 +427,7 @@ Classification score drop threshold & 0.25, 0.5, 1.0 \\
     \end{itemize}
 \end{itemize}
 
-\subsection{Evaluation for ResNet-50 on synthetic datasets}
+\subsection{Evaluation for ResNet-50 on synthetic datasets} \label{sec:exp_iter_resnet50_syn}
 Here we evaluate the results of the iterative localization for the ResNet-50 network on the synthetic test datasets. We only evaluate datasets that have images with a background to analyze the effect of using different bounding box mask strategies. The localization methods used are CAM, Grad-CAM++, Score-CAM and MinMaxCAM. The former three methods are evaluated on a model trained without regularization while the latter is evaluated on a model trained with MinMaxCAM regularization. Fig. \ref{fig:prec_iter_resnet50_syn_d1b} illustrates localization results for the d1b dataset.
 
 \begin{figure}[h]

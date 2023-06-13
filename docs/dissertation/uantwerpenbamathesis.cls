@@ -212,6 +212,31 @@
 \newcommand*{\@companylogo}{}
 \newcommand*{\companylogo}[1]{\renewcommand*{\@companylogo}{#1}}
 \ExplSyntaxOn
+\seq_new:N \g__uantwerpendocs_promotors
+\seq_new:N \g__uantwerpendocs_promotorswithaffiliation
+\cs_new:Nn \__uantwerpendocs_addpromotor:nn {
+  \seq_gpush:Nn \g__uantwerpendocs_promotors { #1 }
+  \seq_gpush:Nn \g__uantwerpendocs_promotorswithaffiliation { #1,~#2 }
+}
+\NewDocumentCommand{\promotor}{mm}{
+  \__uantwerpendocs_addpromotor:nn { #1 } { #2 }
+}
+\NewDocumentCommand{\jointpromotors}{mm}{
+  \seq_use:Nnnn \g__uantwerpendocs_promotors { #2 } { #1 } { #2 }
+}
+\NewDocumentCommand{\jointpromotorswithaffiliation}{mm}{
+  \seq_use:Nnnn \g__uantwerpendocs_promotorswithaffiliation { #2 } { #1 } { #2 }
+}
+\NewDocumentCommand{\promotorsname}{m}{
+  \if_int_compare:w \seq_count:N \g__uantwerpendocs_promotors > 2
+  \uantwerpendocsprop{promotorsname} #1
+  \else:
+  \if_int_compare:w \seq_count:N \g__uantwerpendocs_promotors = 2
+  \uantwerpendocsprop{promotorname} #1
+  \else:
+  \fi:
+  \fi:
+}
 \seq_new:N \g__uantwerpendocs_supervisors
 \seq_new:N \g__uantwerpendocs_supervisorswithaffiliation
 \cs_new:Nn \__uantwerpendocs_addsupervisor:nn {
@@ -288,6 +313,10 @@
   \fi:
 }
 \AtBeginDocument{
+  \seq_gpush:Nn \g__uantwerpendocs_promotors {}
+  \seq_greverse:N \g__uantwerpendocs_promotors
+  \seq_gpush:Nn \g__uantwerpendocs_promotorswithaffiliation {}
+  \seq_greverse:N \g__uantwerpendocs_promotorswithaffiliation
   \seq_gpush:Nn \g__uantwerpendocs_supervisors {}
   \seq_greverse:N \g__uantwerpendocs_supervisors
   \seq_gpush:Nn \g__uantwerpendocs_supervisorswithaffiliation {}
@@ -423,7 +452,9 @@
           [anchor=west,align=left,
           text width={\paperwidth-5.1cm},font=\normalsize]
           at (3.5cm,7.5cm)
-          {\supervisorsname{\\}
+          {\promotorsname{\\}
+            \textbf{\jointpromotorswithaffiliation{\\}{~\\~\\}}%
+            \supervisorsname{\\}
             \textbf{\jointsupervisorswithaffiliation{\\}{~\\~\\}}%
             \cosupervisorsname{\\}
             \textbf{\jointcosupervisorswithaffiliation{\\}{~\\~\\}}%

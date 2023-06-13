@@ -60,3 +60,42 @@ For the synthetic datasets with multiple object instances and in the ImageNet da
 The experiments with the large and diverse ImageNet dataset shows that there is quite some room for improving localization recall. However, the current iterative approach stills suffers from substantial loss in precision. Precision for the iterative approach is bad because of the bias in ImageNet to images with single object instance. We expect the results to be more in line with other experiments for synthetic dataset if the iterative localization would be done on the ImageNet dataset split by object instance count. We see this as future work.
 
 In our current iterative localization approach, we use bounding boxes predicted in previous iterations as image masks to predict new boxes. As future work it would be interesting to evaluate using the more fine-grained score map as an image mask for improving precision.
+
+\subsection{IoU threshold for merge strategy}
+The merge strategy 'drop' or 'unify' is applied only if newly found bounding boxes sufficiently overlap with bounding boxes found during previous iterations. We use a merge threshold parameter to determine whether bounding boxes overlap sufficiently. For our iterative localization experiments, the parameter value was fixed to 20\%. This may not be the optimal value for each merge strategy. To assess the impact of this parameter on localization results, we have run the experiment from section \ref{sec:exp_iter_resnet50_syn} for the CAM method only, using different values for the IoU threshold parameter. The results are illustrated in Fig. \ref{fig:prec_iter_resnet50_syn_iou_d1b}, Fig. \ref{fig:prec_iter_resnet50_syn_iou_d2b}, Fig. \ref{fig:prec_iter_resnet50_syn_iou_d3b} and Fig. \ref{fig:prec_iter_resnet50_syn_iou_d4b} for the respective synthetic datasets d1b, d2b, d3b and d4b. We observe that the higher the IoU threshold is, the more precision and recall for the 'drop' and 'unify' strategy, moves towards the 'add' strategy, i.e., recall becomes better at the cost of precision. Intuitively, the higher the overlap threshold, the more the 'drop' strategy and the 'unify' strategy will behave as the 'add' strategy, because there's a higher probability that bounding boxes will not overlap. In the latter case, the 'stop' and 'unify' strategy will default to the 'add' strategy, as we defined in chapter \ref{ch:methodology}.
+
+\begin{figure}[h]
+    \begin{center}       
+    \includegraphics[width=0.99\textwidth]{fig_iter_resnet50_syn_iou_d1b.png}
+    \caption[Iterative localization by IoU threshold for ResNet-50 on synthetic dataset d1b]{Iterative localization by IoU threshold for ResNet-50 on synthetic dataset d1b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
+    \caption*{Source: Author}
+    \label{fig:prec_iter_resnet50_syn_iou_d1b}
+    \end{center}
+\end{figure}
+
+\begin{figure}[h]
+    \begin{center}       
+    \includegraphics[width=0.99\textwidth]{fig_iter_resnet50_syn_iou_d2b.png}
+    \caption[Iterative localization by IoU threshold for ResNet-50 on synthetic dataset d2b]{Iterative localization by IoU threshold for ResNet-50 on synthetic dataset d2b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
+    \caption*{Source: Author}
+    \label{fig:prec_iter_resnet50_syn_iou_d2b}
+    \end{center}
+\end{figure}
+
+\begin{figure}[h]
+    \begin{center}       
+    \includegraphics[width=0.99\textwidth]{fig_iter_resnet50_syn_iou_d3b.png}
+    \caption[Iterative localization by IoU threshold for ResNet-50 on synthetic dataset d3b]{Iterative localization by IoU threshold for ResNet-50 on synthetic dataset d3b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
+    \caption*{Source: Author}
+    \label{fig:prec_iter_resnet50_syn_iou_d3b}
+    \end{center}
+\end{figure}
+
+\begin{figure}[h]
+    \begin{center}       
+    \includegraphics[width=0.99\textwidth]{fig_iter_resnet50_syn_iou_d4b.png}
+    \caption[Iterative localization by IoU threshold for ResNet-50 on synthetic dataset d4b]{Iterative localization by IoU threshold for ResNet-50 on synthetic dataset d4b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
+    \caption*{Source: Author}
+    \label{fig:prec_iter_resnet50_syn_iou_d4b}
+    \end{center}
+\end{figure}

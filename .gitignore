@@ -16,6 +16,7 @@ models/
 models_v0/
 models_v1/
 notebook/mlruns/
+notebook/fig*
 other/
 pytorch/
 scratch/
