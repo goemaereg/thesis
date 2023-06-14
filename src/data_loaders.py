@@ -174,7 +174,8 @@ def get_image_sizes(metadata):
 
 class WSOLImageLabelDataset(Dataset):
     def __init__(self, data_root, metadata_root, transform, normalize, proxy, num_sample_per_class=0,
-                 bboxes_path=None, bbox_mask_strategy=None, filter_instances=0):
+                 bboxes_path=None, bbox_mask_strategy=None, mask_method=None,
+                 scoremap_lmdb_path=None, filter_instances=0):
         self.data_root = data_root
         self.metadata = configure_metadata(metadata_root)
         self.transform = transform
@@ -184,6 +185,7 @@ class WSOLImageLabelDataset(Dataset):
         self.num_sample_per_class = num_sample_per_class
         self._adjust_samples_per_class()
         self.bbox_mask_strategy = bbox_mask_strategy
+        self.mask_method = mask_method
         self.computed_bboxes = {}
         mean_std = _CAT_IMAGE_MEAN_STD[metadata_root]
         self.dataset_mean = mean_std['mean']
@@ -204,6 +206,19 @@ class WSOLImageLabelDataset(Dataset):
                 image_labels[image_id] = self.image_labels[image_id]
             self.image_ids = image_ids
             self.image_labels = image_labels
+        self.scoremap_lmdb_path = scoremap_lmdb_path
+        if scoremap_lmdb_path is not None:
+            self.scoremap_db = lmdb.open(self.scoremap_lmdb_path, subdir=os.path.isdir(self.scoremap_lmdb_path),
+                                         map_size=34359738368, # map_size 32 GB
+                                         readonly=True, lock=False,
+                                         readahead=False, meminit=False)
+        else:
+            self.scoremap_db = None
+
+    # Deleting (Calling destructor)
+    def __del__(self):
+        if self.scoremap_db is not None:
+            self.scoremap_db.close()
 
     def _adjust_samples_per_class(self):
         if self.num_sample_per_class == 0:
@@ -228,12 +243,7 @@ class WSOLImageLabelDataset(Dataset):
         self.image_ids = new_image_ids
         self.image_labels = new_image_labels
 
-    def __getitem__(self, idx):
-        image_id = self.image_ids[idx]
-        image_label = self.image_labels[image_id]
-        image = Image.open(os.path.join(self.data_root, image_id))
-        image = image.convert('RGB')
-        image = self.transform(image)
+    def mask_image_with_bboxes(self, image, image_id):
         # image masking strategy for iterative bounding box extraction
         if self.bbox_mask_strategy is not None and image_id in self.computed_bboxes:
             bboxes = self.computed_bboxes[image_id]
@@ -243,23 +253,68 @@ class WSOLImageLabelDataset(Dataset):
                 w = x1 - x0
                 h = y1 - y0
                 i, j = y0, x0
-                v = image[..., i:i+h, j:j+w]
+                v = image[..., i:i + h, j:j + w]
                 if self.bbox_mask_strategy == 'zero':
                     # Erasing by filling black values. Has to be done before normalization.
                     v = torch.zeros(*v.shape)
                 elif self.bbox_mask_strategy == 'mean':
                     # fill with image mean value
-                    image_mean = torch.mean(image, dim=(1,2), keepdim=True)
-                    v = torch.tile(image_mean, dims=(1,h,w))
+                    image_mean = torch.mean(image, dim=(1, 2), keepdim=True)
+                    v = torch.tile(image_mean, dims=(1, h, w))
                 elif self.bbox_mask_strategy == 'random':
                     # fill with random value from dataset (mean, std) before normalization
                     # first sample from standard normal distribution (mean=0, std=1)
                     v = torch.rand(*v.shape)
                     # Then scale to dataset distribution with (mean=<dataset.mean>, std=<dataset.std>)
                     for c in range(self.num_channels):
-                        v[c,:,:] = self.dataset_std[c] * v[c,:,:] + self.dataset_mean[c]
+                        v[c, :, :] = self.dataset_std[c] * v[c, :, :] + self.dataset_mean[c]
                     # after this step, normalization will transform to standard normal distribution
-                image[..., i:i+h, j:j+w] = v
+                image[..., i:i + h, j:j + w] = v
+        return image
+
+    def mask_image_with_scoremap(self, image, image_id):
+        if self.bbox_mask_strategy is None:
+            return image
+        # get score map
+        with self.scoremap_db.begin(write=False) as txn:
+            key = u'{}'.format(image_id).encode('ascii')
+            raw = txn.get(key)
+            cam = pickle.loads(raw)
+        # mask image with score map: image x (1 - scoremap) (element-wise product)
+        cam_threshold = np.mean(cam)
+        mask = torch.tile(torch.tensor(cam, dtype=image.dtype) > cam_threshold, dims=(image.shape[0], 1, 1))
+        v = image
+        if self.bbox_mask_strategy == 'zero':
+            v = torch.zeros(*v.shape)
+        elif self.bbox_mask_strategy == 'mean':
+            # fill with image mean value
+            image_mean = torch.mean(image, dim=(1, 2), keepdim=True)
+            v = torch.tile(image_mean, dims=(1, *v.shape[1:]))
+        else:
+            # fill with random value from dataset (mean, std) before normalization
+            # first sample from standard normal distribution (mean=0, std=1)
+            v = torch.rand(*v.shape)
+            # Then scale to dataset distribution with (mean=<dataset.mean>, std=<dataset.std>)
+            for c in range(self.num_channels):
+                v[c, :, :] = self.dataset_std[c] * v[c, :, :] + self.dataset_mean[c]
+            # after this step, normalization will transform to standard normal distribution
+        image[mask] = v[mask]
+        # image = image * (1.0 - torch.tensor(cam, dtype=image.dtype))
+        return image
+
+    def __getitem__(self, idx):
+        image_id = self.image_ids[idx]
+        image_label = self.image_labels[image_id]
+        image = Image.open(os.path.join(self.data_root, image_id))
+        image = image.convert('RGB')
+        image = self.transform(image)
+        # image masking strategy for iterative bounding box extraction
+        if self.mask_method is not None:
+            if self.mask_method == 'bbox':
+                image = self.mask_image_with_bboxes(image, image_id)
+            elif self.mask_method == 'cam':
+                image = self.mask_image_with_scoremap(image, image_id)
+        # normalize image
         image = self.normalize(image)
         return image, image_label, image_id
 
@@ -419,9 +474,15 @@ class CamLmdbDataset(Dataset):
         self.length = len(image_ids)
         self.db = None
 
+    # Deleting (Calling destructor)
+    def __del__(self):
+        if self.db is not None:
+            self.db.close()
+
     def __getitem__(self, index):
         if self.db is None:
             self.db = lmdb.open(self.lmdb_path, subdir=os.path.isdir(self.lmdb_path),
+                                map_size=34359738368,  # map_size 32 GB
                                 readonly=True, lock=False,
                                 readahead=False, meminit=False)
         with self.db.begin(write=False) as txn:
@@ -433,7 +494,6 @@ class CamLmdbDataset(Dataset):
 
     def __len__(self):
         return self.length
-
 
 def get_cam_loader(scoremap_path, split):
     return DataLoader(
@@ -454,7 +514,8 @@ def get_cam_lmdb_loader(scoremap_root, image_ids, split):
 
 
 def get_eval_loader(split, data_root, metadata_root, batch_size, workers,
-                    resize_size, bboxes_path=None, bbox_mask_strategy=None, filter_instances=0):
+                    resize_size, bboxes_path=None, bbox_mask_strategy=None, mask_method=None,
+                    scoremap_lmdb_path=None, filter_instances=0):
     metadata_root_split = os.path.join(metadata_root, split)
     mean_std = _CAT_IMAGE_MEAN_STD[metadata_root_split]
     mean = mean_std['mean']
@@ -471,6 +532,8 @@ def get_eval_loader(split, data_root, metadata_root, batch_size, workers,
         proxy=False,
         bboxes_path=bboxes_path,
         bbox_mask_strategy=bbox_mask_strategy,
+        mask_method=mask_method,
+        scoremap_lmdb_path=scoremap_lmdb_path,
         filter_instances=filter_instances)
     return DataLoader(dataset, batch_size=batch_size, num_workers=workers)
 

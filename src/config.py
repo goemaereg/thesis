@@ -47,6 +47,8 @@ _BBOX_MERGE_STRATEGY = ('add', 'drop', 'unify')
 _BBOX_MERGE_DEFAULT = 'add'
 _BBOX_MASK_STRATEGY = ('zero', 'mean', 'random')
 _BBOX_MASK_DEFAULT = 'zero'
+_MASK_METHOD = ('bbox', 'cam')
+_MASK_METHOD_DEFAULT = 'bbox'
 
 def mch(**kwargs):
     return munch.Munch(dict(**kwargs))
@@ -233,6 +235,8 @@ def configure_parse(load_config=True):
     parser.add_argument('--bbox_merge_iou_threshold', type=float, default=0.2, help='Merge bounding boxes that exceed IOU threshold')
     parser.add_argument('--bbox_mask_strategy', default=_BBOX_MASK_DEFAULT,
                         choices=_BBOX_MASK_STRATEGY, help='Mask strategy for finding additional bounding boxes.')
+    parser.add_argument('--mask_method', default=_MASK_METHOD_DEFAULT,
+                        choices=_MASK_METHOD, help='Image mask method for iterative localization.')
     # Common hyperparameters
     parser.add_argument('--batch_size', default=64, type=int,
                         help='Mini-batch size (default: 64), this is the total'

@@ -6,7 +6,7 @@ We evaluate the five \acrshort{wsol} methods that are described in detail in sec
 The localization methods are evaluated for the mentioned networks on the synthetic datasets and on the ImageNet dataset. For the VGG16-GAP network and the ResNet-50 network, we trained two models per network on the datasets: One without regularization and one with MinMaxCAM regularization. The localization methods CAM, Grad-CAM++ and Score-CAM are evaluated on both models. For the VGG16 network we only train one model without regularization per synthetic dataset as MinMaxCAM is not compatible with this network. 
 
 \subsection{Synthetic datasets}
-We evaluate the \acrshort{cam} family of localization methods on the synthetic datasets listed in Table \ref{tab:synthetic_datasets}, using the MaxBoxAccV3 precision and recall metrics, and the PxAP metric. In following sections, results for VGG16-GAP, VGG16 and ResNet-50 architectures are discussed.
+We evaluate the \acrshort{cam}-based family of localization methods on the synthetic datasets listed in Table \ref{tab:synthetic_datasets}, using the MaxBoxAccV3 precision and recall metrics, and the PxAP metric. In following sections, results for VGG16-GAP, VGG16 and ResNet-50 architectures are discussed.
 
 \subsubsection{VGG16-GAP}
 The localization results using the multiple-instance \acrshort{wsol} metrics MaxBoxAccV3 recall and precision are shown in Table \ref{tab:maxboxaccv3_recall_vgg16_gap_synthetic} and Table \ref{tab:maxboxaccv3_precision_vgg16_gap_synthetic}. The pixel average precision results are illustrated in Table \ref{tab:pxap_vgg16_gap_synthetic}. 
@@ -81,9 +81,9 @@ From the results in Tables \ref{tab:maxboxaccv3_recall_vgg16_gap_synthetic}, \re
 
 \textbf{Score-CAM localization metrics for multi-instance datasets} are higher than metrics of other methods, with the exception for the PxAP metric where Grad-CAM++ performs better for the 2-instance dataset variants. The promising results for multi-target visualization observed by Wang \textit{et al.} \cite{wang2020score}, seem to hold in our quantitative evaluation. 
 
-\textbf{Models without regularization and with MinMaxCAM regularization} follow the same multi-instance localization performance trend for precision and recall. This indicates that localization methods are applicable for models both with and without regularization.
+\textbf{Models without regularization and with MinMaxCAM regularization} evaluated with the CAM-based localization methods, show the same multi-instance localization performance trend for precision and recall. This means that the localization methods performing well in non-regularized models, also perform well in MinMaxCAM-regularized models.
 
-\textbf{Discrepancy between datasets having the same number of object instances but different variant.} When we pairwise compare datasets with the same number of object instances, we see that in most cases, the b variant (with background) shows better MaxBoxAccV3 recall than the t variant (without background). The exception is the 4-instance dataset variants for the model trained without regularization.
+\textbf{Discrepancy between datasets having the same number of object instances but different variant.} When we pairwise compare datasets with the same number of object instances, we see that in most cases, the b-variant (with background) shows better MaxBoxAccV3 recall than the t-variant (without background). The exception is the 4-instance dataset variants for the model trained without regularization.
 
 The discrepancies can be explained by comparing the training classification and localization accuracy. Fig. \ref{fig:loc_vs_acc_vgg16_gap_cam_synthetic}  illustrates these metrics for CAM MaxBoxAccV3 recall on the VGG16-GAP network trained without MinMaxCAM regularization. Pair-wise comparison of MaxBoxAccV3 recall for datasets with same number of object instances, indicates that datasets having images with background show higher recall, except for d4b and d4t. Here we can see that localization recall for d4b decreases towards the later training epochs.
 
@@ -296,7 +296,7 @@ MaxBoxAccV3 recall for Score-CAM is about 2 percentage points lower than CAM and
 
 The multi-instance localization metrics are determined predominantly by single-instance images in the ImageNet validation dataset as they represent the majority of images (Fig. \ref{fig:imagenet_instance_distribution}). Therefore, it is interesting to split up the ImageNet validation dataset according to the number of object instances in images to evaluate localization performance in function of the number of object instances. We have evaluated these separate ImageNet datasets for the ResNet-50 network (section \ref{sec:exp_resnet50_imagenet}).
 
-Due to time constraints, we haven't trained a MinMaxCAM-regularized model for the VGG16-GAP network on ImageNet.
+Due to time constraints, we were unable to train a MinMaxCAM-regularized model for the VGG16-GAP network on ImageNet.
 
 \subsubsection{ResNet-50} \label{sec:exp_resnet50_imagenet}
 

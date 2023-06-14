@@ -19,6 +19,7 @@ notebook/mlruns/
 notebook/fig*
 other/
 pytorch/
+review/
 scratch/
 synthetic/checkpoint/
 train_log

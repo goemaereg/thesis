@@ -3,10 +3,10 @@
 In this chapter, our \acrshort{wsol} evaluation methodology is explained in detail. We specify the different networks and datasets used to train models and evaluate localization methods. Then, we explain how training of the models is done. Following, the localization in general and specifically for each localization method is discussed in detail. Finally we define how we aim to improve localization of multiple object instances for the \acrshort{wsol} task.
 
 \section{Networks}
-The \acrshort{cam}-based \acrshort{wsol} methods require a \acrshort{cnn} model to classify images and localize objects in those images. We use the VGG16 and ResNet-50 networks to train models for evaluating localization. The VGG16 and a variant with \acrshort{gap} layer, are used in a many papers \cite{zhou2016cvpr, selvaraju2017grad, chattopadhyay2017grad, wang2020score, wang2021minmaxcam} of the \acrshort{cam} family of methods. It is therefore a good reference for benchmarking \acrshort{wsol}. ResNet-50 is more recent than VGG16 and is used for experiments with MinMaxCAM by Wang, Kaili \textit{et al.} \cite{wang2021minmaxcam}.
+The \acrshort{cam}-based \acrshort{wsol} methods require a \acrshort{cnn} model to classify images and localize objects in those images. We use the VGG16 and ResNet-50 networks to train models for evaluating localization. The VGG16 and a variant with \acrshort{gap} layer, are used in a many papers \cite{zhou2016cvpr, selvaraju2017grad, chattopadhyay2017grad, wang2020score, wang2021minmaxcam} of the \acrshort{cam} family of methods. It is therefore a good reference for benchmarking \acrshort{wsol}. ResNet-50 is more recent than VGG16 and is used for experiments with MinMaxCAM by Wang \textit{et al.} \cite{wang2021minmaxcam}.
 
 \subsection{VGG16}
-VGG16 is a \acrshort{cnn} proposed by K. Simonyan \textit{et al.} \cite{simonyan2014very}. It is one of the most popular models for image classification and it achieves high test accuracy for ImageNet, which is a very large dataset with 1000 different classes.
+VGG16 is a \acrshort{cnn} proposed by Simonyan \textit{et al.} \cite{simonyan2014very}. It is one of the most popular models for image classification and it achieves high test accuracy for ImageNet, which is a very large dataset with 1000 different classes.
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=1.0\textwidth]{fig_vgg16_arch.png}
@@ -145,23 +145,23 @@ As the baseline dataset only contains single object instances, we changed the al
     \item The segmentation masks cover the full object instance region. We don't make a distinction between edge and body of an object.
 \end{itemize}
 
-\subsubsection{Datasets}
+\subsubsection{Dataset variants}
 According to the criteria in previous section, we have 8 different synthetic datasets as defined in Table \ref{tab:synthetic_datasets}. Each dataset has a train, validation and test split of respectively 1000, 200 and 200 images.
-
+We named each dataset as a string starting with the letter 'd', followed by the number of object instances in the images of the dataset, and suffixed with the letter 'b' or 't', marking whether images have a background (b-variant) or transparent background (t-variant).
 \begin{table}[ht]
 \centering
 \begin{tabular}{lrll}
   \toprule
-  Dataset & Instances & Background & Size\\
+  Dataset & Instances & Background & Image size\\
   \cmidrule(lr){1-4}
-  synthetic\_d1b & 1 & yes & 512$\times$512\\
-  synthetic\_d1t & 1 & no & 512$\times$512\\
-  synthetic\_d2b & 2 & yes & 512$\times$512\\
-  synthetic\_d2t & 2 & no & 512$\times$512\\
-  synthetic\_d3b & 3 & yes & 512$\times$512\\
-  synthetic\_d3t & 3 & no & 512$\times$512\\
-  synthetic\_d4b & 4 & yes & 512$\times$512\\
-  synthetic\_d4t & 4 & no & 512$\times$512\\
+  d1b & 1 & yes & 512$\times$512\\
+  d1t & 1 & no & 512$\times$512\\
+  d2b & 2 & yes & 512$\times$512\\
+  d2t & 2 & no & 512$\times$512\\
+  d3b & 3 & yes & 512$\times$512\\
+  d3t & 3 & no & 512$\times$512\\
+  d4b & 4 & yes & 512$\times$512\\
+  d4t & 4 & no & 512$\times$512\\
   \bottomrule
 \end{tabular}
 \caption[Synthetic datasets]{Synthetic datasets.}
@@ -230,7 +230,7 @@ We use stochastic gradient descent for optimization of the loss function. We sto
 To localize object instances in images, we will benchmark a set of \acrshort{cam}-based localization methods on models trained for classification on the synthetic and ImageNet datasets. The general process for localization is the same for all \acrshort{cam}-based methods. For each image of the validation or test dataset, following steps are performed:
 \begin{enumerate}
     \item The neural network takes an image as input and returns a class prediction score.
-    \item A score map is computed as a weighted combination of the feature maps in the final convolutional layer of the \acrshort{nn}. These weights are related to the ground truth class of the image, and the method to compute the weights is specific to the \acrshort{cam} method.
+    \item A score map is computed as a weighted combination of the feature maps in the final convolutional layer of the \acrshort{nn}. Following Choe \textit{et al.} \cite{choe2020evaluating}, we use the weights that are related to the ground truth class of the image, and the method to compute the weights is specific to the \acrshort{cam}-based method.
     \item The score map is normalized to values between 0 and 1.
     \item The normalized score map is binarized using a score map threshold. We use 100 different thresholds ranging from 0 to 1 with a step of 0.01, yielding 100 binarized score maps.
     \item For each binarized score map, we compute all self-contained contours, and for each of those contours, a bounding box is computed. Bounding boxes are defined as a tuple with four coordinates ($(x_1, y_1, x_2, y_2)$ with $(x_1, y_1)$ the top-left coordinate and $(x_2, y_2)$ the bottom-right coordinate of the bounding box.
@@ -252,9 +252,9 @@ Zhou \textit{et al.} propose a general technique called \acrfull{cam} for \acrsh
     \end{center}
 \end{figure}
 
-We now more formally describe how the score map is computed. Let $f_{k}(x,y)$ be the activation of unit k in the final convolutional layer at spatial location $(x,y)$. Then, for unit k, the result of the \acrshort{gap} layer is:
+We now more formally describe how the score map is computed. Let $f_{k}(x,y)$ be the activation of unit $k$ in the final convolutional layer at spatial location $(x,y)$, and $Z$ the number of pixels in the activation map. Then, for unit $k$, the result of the \acrshort{gap} layer is:
 \begin{equation} \label{eq:cam_gap}
-    F^{k} = \sum_{x,y}f_{k}(x,y)
+    F^{k} = \frac{1}{Z}\sum_{x,y}f_{k}(x,y)
 \end{equation}
 For a given class c, the classification score $Y^{c}$ can be computed as:
 \begin{equation} \label{eq:cam_score}
@@ -263,7 +263,7 @@ For a given class c, the classification score $Y^{c}$ can be computed as:
 Here, $w_{k}^{c}$ is the weight corresponding to class $c$ for unit $k$. It expresses the importance of $F_{k}$ for class $c$.
 When we substitute equation \ref{eq:cam_gap} into \ref{eq:cam_score}, we get:
 \begin{equation} \label{eq:cam_score2}
-    Y^{c} = \sum_{k}w_{k}^{c}\sum_{x,y}f_{k}(x,y) = \sum_{x,y}\sum_{k}w_{k}^{c}f_{k}(x,y)
+    Y^{c} = \sum_{k}w_{k}^{c}\frac{1}{Z}\sum_{x,y}f_{k}(x,y) = \frac{1}{Z}\sum_{x,y}\sum_{k}w_{k}^{c}f_{k}(x,y)
 \end{equation}
 Then the definition of the class activation map for class c for each spatial element is given by:
 \begin{equation} \label{eq:cam_map}
@@ -272,7 +272,29 @@ Then the definition of the class activation map for class c for each spatial ele
 
 The advantage of \acrlong{cam} is that it is able to localize discriminative image regions despite being trained for solving a classification task. In addition, it has low computational complexity as it only needs a single forward pass through the network to obtain the score map.
 
-A disadvantage is that the network only focuses on discriminative regions in an image, which leads to partial localization of objects. Another disadvantage of \acrshort{cam} is that it requires the network to have a \acrshort{gap} layer, requiring modifications in the network architecture. This change in architecture causes a classification performance drop.
+A disadvantage is that CAM's focus on class-discriminative image regions leads to partial localization of objects. The reason is that as we go deeper in the network, the more features focus on class-discriminative regions in an image. Given that CAM computes the class activation map from the activation maps in the final convolutional layer, this map will focus om the most class-discriminative image regions. Fig. \ref{fig:cam_discriminative_localization} illustrates the class-discriminative image regions localized by the CAM method.
+
+\begin{figure}[h]
+    \begin{center}
+    \begin{subfigure}[b]{0.4\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{images/fig_ILSVRC2012_val_00000003.JPEG}
+         \caption{Original image from ILSVRC.}
+         \label{fig:ILSVRC2012_val_00000003}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.4\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{images/fig_ILSVRC2012_val_00000003_cam_0.png}
+         \caption{CAM for the image from ILSVRC.}
+         \label{fig:ILSVRC2012_val_00000003_cam}
+    \end{subfigure}
+    \caption[The CAM of an image from ILSVRC \cite{russakovsky2015imagenet}]{The CAM of image from ILSVRC \cite{russakovsky2015imagenet}. The map (b) highlights in the image (a) the discriminative regions used for image classification.}
+    \caption*{Source: Author}
+    \label{fig:cam_discriminative_localization}
+    \end{center}
+\end{figure}
+
+Another disadvantage of \acrshort{cam} is that it requires the network to have a \acrshort{gap} layer, requiring modifications in the network architecture. This change in architecture causes a classification performance drop.
 
 \subsection{Grad-CAM}
 Selvaraju \textit{et al.} \cite{selvaraju2017grad} propose a technique called \acrfull{gradcam}. This approach uses the gradients of a class score, flowing into 
@@ -538,9 +560,9 @@ Given a dataset with N images and ground truth boxes B, the box accuracy at scor
 \end{equation}
 where $box(s(X^{(n)}))$ is the tightest bounding box around the largest-area connected component in the score map \{$(i,j)\text{ }|\text{ }s(X^{(n)}_{ij}) \ge \tau$\}. The amount of overlapping between the predicted bounding box and ground truth bounding box expresses how accurate the localization method is. The overlapping is computed as the proportion of area of the boxes that overlap versus the total area of both boxes. The \acrfull{iou} metric captures this overlap and is illustrated in Fig. \ref{fig:iou}. This metric is also used frequently in object detection challenges such as the Pascal VOC challenge \cite{everingham2009pascal}. The \acrshort{iou} produces a number between $0$ and $1$. The closer \acrshort{iou} is to 1, the better the localization is. We will use an \acrshort{iou} threshold $\delta$ to assess whether the amount of overlap is sufficient to consider the localization a true positive match.
 
-We then count the number of images where the predicted bounding box overlaps with ground truth box $B$ with $IoU \ge \delta$, and average the count over the number of images. This gives a box accuracy score between $0$ and $1$. For datasets with images where more than one ground truth bounding box is provided, e.g. ImageNet, we count the number of images where box prediction overlaps with at least one of the ground truth bounding boxes with $IoU \ge \delta$. When $\delta$ is 0.5, the metric is commonly-called GT-known localization accuracy. 
+We then count the number of images where the predicted bounding box overlaps with ground truth box $B$ with $IoU \ge \delta$, and average the count over the number of images. This gives a box accuracy score between $0$ and $1$. For datasets with images where more than one ground truth bounding box is provided, e.g. ImageNet, we count the number of images where box prediction overlaps with at least one of the ground truth bounding boxes with $IoU \ge \delta$. When the previous condition holds for $\delta = 0.5$, the metric is commonly-called GT-known localization accuracy.
 
-For score map threshold independence, the box accuracy is reported at the optimal threshold $\tau$, i.e., the \textbf{maximal box accuracy}:
+For score map threshold independence, the box accuracy is reported at the optimal score map threshold $\tau$, i.e., the \textbf{maximal box accuracy}:
 \begin{equation}
     MaxBoxAcc(\tau) := max_{\tau} BoxAcc(\tau,\delta)
 \end{equation}
