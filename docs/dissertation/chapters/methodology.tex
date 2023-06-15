@@ -604,15 +604,32 @@ Pixel-wise precision in Equation \ref{eq:pxprec} computes the proportion of the 
 This metric is the area under the curve of the pixel precision-recall curve. As the metric measure localization at pixel level, it can be used to evaluate multiple-instance localization, and therefore the third localization criterion is met.
 
 \section{Localization improvement} \label{sec:method_localization_improvement}
-A challenge of using a single operational threshold for masking the score map and during localization, is that not all object instances in an image may be of similar intensity. An intuition is that as the \acrshort{wsol} task is trained for classification, it will activate on the most discriminative parts of the image that are related to the targeted class. Some object instances may  have more outspoken features that activate during inference. For classification to be accurate, it's not necessary for the network to activate equally strong on all object instances.
+A challenge of using a single operational threshold for masking the score map during localization, is that not all object instances in an image may be of similar intensity. An intuition is that as the \acrshort{wsol} task is trained for classification, it will activate on the most discriminative parts of the image that are related to the targeted class. Some object instances may  have more outspoken features that activate during inference. For classification to be accurate, it's not necessary for the network to activate equally strong on all object instances.
 
-Based on the formulated intuition, we propose an iterative localization method where we mask previously found object instance locations in the original image and apply the localization method again to find additional object instance locations. The process is as follows:
+Based on the formulated intuition, we propose an iterative localization method where we mask the original image with object instance locations found during previous localization iterations, and apply the localization method again on the masked image to find additional object instance locations. We will use two different methods to compute the image mask, yielding following mask types:
+\begin{itemize}
+\item \textbf{Oracle-based mask} We compute the MaxBoxAccV3 recall, yielding the optimal score map threshold, and use bounding boxes predicted at the optimal score map threshold as mask. As the optimal score map threshold is derived from MaxBoxAccV3, we are using \acrfull{gt} information to compute the mask. This is strictly forbidden for the \acrshort{wsol} task. Therefore, we cannot use this mask type for localization, but rather for providing upper bounds on the performance that could be obtained when iterative localization would be guided by the ground truth. In other words, we can use the \acrshort{gt}-based bounding boxes mask as an oracle.
+\item \textbf{Score map based mask}: We compute the mask by applying a score map threshold to the score map. The score map threshold is the average of all values in the score map. The mask then represents all score map pixels having a value above the average activation value in the score map. As the computation of the score map based mask doesn't depend on ground truth information, we can use it for the \acrshort{wsol} task.
+\end{itemize}
 
-\begin{enumerate}
-    \item In the first iteration, all images of the test dataset are fed to the \acrshort{cam} localization method. Bounding boxes are computed for various score map thresholds. From all these thresholds and bounding boxes, the $MaxBoxAccV3$ metric is computed yielding the optimal score map threshold. The bounding boxes estimated at the optimal threshold are saved.
-    \item In a next iteration, all images of the dataset are masked with bounding boxes extracted during the previous iteration. We test different mask strategies: Mask with zero values, mean image value, random values drawn from the image dataset distribution. The masked images are fed to the \acrshort{cam} localization method to extract bounding boxes and compute the $MaxBoxAccV3$ metric. Newly found bounding boxes are added to boxes found during previous iterations according to a bounding box merge strategy: 'Add' unconditionally adds boxes to the list of boxes from previous iterations. If boxes overlap more than 20\%, 'Drop' removes boxes and 'Merge' unifies the boxes by calculating the box surrounding both boxes. If a box overlaps less than 20\% with an existing box, it is added to the list of boxes. Masked images that cause a drop in classification score that exceeds a predefined threshold, will stop contributing to this iterative process of finding additional object instances. This predefined drop threshold is a parameter that can be tuned.
-    \item The second step is repeated until a predefined number of iterations  has executed.
-\end{enumerate}
+The iterative localization process has following steps in the first iteration:
+\begin{itemize}
+    \item All images of the dataset are fed to the network model, and for each image a score map is computed using a \acrshort{cam}-based method. The score map is then saved for the next iteration.
+    \item Bounding boxes are computed from the score map using various score map thresholds.
+\end{itemize}
+
+A next iteration has following steps:
+\begin{itemize}
+    \item The image mask is either oracle based or score map based. The oracle-based mask is computed using the score map and optimal score map threshold from the previous iteration, while the score map based mask uses only the score map from the previous iteration.
+    \item Each image of the dataset is masked with either its oracle based mask or its score map based mask.
+    \item The masked area of the image is filled with values according to the selected mask strategy, being either zero values, mean image values, or random values drawn from the image dataset distribution.
+    \item The masked images of the dataset are fed to the network model, and for each image a score map is computed using a \acrshort{cam}-based method.
+    \item Bounding boxes are computed from the newly computed score map using various score map thresholds.
+    \item Newly found bounding boxes are merged with bounding boxes found during previous iterations according to the selected bounding box merge strategy: 'Add' unconditionally adds newly found bounding boxes to the list of bounding boxes from previous iterations. If a newly found bounding box overlaps with one of the bounding boxes of previous iterations for more than 20\%, 'Drop' removes that newly found bounding boxes and 'Merge' unifies the newly found bounding box with the overlapping bounding box by calculating the bounding box surrounding both bounding boxes. If a new bounding box overlaps with an existing bounding box for less than 20\%, it is added to the list of bounding boxes.
+    \item Masked images that cause a drop in classification score exceeding a predefined threshold, will stop contributing to this iterative process of finding additional object instances. This predefined drop threshold is a parameter that can be tuned.
+    \item The score map computed in this iteration is merged with the score map of the previous iteration, by taking the maximum values of both score maps. The merged score map is then saved for the next iteration.
+    \item A next iteration is started until a predefined number of iterations has been executed.
+\end{itemize}
 
 \section{Implementation references}
 We based our evaluation method on existing implementations and extended them to implement \acrlong{mwsol}. The software implementations we enhanced are listed here for reference:

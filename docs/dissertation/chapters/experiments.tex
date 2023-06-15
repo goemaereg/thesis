@@ -428,12 +428,18 @@ Classification score drop threshold & 0.25, 0.5, 1.0 \\
 \end{itemize}
 
 \subsection{Evaluation for ResNet-50 on synthetic datasets} \label{sec:exp_iter_resnet50_syn}
-Here we evaluate the results of the iterative localization for the ResNet-50 network on the synthetic test datasets. We only evaluate datasets that have images with a background to analyze the effect of using different bounding box mask strategies. The localization methods used are CAM, Grad-CAM++, Score-CAM and MinMaxCAM. The former three methods are evaluated on a model trained without regularization while the latter is evaluated on a model trained with MinMaxCAM regularization. Fig. \ref{fig:prec_iter_resnet50_syn_d1b} illustrates localization results for the d1b dataset.
+Here we evaluate the results of the iterative localization for the ResNet-50 network on the synthetic test datasets. We only evaluate datasets that have images with a background to analyze the effect of using different bounding box mask strategies. The localization methods used are CAM, Grad-CAM++, Score-CAM and MinMaxCAM. The former three methods are evaluated on a model trained without regularization while the latter is evaluated on a model trained with MinMaxCAM regularization. 
+
+We will evaluate iterative localization done both with oracle based masks and score map based masks, to compare the impact of using both mask techniques on multiple-instance localization performance.
+
+\subsubsection{Oracle-based iterative localization}
+
+As explained in section \ref{sec:method_localization_improvement}, we use the \acrshort{gt}-based bounding boxes mask method as an oracle, i.e. for providing upper bounds on the performance that could be obtained when iterative localization would be guided by the ground truth. Fig. \ref{fig:prec_iter_resnet50_syn_d1b} illustrates localization results for the d1b dataset.
 
 \begin{figure}[h]
     \begin{center}       
     \includegraphics[width=0.99\textwidth]{images/fig_iter_resnet50_syn_d1b.png}
-    \caption[Iterative localization performance for ResNet-50 on synthetic dataset d1b]{Iterative localization performance for ResNet-50 on synthetic dataset d1b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
+    \caption[Oracle-based iterative localization performance for ResNet-50 on synthetic dataset d1b]{Oracle-based iterative localization performance for ResNet-50 on synthetic dataset d1b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
     \caption*{Source: Author}
     \label{fig:prec_iter_resnet50_syn_d1b}
     \end{center}
@@ -441,25 +447,23 @@ Here we evaluate the results of the iterative localization for the ResNet-50 net
 
 When comparing with the baseline, we observe that for all methods, recall can be improved by using the 'add' merge strategy and classification score drop threshold 1.0. This threshold actually means that no iteration stop criterion is used. It's easy to see that this threshold has the worst precision for any mask or merge strategy. The 'add' merge strategy improves recall but at the cost of decreased precision, as this strategy causes more false positives. The relatively small gain in recall is to be expected for a dataset with single-instance object images where the baseline already has a high localization performance.
 
-Iterative localization results for the d2b dataset are shown in Fig. \ref{fig:prec_iter_resnet50_syn_d2b}. 
-
 \begin{figure}[h]
     \begin{center}       
     \includegraphics[width=0.99\textwidth]{images/fig_iter_resnet50_syn_d2b.png}
-    \caption[Iterative localization performance for ResNet-50 on synthetic dataset d2b]{Iterative localization performance for ResNet-50 on synthetic dataset d2b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
+    \caption[Oracle-based iterative localization performance for ResNet-50 on synthetic dataset d2b]{Oracle-based iterative localization performance for ResNet-50 on synthetic dataset d2b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
     \caption*{Source: Author}
     \label{fig:prec_iter_resnet50_syn_d2b}
     \end{center}
 \end{figure}
 
-Looking at the upper right quadrant, we can observe that there are iterative approaches that improve both precision and recall for all localization methods except MinMaxCAM. For Grad-CAM++ and Score-CAM, applying the 'unify' merge strategy, combined with 'mean' mask strategy and stop criterion with classification drop threshold of 0.25, provides the best precision and recall improvements compared to the baseline. For CAM, applying the 'drop' merge strategy is the best approach. For MinMaxCAM, any iteration strategy improve recall at the cost of lower precision. 
+Iterative localization results for the d2b dataset are shown in Fig. \ref{fig:prec_iter_resnet50_syn_d2b}. Looking at the upper right quadrant, we can observe that there are iterative approaches that improve both precision and recall for all localization methods except MinMaxCAM. For Grad-CAM++ and Score-CAM, applying the 'unify' merge strategy, combined with 'mean' mask strategy and stop criterion with classification drop threshold of 0.25, provides the best precision and recall improvements compared to the baseline. For CAM, applying the 'drop' merge strategy is the best approach. For MinMaxCAM, any iteration strategy improve recall at the cost of lower precision. 
 
 The highest recall improvement at the cost of precision, is provided by the 'add' merge strategy combined with iteration drop criterion 1.0. The worst precision and recall results are observed for the 'unify' merge strategy with drop criterion 1.0. Intuitively, masking images with bounding boxes found in previous iterations, and unifying newly predicted bounding boxes with overlapping boxes of previous iterations, increases the probability of no longer matching predicted bounding boxes with ground truth boxes, and thus impacting recall.
 
 \begin{figure}[h]
     \begin{center}       
     \includegraphics[width=0.99\textwidth]{images/fig_iter_resnet50_syn_d3b.png}
-    \caption[Iterative localization performance for ResNet-50 on synthetic dataset d3b]{Iterative localization performance for ResNet-50 on synthetic dataset d3b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
+    \caption[Oracle-based iterative localization performance for ResNet-50 on synthetic dataset d3b]{Oracle-based iterative localization performance for ResNet-50 on synthetic dataset d3b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
     \caption*{Source: Author}
     \label{fig:prec_iter_resnet50_syn_d3b}
     \end{center}
@@ -472,20 +476,74 @@ The iterative localization metrics for the d4b dataset are shown in Fig. \ref{fi
 \begin{figure}[h]
     \begin{center}       
     \includegraphics[width=0.99\textwidth]{images/fig_iter_resnet50_syn_d4b.png}
-    \caption[Iterative localization performance for ResNet-50 on synthetic dataset d4b]{Iterative localization performance for ResNet-50 on synthetic dataset d4b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
+    \caption[Oracle-based iterative localization performance for ResNet-50 on synthetic dataset d4b]{Oracle-based iterative localization performance for ResNet-50 on synthetic dataset d4b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
     \caption*{Source: Author}
     \label{fig:prec_iter_resnet50_syn_d4b}
     \end{center}
 \end{figure}
 
+\subsubsection{Score map based iterative localization}
+
+As the score map based mask technique doesn't depend on ground truth information, we can effectively evaluate multiple-instance localization performance for the \acrshort{wsol} task. We do this for the same CAM-based methods, networks and datasets as done for the experiments using GT-based bounding box masking technique. Fig. \ref{fig:prec_iter_mask_cam_resnet50_syn_d1b} illustrates score map based localization results for the d1b dataset.
+
+\begin{figure}[h]
+    \begin{center}       
+    \includegraphics[width=0.99\textwidth]{fig_iter_mask_cam_resnet50_syn_d1b.png}
+    \caption[Score map based iterative localization performance for ResNet-50 on synthetic dataset d1b]{Score map based iterative localization performance for ResNet-50 on synthetic dataset d1b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
+    \caption*{Source: Author}
+    \label{fig:prec_iter_mask_cam_resnet50_syn_d1b}
+    \end{center}
+\end{figure}
+
+We can observe a similar trend when compared to oracle-based iterative localization: For all methods, recall can be improved by using the 'add' merge strategy and classification score drop threshold 1.0. The 'add' merge strategy improves recall but at the cost of decreased precision. However, the recall improvements are smaller for score map iterative localization. Intuitively, the rather coarse score map threshold used to compute the score map based mask may yield localization information that is less accurate than the oracle based mask that is based on ground truth information.
+
+Iterative localization results for the d2b dataset are shown in Fig. \ref{fig:prec_iter_mask_cam_resnet50_syn_d2b}. Where both localization precision and recall could be improved in oracle-based iterative localization, we don't see the same trend for score map based iterative localization. The 'add' merge strategy with iteration drop criterion 1.0 provides the highest recall improvements, albeit marginal, at the cost of decreased precision.
+
+\begin{figure}[h]
+    \begin{center}       
+    \includegraphics[width=0.99\textwidth]{fig_iter_mask_cam_resnet50_syn_d2b.png}
+    \caption[Score map based iterative localization performance for ResNet-50 on synthetic dataset d2b]{Score map based iterative localization performance for ResNet-50 on synthetic dataset d2b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
+    \caption*{Source: Author}
+    \label{fig:prec_iter_mask_cam_resnet50_syn_d2b}
+    \end{center}
+\end{figure}
+
+Fig. \ref{fig:prec_iter_mask_cam_resnet50_syn_d3b} illustrates the iterative localization results for the d3b dataset. We observe that the iterative approach can improve recall at the cost of precision for all localization methods. Applying the 'add' merge strategy and stop criterion threshold of 1.0 gives the highest recall gain, but at the cost of high precision loss. Grad-CAM++ and Score-CAM provide the highest recall for the 'add' merge strategy. This is similar to what we observed for oracle-based iterative localization, albeit that the recall gain for score map based iterative localization is much smaller.
+
+\begin{figure}[h]
+    \begin{center}       
+    \includegraphics[width=0.99\textwidth]{fig_iter_mask_cam_resnet50_syn_d3b.png}
+    \caption[Score map based iterative localization performance for ResNet-50 on synthetic dataset d3b]{Score map based iterative localization performance for ResNet-50 on synthetic dataset d3b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
+    \caption*{Source: Author}
+    \label{fig:prec_iter_mask_cam_resnet50_syn_d3b}
+    \end{center}
+\end{figure}
+
+The iterative localization metrics for the d4b dataset are shown in Fig. \ref{fig:prec_iter_mask_cam_resnet50_syn_d4b}. As for the d3b dataset, recall can be improved at the cost of precision for all localization methods. The 'add' merge strategy with stop threshold 1.0 provides the highest gain in recall at the cost of substantially decreasing precision.
+
+The worst precision and recall results are observed for the 'unify' merge strategy with drop criterion 1.0. This is true for all CAM-based methods on all synthetic datasets, and it's also in line with results observed for oracle-based iterative localization. Similar to the intuition formulated for the oracle based approach, the unifying of predicted bounding boxes with overlapping bounding boxes of previous iterations, increases the probability of no longer matching ground truth bounding boxes, and thus impacting recall.
+
+\begin{figure}[h]
+    \begin{center}       
+    \includegraphics[width=0.99\textwidth]{fig_iter_mask_cam_resnet50_syn_d4b.png}
+    \caption[Score map based iterative localization performance for ResNet-50 on synthetic dataset d4b]{Score map based iterative localization performance for ResNet-50 on synthetic dataset d4b. The cross-hair lines mark the best precision and recall for non-iterative localization.}
+    \caption*{Source: Author}
+    \label{fig:prec_iter_mask_cam_resnet50_syn_d4b}
+    \end{center}
+\end{figure}
+
 \subsection{Evaluation for ResNet-50 on ImageNet dataset}
+
+We evaluate the oracle-based iterative localization for the ImageNet dataset. Due to time constraints, we were unable to evaluate score map based iterative localization on ImageNet.
+
+\subsubsection{Oracle-based iterative localization}
 
 The results of the iterative localization methods for the ResNet-50 network, evaluated on the ImageNet validation dataset, are shown in Fig. \ref{fig:prec_iter_resnet50_imagenet}. The best performing methods are those that are positioned closest to the upper right corner of the plot. Observing the plots for all localization methods, we can see two distinct groups: One group that improves recall at the cost of decreasing precision, and another group that performs worse for both precision and recall when compared to the baseline.
 
 \begin{figure}[h]
     \begin{center}       
     \includegraphics[width=0.99\textwidth]{fig_iter_resnet50_imagenet.png}
-    \caption[Iterative localization performance for ResNet-50 on ImageNet dataset]{Iterative localization performance for ResNet-50 on ImageNet dataset. The cross-hair lines mark the best precision and recall for non-iterative localization.}
+    \caption[Oracle-based iterative localization performance for ResNet-50 on ImageNet dataset]{Oracle-based iterative localization performance for ResNet-50 on ImageNet dataset. The cross-hair lines mark the best precision and recall for non-iterative localization.}
     \caption*{Source: Author}
     \label{fig:prec_iter_resnet50_imagenet}
     \end{center}
