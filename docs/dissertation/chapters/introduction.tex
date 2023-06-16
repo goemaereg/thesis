@@ -5,7 +5,7 @@ As humans, we use cognitive skills to identify and localize objects around us. T
 To explain the \acrfull{mwsol} task, we will position it to the different object recognition tasks that exist. As neural networks are used to learn and perform object recognition tasks, we will discuss the main concepts and terminology required to understand next chapters. Then we briefly explain how computers can learn the object recognition task using those networks. After that, we introduce the concept of \acrlong{wsol} and its relationship with explainability. Finally we briefly look ahead at what is coming in the next chapters.
 
 \section{Object recognition tasks}
-Object recognition is a generic term covering a set of computer vision tasks for identifying objects in digital images. Fig. \ref{fig:object_recognition_tasks} shows the main tasks. From left to right: classification \cite{lecun1998gradient}, localization \cite{zhou2016cvpr}, object detection \cite{girshick2014rich}, instance segmentation \cite{He_2017_ICCV}. Classification aims to identify the main object portrayed in the image, i.e. 'cat'. Localization identifies the main object in the image and its location, indicated as the red bounding box in the figure. Object detection identifies every object and its location: A cat with a red bounding box and a dog with a blue bounding box. Instance segmentation classifies every pixel in an image and identifies the boundaries of objects. In this example the dog is marked with a blue mask and cat with a red mask.
+Object recognition is a generic term covering a set of computer vision tasks for identifying objects in digital images. Figure \ref{fig:object_recognition_tasks} shows the main tasks. From left to right: classification \cite{lecun1998gradient}, localization \cite{zhou2016cvpr}, object detection \cite{girshick2014rich}, instance segmentation \cite{He_2017_ICCV}. Classification aims to identify the main object portrayed in the image, i.e. 'cat'. Localization identifies the main object in the image and its location, indicated as the red bounding box in the figure. Object detection identifies every object and its location: A cat with a red bounding box and a dog with a blue bounding box. Instance segmentation classifies every pixel in an image and identifies the boundaries of objects. In this example the dog is marked with a blue mask and cat with a red mask.
 \begin{figure}[ht]
     \begin{center}
     \includegraphics[width=\textwidth]{fig_object_recognition_tasks.png}
@@ -18,7 +18,7 @@ Object recognition is a generic term covering a set of computer vision tasks for
 \end{figure}
 
 \subsection{Image classification}
-Image classification is a task that assigns a single class label to an image. So, an image classification algorithm takes as input an image with one or more objects and returns a class label prediction. For example, given an image depicting an animal, an image classification model would return one of the labels 'cat', 'dog, 'horse', etc. In the example of Fig. \ref{fig:object_recognition_tasks}, the model returns the class label 'cat'. It's important to notice that this task only recognizes an object of a specific class in an image, i.e. the object category the model is trained to identify. It doesn't return the location of an object within an image.
+Image classification is a task that assigns a single class label to an image. So, an image classification algorithm takes as input an image with one or more objects and returns a class label prediction. For example, given an image depicting an animal, an image classification model would return one of the labels 'cat', 'dog, 'horse', etc. In the example of Figure \ref{fig:object_recognition_tasks}, the model returns the class label 'cat'. It's important to notice that this task only recognizes an object of a specific class in an image, i.e. the object category the model is trained to identify. It doesn't return the location of an object within an image.
 
 \subsection{Object localization}
 it might be good to stress that here we start from the assumption that the object of interest (in the input image) has already being recognize and in this problem we are tasked with predicting its location (bounding box).
@@ -30,7 +30,7 @@ Object detection is the task of identifying and localizing all objects in an ima
 
 \subsection{Instance segmentation}
 Segmentation is a dense pixel-wise prediction task that classifies each pixel in an image. Instance segmentation distinguishes between multiple instances of the same class. Its output can be used for object counting, although it is not the goal of the task.
-Consider an image with a cat and a dog as shown in Fig. \ref{fig:object_recognition_tasks}, then instance segmentation returns a segmentation map for each instance of a dog and a cat.
+Consider an image with a cat and a dog as shown in Figure \ref{fig:object_recognition_tasks}, then instance segmentation returns a segmentation map for each instance of a dog and a cat.
 
 A related dense pixel-wist prediction task is semantic segmentation. This task classifies each pixel of an image, resulting in a segmentation mask per object class. Because of the single segmentation mask per object class, semantic segmentation cannot make the distinction between object instances of the same class.
 
@@ -49,7 +49,7 @@ Figure \ref{fig:neuron} illustrates the different parts of a biological neuron.
 Each neuron acts as a computational unit, accepting input signals from other neurons via the dendrites and outputting signals through the axon terminals. Actions are triggered when a specific combination of neurons are activated.
 
 \subsection{A computational model for an artificial neuron}
-In computer science, we want to build artificial neurons that act as functions taking inputs and producing outputs. The perceptron \cite{rosenblatt1958perceptron, minsky2017perceptrons}, illustrated in Fig. \ref{fig:perceptron}, is the basic building block of a \acrfull{nn}. It takes weighted input values, performs a mathematical calculation and produces output. It is also called a unit or node.
+In computer science, we want to build artificial neurons that act as functions taking inputs and producing outputs. The perceptron \cite{rosenblatt1958perceptron, minsky2017perceptrons}, illustrated in Figure \ref{fig:perceptron}, is the basic building block of a \acrfull{nn}. It takes weighted input values, performs a mathematical calculation and produces output. It is also called a unit or node.
 \begin{figure}[ht]
     \begin{center}
     \includegraphics[width=0.8\textwidth]{fig_perceptron.png}
@@ -68,7 +68,7 @@ A neuron consists of following building blocks:
 As the perceptron output produces either 0 or 1, this model is only capable of binary classification of the input. It divides the input in two classes. To learn the function that can classify input into the correct class, the weights are tuned over time. This process of tuning is called training of the model: We start with some initial value of the weights and those values get updated to minimize the error between the function output and the expected output.
 
 \subsection{A network of neurons}
-The previous model is only capable of binary classification. However, we can perform multi-class classification by extending the network. A \acrfull{nn} is made of several neurons stacked into layers. For an n-dimensional input, the first layer (also called the input layer) will have a number of input nodes and the final output layer will have a number of output neurons. All intermediate layers are called hidden layers. The first layer, the input layer, performs no computation except to pass the input values. For this reason, when counting the number of layers in a \acrshort{nn}, we ignore the input layer. Fig. \ref{fig:neural_network} shows a neural network with 2 hidden layers and a single output neuron. 
+The previous model is only capable of binary classification. However, we can perform multi-class classification by extending the network. A \acrfull{nn} is made of several neurons stacked into layers. For an n-dimensional input, the first layer (also called the input layer) will have a number of input nodes and the final output layer will have a number of output neurons. All intermediate layers are called hidden layers. The first layer, the input layer, performs no computation except to pass the input values. For this reason, when counting the number of layers in a \acrshort{nn}, we ignore the input layer. Figure \ref{fig:neural_network} shows a neural network with 2 hidden layers and a single output neuron. 
 \begin{figure}[ht]
     \begin{center}
     \includegraphics[width=0.8\textwidth]{fig_neural_network.png}
@@ -79,13 +79,13 @@ The previous model is only capable of binary classification. However, we can per
 \end{figure}
 
 For more complex problems, neural networks with more layers are required. The number of layers in a \acrshort{nn} determines the depth of the network. A neural network with many hidden layers is called a \acrfull{dnn}. 
-A \acrfull{mlp} \cite{hornik1989multilayer} is a special case of a \acrshort{nn}. In \acrshort{mlp}, all nodes are densely-connected, i.e. each neuron is connected to all nodes in the previous layer. These layers are also called fully connected layers. The \acrshort{nn} in Fig. \ref{fig:neural_network} is called a \acrshort{mlp} or feed-forward network. Models that are capable of classifying input to more than two classes will have as many outputs as there are classes.
+A \acrfull{mlp} \cite{hornik1989multilayer} is a special case of a \acrshort{nn}. In \acrshort{mlp}, all nodes are densely-connected, i.e. each neuron is connected to all nodes in the previous layer. These layers are also called fully connected layers. The \acrshort{nn} in Figure \ref{fig:neural_network} is called a \acrshort{mlp} or feed-forward network. Models that are capable of classifying input to more than two classes will have as many outputs as there are classes.
 
 \section{Convolutional neural networks}
 There are many different types of neural network architectures, each with their own benefits. A \acrfull{cnn} is used a lot for object recognition tasks because it provides some advantages over feed-forward networks due to the characteristics of visual data.
 
 \subsection{Visual data characteristics}
-The method we use to recognize objects should not be overly concerned with the precise location of the object in the image. Let's take an example of the game “Where’s Waldo in Fig. \ref{fig:where_is_wally} \cite{zhang2021dive}. Despite Waldo's characteristic outfit, it can be difficult to locate him, due to the large number of distractions. However, what Waldo looks like does not depend upon where he is located. 
+The method we use to recognize objects should not be overly concerned with the precise location of the object in the image. Let's take an example of the game “Where’s Waldo in Figure \ref{fig:where_is_wally} \cite{zhang2021dive}. Despite Waldo's characteristic outfit, it can be difficult to locate him, due to the large number of distractions. However, what Waldo looks like does not depend upon where he is located. 
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=0.8\textwidth]{fig_where_is_wally.jpeg}
@@ -105,7 +105,7 @@ Convolutional neural networks are suited for object recognition because they mee
 An \acrshort{mlp} is not suited for computer visual tasks because every neuron is fully-connected to all neurons at the previous layer meaning that every neuron in the early layers looks at the complete image. Hence an \acrshort{mlp} doesn't have the locality and translation invariance properties.
 
 \subsection{The convolution operation}
-Where a neuron in \acrshort{mlp}s is fully-connected to all neurons in the previous layer, neurons in \acrshort{cnn}s are computed using convolutional operations. Fig. \ref{fig:convolution} shows how this operation works for two-dimensional data representation. In this example we have an input image with height and width of 3. The kernel has height and width of 2. The kernel, also called a filter, will slide like a window over the input from left to right and from top to bottom. At each position, the input contained in the window and the kernel are multiplied element wise and the results are summed yielding a single scalar value. This result gives the value of the output at a specific location. Here, the output has a height and width of 2.
+Where a neuron in \acrshort{mlp}s is fully-connected to all neurons in the previous layer, neurons in \acrshort{cnn}s are computed using convolutional operations. Figure \ref{fig:convolution} shows how this operation works for two-dimensional data representation. In this example we have an input image with height and width of 3. The kernel has height and width of 2. The kernel, also called a filter, will slide like a window over the input from left to right and from top to bottom. At each position, the input contained in the window and the kernel are multiplied element wise and the results are summed yielding a single scalar value. This result gives the value of the output at a specific location. Here, the output has a height and width of 2.
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics{fig_convolution.png}
@@ -115,9 +115,9 @@ Where a neuron in \acrshort{mlp}s is fully-connected to all neurons in the previ
     \end{center}
 \end{figure}
 
-The input and output neurons are called features. The output features are the weighted sums (with the weights being the values of the kernel itself) of the input features. The example in Fig. \ref{fig:convolution} shows a convolution for a single-channel input layer. For RGB images, the input would have three channels. In that case the kernel would be 3-dimensional, covering all channels of the input layer. The kernel's values are used to detect certain characteristics of an object, like edges or patterns. Typically, each hidden convolutional layer has multiple channels, and thus also multiple kernels to match the number of hidden layers. For large kernels and many successive layers of convolutions, it's unfeasible to design kernels by hand. The kernel weights will be learned when training a \acrshort{cnn} model with images.
+The input and output neurons are called features. The output features are the weighted sums (with the weights being the values of the kernel itself) of the input features. The example in Figure \ref{fig:convolution} shows a convolution for a single-channel input layer. For RGB images, the input would have three channels. In that case the kernel would be 3-dimensional, covering all channels of the input layer. The kernel's values are used to detect certain characteristics of an object, like edges or patterns. Typically, each hidden convolutional layer has multiple channels, and thus also multiple kernels to match the number of hidden layers. For large kernels and many successive layers of convolutions, it's unfeasible to design kernels by hand. The kernel weights will be learned when training a \acrshort{cnn} model with images.
 
-To understand certain concepts that are used further in the document, we now introduce terminology that is illustrated Fig. \ref{fig:receptive_field}.
+To understand certain concepts that are used further in the document, we now introduce terminology that is illustrated Figure \ref{fig:receptive_field}.
 
 \textbf{Feature map}. A feature map is the output of the convolution operation. When a kernel $K_1$ is applied to an input in a convolutional layer, a feature map $F_1$ is produced. When another kernel $K_2$ is applied to the same input, another feature map $F_2$ is produced. A feature map is also called an \textbf{activation map}.
 
@@ -132,7 +132,7 @@ To understand certain concepts that are used further in the document, we now int
     \end{center}
 \end{figure}
 
-In the example illustrated in Fig. \ref{fig:receptive_field}, the output feature map is a 2-dimensional matrix of shape 46×46. There are 100 feature maps (so 100 kernels were applied to the input image). The receptive field of a neuron is a 3-dimensional sub-region of the image of shape 5×5×3. In this case, the kernel has the same depth as the input image.
+In the example illustrated in Figure \ref{fig:receptive_field}, the output feature map is a 2-dimensional matrix of shape 46×46. There are 100 feature maps (so 100 kernels were applied to the input image). The receptive field of a neuron is a 3-dimensional sub-region of the image of shape 5×5×3. In this case, the kernel has the same depth as the input image.
 
 A we go deeper into a \acrshort{cnn}, the receptive field of neurons increases. This is because the output feature map of a convolutional layer is the input of the next layer. That next layer will produce feature maps in which neurons will cover a larger receptive field because it covers multiple neurons of the previous layer.
 
@@ -148,13 +148,13 @@ To answer the question whether an image is of a certain class, a model should le
     \end{center}
 \end{figure}
 
-Fig. \ref{fig:pooling} shows the concept of pooling. As with the convolutional operation, we can think of a pooling window, starting from the upper-left of the input and sliding across the input from left to right and top to bottom. At each location, pooling computes the maximum or average value of the input in the window, depending on whether maximum or average pooling is employed. In the example of Fig. \ref{fig:pooling}, the $3 \times 3$ image is fed to the $2 \times 2$ pooling layer and the resulting output is a $2 \times 2$ feature map.
+Figure \ref{fig:pooling} shows the concept of pooling. As with the convolutional operation, we can think of a pooling window, starting from the upper-left of the input and sliding across the input from left to right and top to bottom. At each location, pooling computes the maximum or average value of the input in the window, depending on whether maximum or average pooling is employed. In the example of Figure \ref{fig:pooling}, the $3 \times 3$ image is fed to the $2 \times 2$ pooling layer and the resulting output is a $2 \times 2$ feature map.
 
 When the pooling window has the same size as the input, it is called a global pooling layer and the output will be a single neuron. In case an average operation is applied, we refer to this layer as a \textbf{\acrfull{gap}} layer \cite{lin2013network}.
 
 
 \subsection{The network architecture}
-Depending on the task to solve, many different types of \acrshort{cnn} architectures exist, but they all share some basic building blocks. A network architecture used for the image classification task is shown in Fig. \ref{fig:cnn_arch}. There are two major parts in the architecture:
+Depending on the task to solve, many different types of \acrshort{cnn} architectures exist, but they all share some basic building blocks. A network architecture used for the image classification task is shown in Figure \ref{fig:cnn_arch}. There are two major parts in the architecture:
 \begin{itemize}
 \item \textbf{Feature extractor.} This part contains all convolutional layers and is used to detect the features that are relevant for the recognition of the main object portrayed in the input image. These features will serve as input to the classifier.
 \item \textbf{Classifier.} This part of the network has fully-connected layers and takes as input the features from the feature extractor, and produces a   prediction for the class of the input image.
@@ -171,7 +171,7 @@ Depending on the task to solve, many different types of \acrshort{cnn} architect
 \section{Learning the task}
 Assume there's a perfect hypothetical function that can classify images correctly. As we don't know that function, we approximate that function using a neural network model to predict the outcome of that hypothetical function. We train the model using images and class labels to verify whether the predictions made by the model are correct. A loss function will express the error between the predictions and the actual labels, also known as ground truth labels.
 
-A neural network implements the approximated function using many weights, which need to be trained to approximate the hypothetical function as close as possible. The training of these weights is typically done by minimizing the loss function. To minimize that loss function, the gradients of that function with respect to the network weights are computed, to move the loss function towards its minimum by updating the weights with their gradients. This process is called \acrfull{sgd} \cite{amari1993backpropagation}. Fig. \ref{fig:learning} illustrates this process for the loss function $J(w)$ in function of the weight $w$. The gradient of $w$ is computed as the partial derivative of $J(w)$ with respect to $w$. By updating $w$ in the opposite direction of its gradient, we move the loss function $J(w)$ towards its local minimum.
+A neural network implements the approximated function using many weights, which need to be trained to approximate the hypothetical function as close as possible. The training of these weights is typically done by minimizing the loss function. To minimize that loss function, the gradients of that function with respect to the network weights are computed, to move the loss function towards its minimum by updating the weights with their gradients. This process is called \acrfull{sgd} \cite{amari1993backpropagation}. Figure \ref{fig:learning} illustrates this process for the loss function $J(w)$ in function of the weight $w$. The gradient of $w$ is computed as the partial derivative of $J(w)$ with respect to $w$. By updating $w$ in the opposite direction of its gradient, we move the loss function $J(w)$ towards its local minimum.
 \begin{figure}[ht]
     \begin{center}       
     \includegraphics[width=0.8\textwidth]{fig_learning.png}

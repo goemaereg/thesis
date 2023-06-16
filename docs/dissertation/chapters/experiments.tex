@@ -6,7 +6,7 @@ We evaluate the five \acrshort{wsol} methods that are described in detail in sec
 The localization methods are evaluated for the mentioned networks on the synthetic datasets and on the ImageNet dataset. For the VGG16-GAP network and the ResNet-50 network, we trained two models per network on the datasets: One without regularization and one with MinMaxCAM regularization. The localization methods CAM, Grad-CAM++ and Score-CAM are evaluated on both models. For the VGG16 network we only train one model without regularization per synthetic dataset as MinMaxCAM is not compatible with this network. 
 
 \subsection{Synthetic datasets}
-We evaluate the \acrshort{cam}-based family of localization methods on the synthetic datasets listed in Table \ref{tab:synthetic_datasets}, using the MaxBoxAccV3 precision and recall metrics, and the PxAP metric. In following sections, results for VGG16-GAP, VGG16 and ResNet-50 architectures are discussed.
+We evaluate the \acrshort{cam}-based family of localization methods on the synthetic datasets listed in Table \ref{tab:synthetic_datasets}, using the MaxBoxAccV3 precision and recall metrics, and the \acrshort{pxap} metric. In following sections, results for VGG16-GAP, VGG16 and ResNet-50 architectures are discussed.
 
 \subsubsection{VGG16-GAP}
 The localization results using the multiple-instance \acrshort{wsol} metrics MaxBoxAccV3 recall and precision are shown in Table \ref{tab:maxboxaccv3_recall_vgg16_gap_synthetic} and Table \ref{tab:maxboxaccv3_precision_vgg16_gap_synthetic}. The pixel average precision results are illustrated in Table \ref{tab:pxap_vgg16_gap_synthetic}. 
@@ -27,7 +27,7 @@ Grad-CAM++ & 94.17 & \color{teal} \bfseries \underline{93.67} & 67.50 & 67.00 & 
 Score-CAM & \color{teal} \bfseries \underline{95.00} & 93.50 & \color{teal} \bfseries \underline{73.75} & \color{teal} \bfseries \underline{70.83} & \color{teal} \bfseries 64.83 & \color{teal} \bfseries 61.22 & \color{teal} \bfseries \underline{61.37} & \color{teal} \bfseries \underline{57.96} \\
 \bottomrule
 \end{tabular}
-\caption[MaxBoxAccV3 for VGG16-GAP on synthetic datasets]{MaxBoxAccV3 recall for VGG16-GAP on synthetic datasets. First 3 rows are results for model trained without regularization. Last 3 rows show results for model trained with MinMaxCAM regularization. Column-wise minimum and maximum per sub-table are highlighted in red and green. Global column-wise minimum and maximum are underlined.}
+\caption[MaxBoxAccV3 recall for VGG16-GAP on synthetic datasets]{MaxBoxAccV3 recall for VGG16-GAP on synthetic datasets. First 3 rows show evaluation results for CAM-based methods evaluated on the non-regularized model. Last 3 rows show results for CAM-based models evaluated on MinMaxCAM-regularized model. Column-wise minimum and maximum per sub-table are highlighted in red and green. Global column-wise minimum and maximum are underlined.}
 \label{tab:maxboxaccv3_recall_vgg16_gap_synthetic}
 \end{table}
 
@@ -47,7 +47,7 @@ Grad-CAM++ & \color{teal} \bfseries \underline{89.84} & \color{teal} \bfseries \
 Score-CAM & 88.40 & 88.28 & \color{teal} \bfseries \underline{76.38} & \color{teal} \bfseries \underline{72.84} & \color{teal} \bfseries 70.22 & \color{teal} \bfseries \underline{67.07} & \color{teal} \bfseries \underline{68.30} & \color{teal} \bfseries \underline{65.22} \\
 \bottomrule
 \end{tabular}
-\caption[MaxBoxAccV3 for VGG16-GAP on synthetic datasets]{MaxBoxAccV3 precision for VGG16-GAP on synthetic datasets. First 3 rows are results for model trained without regularization. Last 3 rows show results for model trained with MinMaxCAM regularization. Column-wise minimum and maximum per sub-table are highlighted in red and green. Global column-wise minimum and maximum are underlined.}
+\caption[MaxBoxAccV3 for VGG16-GAP on synthetic datasets]{MaxBoxAccV3 precision for VGG16-GAP on synthetic datasets. First 3 rows show evaluation results for CAM-based methods evaluated on the non-regularized model. Last 3 rows show results for CAM-based models evaluated on MinMaxCAM-regularized model. Column-wise minimum and maximum per sub-table are highlighted in red and green. Global column-wise minimum and maximum are underlined.}
 \label{tab:maxboxaccv3_precision_vgg16_gap_synthetic}
 \end{table}
 
@@ -67,7 +67,7 @@ Grad-CAM++ & \color{teal} \bfseries \underline{84.13} & 84.26 & \color{teal} \bf
 Score-CAM & \color{purple} \bfseries 82.83 & \color{teal} \bfseries \underline{84.65} & 77.66 & \color{purple} \bfseries 77.30 & 75.61 & \color{teal} \bfseries \underline{74.31} & \color{teal} \bfseries \underline{75.48} & \color{teal} \bfseries \underline{75.14} \\
 \bottomrule
 \end{tabular}
-\caption[PxAP for VGG16-GAP on synthetic datasets]{PxAP for VGG16-GAP on synthetic datasets. First 3 rows are results for model trained without regularization. Last 3 rows show results for model trained with MinMaxCAM regularization. Column-wise minimum and maximum per sub-table are highlighted in red and green. Global column-wise minimum and maximum are underlined.}
+\caption[PxAP for VGG16-GAP on synthetic datasets]{PxAP for VGG16-GAP on synthetic datasets. First 3 rows show evaluation results for CAM-based methods evaluated on the non-regularized model. Last 3 rows show results for CAM-based models evaluated on MinMaxCAM-regularized model. Column-wise minimum and maximum per sub-table are highlighted in red and green. Global column-wise minimum and maximum are underlined.}
 \label{tab:pxap_vgg16_gap_synthetic}
 \end{table}
 
@@ -85,7 +85,7 @@ From the results in Tables \ref{tab:maxboxaccv3_recall_vgg16_gap_synthetic}, \re
 
 \textbf{Discrepancy between datasets having the same number of object instances but different variant.} When we pairwise compare datasets with the same number of object instances, we see that in most cases, the b-variant (with background) shows better MaxBoxAccV3 recall than the t-variant (without background). The exception is the 4-instance dataset variants for the model trained without regularization.
 
-The discrepancies can be explained by comparing the training classification and localization accuracy. Fig. \ref{fig:loc_vs_acc_vgg16_gap_cam_synthetic}  illustrates these metrics for CAM MaxBoxAccV3 recall on the VGG16-GAP network trained without MinMaxCAM regularization. Pair-wise comparison of MaxBoxAccV3 recall for datasets with same number of object instances, indicates that datasets having images with background show higher recall, except for d4b and d4t. Here we can see that localization recall for d4b decreases towards the later training epochs.
+The discrepancies can be explained by comparing the training classification and localization accuracy. Figure \ref{fig:loc_vs_acc_vgg16_gap_cam_synthetic}  illustrates these metrics for CAM MaxBoxAccV3 recall on the VGG16-GAP network trained without MinMaxCAM regularization. Pair-wise comparison of MaxBoxAccV3 recall for datasets with same number of object instances, indicates that datasets having images with background show higher recall, except for d4b and d4t. Here we can see that localization recall for d4b decreases towards the later training epochs.
 
 \begin{figure}[h]
     \begin{center}       
@@ -160,7 +160,7 @@ Score-CAM & 66.44 & \color{teal} \bfseries 60.73 & \color{teal} \bfseries 59.32 
 
 A first observation is that the localization metrics for VGG16 are lower than those for the VGG16-GAP network. An intuitive explanation is that in the VGG16 network there is a less direct relationship between feature activation in the last convolutional layer and the predicted target due to the dense network between the convolutional backbone and the classification output. 
 
-Another important observation is that Score-CAM is the best performing localization method, followed by Grad-CAM. and then by Grad-CAM++ by quite a large margin. The difference between Grad-CAM and Grad-CAM++ localization results for the VGG16 network seems counter-intuitive with findings of Chattopadhay \textit{et al.} \cite{chattopadhay2018grad}, that Grad-CAM++ is better at explaining multiple object instances than Grad-CAM. A possible indication could be that for the synthetic datasets, Grad-CAM++ seems to activate on larger areas, as illustrated in Fig. \ref{fig:vgg16_base_explanation}. This can lead to more false positives and false negatives, impacting precision and recall.
+Another important observation is that Score-CAM is the best performing localization method, followed by Grad-CAM. and then by Grad-CAM++ by quite a large margin. The difference between Grad-CAM and Grad-CAM++ localization results for the VGG16 network seems counter-intuitive with findings of Chattopadhay \textit{et al.} \cite{chattopadhay2018grad}, that Grad-CAM++ is better at explaining multiple object instances than Grad-CAM. A possible indication could be that for the synthetic datasets, Grad-CAM++ seems to activate on larger areas, as illustrated in Figure \ref{fig:vgg16_base_explanation}. This can lead to more false positives and false negatives, impacting precision and recall.
 
 \begin{figure}[h]
     \begin{center}
@@ -184,18 +184,18 @@ Another important observation is that Score-CAM is the best performing localizat
 
 To prove our indication that Grad-CAM++ activates on larger areas, we measured the the number of activated pixels and the average pixel value of each score map computed using the CAM-based methods for VGG16 on the synthetic datasets. We then averaged all pixel activation counts and call this metric the average pixel activations in the score map. We also computed the average of score map average pixel values for the dataset and call this metric the average energy for the score maps. Both average pixel count and average energy enable us to compare the mean of  activated areas in the score map for the different CAM-based methods.
 
-Fig. \ref{fig:vgg16_base_pixel_energy} illustrated the average pixel activation counts and the average pixel energy in the score maps for each dataset. We clearly observer that Grad-CAM++ has the highest number of activated pixels and the highest average pixel value, backing our assumption that Grad-CAM++ activates on larger areas, which is impacting precision and recall.
+Figure \ref{fig:vgg16_base_pixel_energy} illustrates the average pixel activation counts and the average pixel energy in the score maps for each dataset. We clearly observe that Grad-CAM++ has the highest number of activated pixels and the highest average pixel value, backing our assumption that Grad-CAM++ activates on larger areas, which is impacting precision and recall.
+
+Finally, we see a similar trend in pair-wise discrepancies between b-variant and t-variant datasets having the same number of object instances as observed for the VGG16-GAP network.  
 
 \begin{figure}[h]
     \begin{center}       
     \includegraphics[width=0.95\textwidth]{fig_vgg16_base_pixel_energy.png}
-    \caption[Average pixel activations and energy for CAM-based methods in VGG16]{Average pixel activations and energy for CAM-based methods in VGG16.}
+    \caption[Average score map pixel activations and energy for CAM-based methods in VGG16]{Average score map pixel activations and energy for CAM-based methods in VGG16.}
     \caption*{Source: Author}
     \label{fig:vgg16_base_pixel_energy}
     \end{center}
 \end{figure}
-
-Finally, we see a similar trend in pair-wise discrepancies between b-variant and t-variant datasets having the same number of object instances as observed for the VGG16-GAP network.  
 
 \subsubsection{ResNet-50}
 Localization performance results for the ResNet-50 network on the synthetic dataset are illustrated in Table \ref{tab:maxboxaccv3_recall_resnet50_synthetic} for MaxBoxAccV3 recall, in Table \ref{tab:maxboxaccv3_precision_resnet50_synthetic} for MaxBoxAccV3 precision and in Table \ref{tab:pxap_resnet50_synthetic} for PxAP. Here Grad-CAM is not evaluated as it is identical to CAM for architectures with a \acrshort{gap} architecture.
@@ -216,7 +216,7 @@ Grad-CAM++ & \color{teal} \bfseries 80.83 & 69.17 & \color{teal} \bfseries 63.83
 Score-CAM & \color{purple} \bfseries \underline{79.00} & \color{teal} \bfseries 71.17 & 61.00 & \color{teal} \bfseries 62.50 & 58.44 & 59.11 & 58.71 & 56.83 \\
 \bottomrule
 \end{tabular}
-\caption[MaxBoxAccV3 recall for ResNet-50 on synthetic datasets]{MaxBoxAccV3 recall for ResNet-50 on synthetic datasets. First 3 rows are results for model trained without regularization. Last 3 rows show results for model trained with MinMaxCAM regularization. Column-wise minimum and maximum per sub-table are highlighted in red and green. Global column-wise minimum and maximum are underlined.}
+\caption[MaxBoxAccV3 recall for ResNet-50 on synthetic datasets]{MaxBoxAccV3 recall for ResNet-50 on synthetic datasets. First 3 rows show evaluation results for CAM-based methods evaluated on the non-regularized model. Last 3 rows show results for CAM-based models evaluated on MinMaxCAM-regularized model.  Column-wise minimum and maximum per sub-table are highlighted in red and green. Global column-wise minimum and maximum are underlined.}
 \label{tab:maxboxaccv3_recall_resnet50_synthetic}
 \end{table}
 
@@ -236,7 +236,7 @@ Grad-CAM++ & \color{teal} \bfseries 71.31 & 53.73 & \color{teal} \bfseries 64.93
 Score-CAM & \color{purple} \bfseries \underline{68.87} & \color{teal} \bfseries 55.41 & 61.61 & 62.07 & 62.13 & 62.09 & 63.64 & 61.30 \\
 \bottomrule
 \end{tabular}
-\caption[MaxBoxAccV3 precision for ResNet-50 on synthetic datasets]{MaxBoxAccV3 precision for ResNet-50 on synthetic datasets. First 3 rows are results for model trained without regularization. Last 3 rows show results for model trained with MinMaxCAM regularization. Column-wise minimum and maximum per sub-table are highlighted in red and green. Global column-wise minimum and maximum are underlined.}
+\caption[MaxBoxAccV3 precision for ResNet-50 on synthetic datasets]{MaxBoxAccV3 precision for ResNet-50 on synthetic datasets. First 3 rows show evaluation results for CAM-based methods evaluated on the non-regularized model. Last 3 rows show results for CAM-based models evaluated on MinMaxCAM-regularized model. Column-wise minimum and maximum per sub-table are highlighted in red and green. Global column-wise minimum and maximum are underlined.}
 \label{tab:maxboxaccv3_precision_resnet50_synthetic}
 \end{table}
 
@@ -256,7 +256,7 @@ Grad-CAM++ & \color{teal} \bfseries 72.56 & 59.92 & \color{teal} \bfseries 66.74
 Score-CAM & 71.43 & \color{teal} \bfseries 61.04 & 65.57 & \color{teal} \bfseries 68.20 & \color{purple} \bfseries 67.23 & 68.20 & 69.15 & \color{teal} \bfseries 67.20 \\
 \bottomrule
 \end{tabular}
-\caption[PxAP for ResNet-50 on synthetic datasets]{PxAP for ResNet-50 on synthetic datasets. First 3 rows are results for model trained without regularization. Last 3 rows show results for model trained with MinMaxCAM regularization. Column-wise minimum and maximum per sub-table are highlighted in red and green. Global column-wise minimum and maximum are underlined.}
+\caption[PxAP for ResNet-50 on synthetic datasets]{PxAP for ResNet-50 on synthetic datasets. First 3 rows show evaluation results for CAM-based methods evaluated on the non-regularized model. Last 3 rows show results for CAM-based models evaluated on MinMaxCAM-regularized model. Column-wise minimum and maximum per sub-table are highlighted in red and green. Global column-wise minimum and maximum are underlined.}
 \label{tab:pxap_resnet50_synthetic}
 \end{table}
 
@@ -267,10 +267,10 @@ Grad-CAM++ and Score-CAM localization methods perform better than CAM, both for 
 The CAM-localization (MinMaxCAM method in the tables) evaluation on the MinMaxCAM-regularized model has lower metric values than on the non-regularized model. There is room for improvement as we haven't optimized the hyper parameters for MinMaxCAM regularization during training. Still, it can be observed that Grad-CAM++ and Score-CAM both improve on the CAM localization results for the MinMaxCAM-regularized model. This means that localization trends of non-regularized model transfer to the regularized model.
 
 \subsection{ImageNet dataset}
-In this section we evaluate the localization methods on the ImageNet validation dataset, using the multi-instance localization metrics MaxBoxAccV3 recall and precision. In addition we report the MaxBoxAcc and MaxBoxAccV2 metrics to benchmark our trained models with results provided by Choe \textit{et al.} \cite{choe2020evaluating} where appropriate. \acrfull{pxap} cannot be used as localization metric becauser the ImageNet dataset has no ground truth segmentation masks. In following sections, results for VGG16-GAP and ResNet-50 architectures are discussed.
+In this section we evaluate localization performance using CAM-based methods for the \acrshort{wsol} task on the ImageNet validation dataset. As evaluation metrics, we use the multi-instance localization metrics MaxBoxAccV3 recall and precision. In addition we report the MaxBoxAcc and MaxBoxAccV2 metrics to benchmark our trained models with results provided by Choe \textit{et al.} \cite{choe2020evaluating} where appropriate. \acrfull{pxap} cannot be used as localization metric because the ImageNet dataset has no ground truth segmentation masks. In following sections, results for VGG16-GAP and ResNet-50 architectures are discussed.
 
 \subsubsection{VGG16-GAP}
-We modified a pre-trained VGG16 network into the VGG16-GAP network by replacing the dense network of VGG16 with a \acrshort{gap} layer followed by a single fully connected layer. This newly constructed network is fine-tuned until the loss of the validation dataset hasn't decreased for five consecutive training epochs. The localization results of VGG16-GAP on the ImageNet validation dataset are illustrated in Table \ref{tab:metrics_vgg16_gap_imagenet}.
+We modified a pretrained VGG16 network into the VGG16-GAP network by replacing the dense network layers of VGG16 with a \acrshort{gap} layer followed by a single fully connected layer. This newly constructed network is fine-tuned until the loss of the validation dataset hasn't decreased for five consecutive training epochs. The localization results of VGG16-GAP on the ImageNet validation dataset are illustrated in Table \ref{tab:metrics_vgg16_gap_imagenet}.
 
 \begin{table}[h]
 \centering
@@ -292,15 +292,25 @@ The values for the metrics MaxBoxAcc ($61.19$) and MaxBoxAccV2 ($60.22$) for the
 
 The MaxBoxAccV3 precision and recall values for VGG16-GAP on the ImageNet dataset are much lower than the values for the synthetic dataset. This is to be expected as the ImageNet dataset is far more complex: It has 1000 different classes and a training dataset of 1.2 million images, where the synthetic datasets have only 9 different classes with a training dataset of 1000 images. The model trained on the ImageNet dataset has a classification accuracy of 67.1\%, where classification accuracy for models trained on the synthetic datasets is close to 100\%. 
 
-MaxBoxAccV3 recall for Score-CAM is about 2 percentage points lower than CAM and Grad-CAM++. Intuitively this could be explained because score maps are computed a weighted combination of activation maps, and because how Score-CAM computes those weights. As the weight of each activation map is represented by its score on the target class (Wang \textit{et al.} \cite{wang2020score}), each target object with high confidence score predicted by the model can be highlighted in the score map. Because classification accuracy for the ImageNet dataset is rather low (67.1 \%), there are quite some images that are wrongly classified. Hence, the scores for ground-truth classes that are mispredicted will be lower, may impact the weights, and thus representation of target objects in the score maps.
+MaxBoxAccV3 recall for Score-CAM is about 2 percentage points lower than CAM and Grad-CAM++. Intuitively, Score-CAM could be impacted more than the other CAM-based methods by the relatively low classification accuracy for the ImageNet dataset, as Score-CAM computes the score map based on the impact of feature maps on the predicted score. Figure \ref{fig:explain_vgg16_gap_imagenet} shows for two images the areas activated in the score map for each evaluated CAM-based method. We can observe that Grad-CAM++ highlights a larger area of the object of interest, resulting in a larger predicted (red) bounding box that has a smaller \acrshort{iou} with the ground truth (green) bounding box, and thus impacting the MaxBoxAccV3 recall. 
 
-The multi-instance localization metrics are determined predominantly by single-instance images in the ImageNet validation dataset as they represent the majority of images (Fig. \ref{fig:imagenet_instance_distribution}). Therefore, it is interesting to split up the ImageNet validation dataset according to the number of object instances in images to evaluate localization performance in function of the number of object instances. We have evaluated these separate ImageNet datasets for the ResNet-50 network (section \ref{sec:exp_resnet50_imagenet}).
+\begin{figure}[h]
+\begin{center}
+    \includegraphics[width=\textwidth]{fig_explain_vgg16_gap_imagenet.png}
+    \caption[Explanation maps of CAM-based localization for VGG16-GAP on ImageNet images]{Explanation maps of CAM-based localization for VGG16-GAP on ImageNet images
+. Heat maps show the activated image areas for the ground truth class. Annotations are given for ground truth (green) and predicted (red) bounding boxes.}
+    \caption*{Source: Author}
+    \label{fig:explain_vgg16_gap_imagenet}
+\end{center}
+\end{figure}
+
+The multi-instance localization metrics are determined predominantly by single-instance images in the ImageNet validation dataset as they represent the majority of images (Figure \ref{fig:imagenet_instance_distribution}). Therefore, it is interesting to split up the ImageNet validation dataset according to the number of object instances in images to evaluate localization performance in function of the number of object instances. We have evaluated these separate ImageNet datasets for the ResNet-50 network (section \ref{sec:exp_resnet50_imagenet}).
 
 Due to time constraints, we were unable to train a MinMaxCAM-regularized model for the VGG16-GAP network on ImageNet.
 
 \subsubsection{ResNet-50} \label{sec:exp_resnet50_imagenet}
 
-For the ResNet-50 network we evaluate CAM, Grad-CAM++ and Score-CAM on the ImageNet validation dataset, both for a model trained without regularization, and on a model trained with MinMaxCAM regularization. The results of these experiments are illustrated in Table \ref{tab:metrics_resnet50_imagenet}, where the method denoted as MinMaxCAM shows the results for the MinMaxCAM-regularized model evaluated with the CAM method. 
+For the ResNet-50 network we evaluate localization using CAM, Grad-CAM++ and Score-CAM on the ImageNet validation dataset, both on a model trained without regularization, and on a model trained with MinMaxCAM regularization. The results of these experiments are illustrated in Table \ref{tab:metrics_resnet50_imagenet}, where the method denoted as MinMaxCAM represents localization using the CAM method on tje MinMaxCAM-regularized model. 
 
 \begin{table}[h]
 \centering
@@ -318,19 +328,19 @@ Grad-CAM++ & \color{teal} \bfseries \underline{60.87} & \color{teal} \bfseries \
 Score-CAM & 60.00 & 58.10 & \color{purple} \bfseries 38.70 & 36.53 \\
 \bottomrule
 \end{tabular}
-\caption[Localization metrics for ResNet-50 on ImageNet]{Localization metrics for ResNet-50 on ImageNet. First 3 rows are results for model trained without regularization. Last 3 rows show results for model trained with MinMaxCAM regularization. Column-wise minimum and maximum per sub-table are highlighted in red and green. Global column-wise minimum and maximum are underlined.}
+\caption[Localization metrics for ResNet-50 on ImageNet]{Localization metrics for ResNet-50 on ImageNet. First 3 rows show evaluation results for CAM-based methods evaluated on the non-regularized model. Last 3 rows show results for CAM-based models evaluated on MinMaxCAM-regularized model. Column-wise minimum and maximum per sub-table are highlighted in red and green. Global column-wise minimum and maximum are underlined.}
 \label{tab:metrics_resnet50_imagenet}
 \end{table}
 
-The MaxBoxAcc and MaxBoxAccV2 metrics for the CAM method evaluated on the unregularized model have lower values than those reported by Choe \textit{et al.} \cite{choe2020evaluating} (57.60 and 57.25 versus 64.2 and 63.7). An explanation for this discrepancy, most likely is that we used a pre-trained ResNet-50 model where the authors of the mentioned paper did a grid search on hyper parameters to improve localization. 
+The MaxBoxAcc and MaxBoxAccV2 metrics for the CAM method evaluated on the non-regularized model have lower values than those reported by Choe \textit{et al.} \cite{choe2020evaluating} (57.60 and 57.25 versus 64.2 and 63.7). An explanation for this discrepancy, most likely is that we used a pretrained ResNet-50 model where the authors of the mentioned paper did a grid search on hyper parameters to improve localization. 
 
 The MaxBoxAccV3 metric has slightly lower values than the ones we reported for the VGG16-GAP network, but the same trend can be observed: The highest recall is obtained by the Grad-CAM++ method and the Score-CAM recall is about two percentage points below Grad-CAM++'s value. 
 
-Where MaxBoxAccV3 recall differences between non-regularized and regularized models are marginal, MaxBoxAccV3 precision has improved substantially for the localization methods evaluated on the regularized model when compared with the non-regularized model. indicating that localization methods using this model produce fewer false positives.
+The MaxBoxAccV3 recall difference between non-regularized and regularized models for a specific CAM-based method, is rather limited. However, MaxBoxAccV3 precision has improved substantially for the CAM-based methods evaluated on the regularized model, indicating that localization methods using this model produce fewer false positives.
 
-MaxBoxAcc and MaxBoxAccV2 values are slightly higher for the MinMaxCAM-regularized model than for the non-regularized model. This is in contrast with the results noted by Wang \textit{et al.} \cite{wang2021minmaxcam}, who illustrated that MinMaxCAM improves MaxBoxAcc by 2.5 percentage points compared to CAM. We haven't reproduced the results of the authors of the MinMaxCAM paper \cite{wang2021minmaxcam}, due to lack of reference values for the regularization weights.
+MaxBoxAcc and MaxBoxAccV2 values are slightly higher for the MinMaxCAM-regularized model than for the non-regularized model. This is in contrast with the results reported by Wang \textit{et al.} \cite{wang2021minmaxcam}, who illustrated that MinMaxCAM improves MaxBoxAcc by 2.5 percentage points compared to CAM. We were unable to reproduce the results reported by the authors of the MinMaxCAM paper \cite{wang2021minmaxcam} due to unavailability of reference values for the regularization weights.
 
-In chapter \ref{ch:methodology} we reported the distribution of object instances over the images in the ImageNet validation dataset (Fig. \ref{fig:imagenet_instance_distribution}). Because the vast majority of images in the dataset has only one object instance, the localization results may be biased towards those images. Therefore, we have split the ImageNet validation dataset into different datasets, so that each dataset has only images with fixed number of object instances. We then evaluated the CAM localization method separately on each of these datasets. The MaxBoxAccV3 recall results for these experiments are shown in Fig. \ref{fig:resnet50_imagenet_inst_recall}. 
+In chapter \ref{ch:methodology}, we reported the distribution of object instances over the images in the ImageNet validation dataset (Figure \ref{fig:imagenet_instance_distribution}). Because the vast majority of images in the dataset have only one object instance, the localization results may be biased towards those images. Therefore, we have split the ImageNet validation dataset into different datasets, so that each dataset has only images with fixed number of object instances. We then evaluated the CAM localization method separately on each of these datasets. The MaxBoxAccV3 recall results for these experiments are shown in Figure \ref{fig:resnet50_imagenet_inst_recall}. 
 
 \begin{figure}[h]
     \begin{center}       
@@ -345,7 +355,7 @@ We observe that recall performance depends on the number of object instances in 
 
 The ImageNet dataset with single-instance images has a MaxBoxAccV3 recall of 63.38, which is close to the MaxBoxAccV2 value of 57.25 in Table \ref{tab:metrics_resnet50_imagenet}. It can be shown that for single-instance datasets, MaxBoxAccV2 and MaxBoxAccV3 are identical, as in this case, the number of images equals the number ground-truth bounding boxes, and from equations \ref{eq:boxacc}, \ref{eq:maxboxaccv2}, \ref{eq:boxaccv2} and \ref{eq:maxboxaccv3}, we can derive that MaxBoxAccV2 equals MaxBoxAccV3. The difference in the results is because the MaxBoxAccV2 value from Table \ref{tab:metrics_resnet50_imagenet} was measured on the complete ImageNet validation dataset, including images with more than one object instance.
 
-Fig. \ref{fig:resnet50_imagenet_inst_precision} illustrates MaxBoxAccV3 precision for the ImageNet datasets split by number of object instances.
+Figure \ref{fig:resnet50_imagenet_inst_precision} illustrates MaxBoxAccV3 precision for the ImageNet datasets split by number of object instances.
 
 \begin{figure}[h]
     \begin{center}       
@@ -434,7 +444,7 @@ We will evaluate iterative localization done both with oracle based masks and sc
 
 \subsubsection{Oracle-based iterative localization}
 
-As explained in section \ref{sec:method_localization_improvement}, we use the \acrshort{gt}-based bounding boxes mask method as an oracle, i.e. for providing upper bounds on the performance that could be obtained when iterative localization would be guided by the ground truth. Fig. \ref{fig:prec_iter_resnet50_syn_d1b} illustrates localization results for the d1b dataset.
+As explained in section \ref{sec:method_localization_improvement}, we use the \acrshort{gt}-based bounding boxes mask method as an oracle, i.e. for providing upper bounds on the performance that could be obtained when iterative localization would be guided by the ground truth. Figure \ref{fig:prec_iter_resnet50_syn_d1b} illustrates localization results for the d1b dataset.
 
 \begin{figure}[h]
     \begin{center}       
@@ -456,7 +466,7 @@ When comparing with the baseline, we observe that for all methods, recall can be
     \end{center}
 \end{figure}
 
-Iterative localization results for the d2b dataset are shown in Fig. \ref{fig:prec_iter_resnet50_syn_d2b}. Looking at the upper right quadrant, we can observe that there are iterative approaches that improve both precision and recall for all localization methods except MinMaxCAM. For Grad-CAM++ and Score-CAM, applying the 'unify' merge strategy, combined with 'mean' mask strategy and stop criterion with classification drop threshold of 0.25, provides the best precision and recall improvements compared to the baseline. For CAM, applying the 'drop' merge strategy is the best approach. For MinMaxCAM, any iteration strategy improve recall at the cost of lower precision. 
+Iterative localization results for the d2b dataset are shown in Figure \ref{fig:prec_iter_resnet50_syn_d2b}. Looking at the upper right quadrant, we can observe that there are iterative approaches that improve both precision and recall for all localization methods except MinMaxCAM. For Grad-CAM++ and Score-CAM, applying the 'unify' merge strategy, combined with 'mean' mask strategy and stop criterion with classification drop threshold of 0.25, provides the best precision and recall improvements compared to the baseline. For CAM, applying the 'drop' merge strategy is the best approach. For MinMaxCAM, any iteration strategy improve recall at the cost of lower precision. 
 
 The highest recall improvement at the cost of precision, is provided by the 'add' merge strategy combined with iteration drop criterion 1.0. The worst precision and recall results are observed for the 'unify' merge strategy with drop criterion 1.0. Intuitively, masking images with bounding boxes found in previous iterations, and unifying newly predicted bounding boxes with overlapping boxes of previous iterations, increases the probability of no longer matching predicted bounding boxes with ground truth boxes, and thus impacting recall.
 
@@ -469,9 +479,9 @@ The highest recall improvement at the cost of precision, is provided by the 'add
     \end{center}
 \end{figure}
 
-Fig. \ref{fig:prec_iter_resnet50_syn_d3b} illustrates the iterative localization results for the d3b dataset. We observe that the iterative approach can improve recall at the cost of precision for all localization methods. Applying the 'add' merge strategy and stop criterion threshold of 1.0 gives the highest recall gain, but at the cost of high precision loss. For Grad-CAM++, both precision and recall can be improved using the 'unify' merge and 'zero' mask strategy, combined with iteration stop criterion 0.25.
+Figure \ref{fig:prec_iter_resnet50_syn_d3b} illustrates the iterative localization results for the d3b dataset. We observe that the iterative approach can improve recall at the cost of precision for all localization methods. Applying the 'add' merge strategy and stop criterion threshold of 1.0 gives the highest recall gain, but at the cost of high precision loss. For Grad-CAM++, both precision and recall can be improved using the 'unify' merge and 'zero' mask strategy, combined with iteration stop criterion 0.25.
 
-The iterative localization metrics for the d4b dataset are shown in Fig. \ref{fig:prec_iter_resnet50_syn_d4b}. As for the d3b dataset, recall can be improved at the cost of precision for all localization methods. The 'add' merge strategy with stop threshold 1.0 provides the highest gain in recall at the cost of substantially decreasing precision.
+The iterative localization metrics for the d4b dataset are shown in Figure \ref{fig:prec_iter_resnet50_syn_d4b}. As for the d3b dataset, recall can be improved at the cost of precision for all localization methods. The 'add' merge strategy with stop threshold 1.0 provides the highest gain in recall at the cost of substantially decreasing precision.
 
 \begin{figure}[h]
     \begin{center}       
@@ -484,7 +494,7 @@ The iterative localization metrics for the d4b dataset are shown in Fig. \ref{fi
 
 \subsubsection{Score map based iterative localization}
 
-As the score map based mask technique doesn't depend on ground truth information, we can effectively evaluate multiple-instance localization performance for the \acrshort{wsol} task. We do this for the same CAM-based methods, networks and datasets as done for the experiments using GT-based bounding box masking technique. Fig. \ref{fig:prec_iter_mask_cam_resnet50_syn_d1b} illustrates score map based localization results for the d1b dataset.
+As the score map based mask technique doesn't depend on ground truth information, we can effectively evaluate multiple-instance localization performance for the \acrshort{wsol} task. We do this for the same CAM-based methods, networks and datasets as done for the experiments using GT-based bounding box masking technique. Figure \ref{fig:prec_iter_mask_cam_resnet50_syn_d1b} illustrates score map based localization results for the d1b dataset.
 
 \begin{figure}[h]
     \begin{center}       
@@ -497,7 +507,7 @@ As the score map based mask technique doesn't depend on ground truth information
 
 We can observe a similar trend when compared to oracle-based iterative localization: For all methods, recall can be improved by using the 'add' merge strategy and classification score drop threshold 1.0. The 'add' merge strategy improves recall but at the cost of decreased precision. However, the recall improvements are smaller for score map iterative localization. Intuitively, the rather coarse score map threshold used to compute the score map based mask may yield localization information that is less accurate than the oracle based mask that is based on ground truth information.
 
-Iterative localization results for the d2b dataset are shown in Fig. \ref{fig:prec_iter_mask_cam_resnet50_syn_d2b}. Where both localization precision and recall could be improved in oracle-based iterative localization, we don't see the same trend for score map based iterative localization. The 'add' merge strategy with iteration drop criterion 1.0 provides the highest recall improvements, albeit marginal, at the cost of decreased precision.
+Iterative localization results for the d2b dataset are shown in Figure \ref{fig:prec_iter_mask_cam_resnet50_syn_d2b}. Where both localization precision and recall could be improved in oracle-based iterative localization, we don't see the same trend for score map based iterative localization. The 'add' merge strategy with iteration drop criterion 1.0 provides the highest recall improvements, albeit marginal, at the cost of decreased precision.
 
 \begin{figure}[h]
     \begin{center}       
@@ -508,7 +518,7 @@ Iterative localization results for the d2b dataset are shown in Fig. \ref{fig:pr
     \end{center}
 \end{figure}
 
-Fig. \ref{fig:prec_iter_mask_cam_resnet50_syn_d3b} illustrates the iterative localization results for the d3b dataset. We observe that the iterative approach can improve recall at the cost of precision for all localization methods. Applying the 'add' merge strategy and stop criterion threshold of 1.0 gives the highest recall gain, but at the cost of high precision loss. Grad-CAM++ and Score-CAM provide the highest recall for the 'add' merge strategy. This is similar to what we observed for oracle-based iterative localization, albeit that the recall gain for score map based iterative localization is much smaller.
+Figure \ref{fig:prec_iter_mask_cam_resnet50_syn_d3b} illustrates the iterative localization results for the d3b dataset. We observe that the iterative approach can improve recall at the cost of precision for all localization methods. Applying the 'add' merge strategy and stop criterion threshold of 1.0 gives the highest recall gain, but at the cost of high precision loss. Grad-CAM++ and Score-CAM provide the highest recall for the 'add' merge strategy. This is similar to what we observed for oracle-based iterative localization, albeit that the recall gain for score map based iterative localization is much smaller.
 
 \begin{figure}[h]
     \begin{center}       
@@ -519,7 +529,7 @@ Fig. \ref{fig:prec_iter_mask_cam_resnet50_syn_d3b} illustrates the iterative loc
     \end{center}
 \end{figure}
 
-The iterative localization metrics for the d4b dataset are shown in Fig. \ref{fig:prec_iter_mask_cam_resnet50_syn_d4b}. As for the d3b dataset, recall can be improved at the cost of precision for all localization methods. The 'add' merge strategy with stop threshold 1.0 provides the highest gain in recall at the cost of substantially decreasing precision.
+The iterative localization metrics for the d4b dataset are shown in Figure \ref{fig:prec_iter_mask_cam_resnet50_syn_d4b}. As for the d3b dataset, recall can be improved at the cost of precision for all localization methods. The 'add' merge strategy with stop threshold 1.0 provides the highest gain in recall at the cost of substantially decreasing precision.
 
 The worst precision and recall results are observed for the 'unify' merge strategy with drop criterion 1.0. This is true for all CAM-based methods on all synthetic datasets, and it's also in line with results observed for oracle-based iterative localization. Similar to the intuition formulated for the oracle based approach, the unifying of predicted bounding boxes with overlapping bounding boxes of previous iterations, increases the probability of no longer matching ground truth bounding boxes, and thus impacting recall.
 
@@ -533,12 +543,11 @@ The worst precision and recall results are observed for the 'unify' merge strate
 \end{figure}
 
 \subsection{Evaluation for ResNet-50 on ImageNet dataset}
-
-We evaluate the oracle-based iterative localization for the ImageNet dataset. Due to time constraints, we were unable to evaluate score map based iterative localization on ImageNet.
+Here we evaluate the results of oracle-based and score map based iterative localization using CAM-based methods for the ResNet-50 network on the ImageNet validation dataset. The CAM-based methods used are CAM, Grad-CAM++, Score-CAM and MinMaxCAM. The former three methods are evaluated on a model trained without regularization while the latter is evaluated on a model trained with MinMaxCAM regularization. Due to time constraints, we were unable to evaluate score map based iterative localization for Score-CAM.
 
 \subsubsection{Oracle-based iterative localization}
 
-The results of the iterative localization methods for the ResNet-50 network, evaluated on the ImageNet validation dataset, are shown in Fig. \ref{fig:prec_iter_resnet50_imagenet}. The best performing methods are those that are positioned closest to the upper right corner of the plot. Observing the plots for all localization methods, we can see two distinct groups: One group that improves recall at the cost of decreasing precision, and another group that performs worse for both precision and recall when compared to the baseline.
+The results of the iterative localization methods for the ResNet-50 network, evaluated on the ImageNet validation dataset, are shown in Figure \ref{fig:prec_iter_resnet50_imagenet}. The best performing methods are those that are positioned closest to the upper right corner of the plot. Observing the plots for all localization methods, we can see two distinct groups: One group that improves recall at the cost of decreasing precision, and another group that performs worse for both precision and recall when compared to the baseline.
 
 \begin{figure}[h]
     \begin{center}       
@@ -551,3 +560,20 @@ The results of the iterative localization methods for the ResNet-50 network, eva
 
 The first group consists of the methods that apply as merge strategy either 'drop' or 'add', where the 'add' strategy gives a substantially higher gain in recall, but at a higher drop in precision. In this group, there is an almost linear relationship between precision and recall and the applied classification score drop threshold for a certain merge strategy. In the second group are the iterative localization methods that apply a unify merge strategy. Intuitively, unifying predicted bounding boxes from previous iterations with newly predicted bounding boxes increases the risk generating larger but few bounding boxes, and thus impacting both precision and recall.
 
+\subsubsection{Score map based iterative localization}
+
+For score map based iterative localization we evaluated the same CAM-based methods as oracle based localization for ResNet-50 on the ImageNet. Figure \ref{fig:prec_iter_mask_bbox_vs_camresnet50_imagenet} shows the comparison of results for both iterative localization approaches. The results are plotted such that, for a specific CAM-based method, we can make a column-wise comparison between the oracle approach (top row) and score map approach (bottom row).
+
+For both approaches we can observe for each CAM-based method that the more recall is improved, the higher the loss in precision. We see this trend for all bounding box merge strategies, except the 'unify' merge strategy. In the latter case, both precision and recall are worse than the non-iterative baseline.
+
+For score map based iterative localization, a much higher gain in recall is achieved for the 'add' merge strategy, than for the oracle based approach. 
+
+
+\begin{figure}[h]
+    \begin{center}       
+    \includegraphics[width=0.99\textwidth]{fig_iter_mask_bbox_vs_cam_resnet50_imagenet.png}
+    \caption[Oracle versus score map based iterative localization performance for ResNet-50 on ImageNet dataset]{Oracle (top row) versus score map (bottom row) based iterative localization performance using CAM (left), Grad-CAM++ (middle) and MinMaxAM (right) for ResNet-50 on ImageNet dataset. The cross-hair lines mark the best precision and recall for non-iterative localization.}
+    \caption*{Source: Author}
+    \label{fig:prec_iter_mask_bbox_vs_camresnet50_imagenet}
+    \end{center}
+\end{figure}
