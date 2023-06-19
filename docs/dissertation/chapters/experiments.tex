@@ -164,13 +164,13 @@ Another important observation is that Score-CAM is the best performing localizat
 
 \begin{figure}[h]
     \begin{center}
-    \begin{subfigure}[b]{\textwidth}
+    \begin{subfigure}[b]{0.95\textwidth}
          \centering
          \includegraphics[width=\textwidth]{fig_vgg16_base_d4b.png}
          \caption{Explanation example from d4b dataset.}
          \label{fig:vgg16_base_explanation_d4b}
     \end{subfigure}
-    \begin{subfigure}[b]{\textwidth}
+    \begin{subfigure}[b]{0.95\textwidth}
          \centering
          \includegraphics[width=\textwidth]{fig_vgg16_base_d4t.png}
          \caption{Explanation example from d4t dataset.}
@@ -184,11 +184,7 @@ Another important observation is that Score-CAM is the best performing localizat
 
 To prove our indication that Grad-CAM++ activates on larger areas, we measured the fraction of activated pixels and the average of normalized pixel values of each score map computed using the CAM-based methods for VGG16 on the synthetic datasets. We averaged both metrics for all score maps, respectively giving us the average score map activations and average score map energy. Both metrics enable us to quantitatively compare the average size and intensity of activated areas in the score map for the different CAM-based methods.
 
-Figure \ref{fig:vgg16_base_pixel_energy} illustrates the average pixel activation counts and the average pixel energy in the score maps for each dataset. We clearly observe that Grad-CAM++ has the highest number of activated pixels and the highest average pixel value, backing our assumption that Grad-CAM++ activates on larger areas, which is impacting precision and recall.
-
-Finally, we see a similar trend in pair-wise discrepancies between b-variant and t-variant datasets having the same number of object instances as observed for the VGG16-GAP network.  
-
-\begin{figure}[h]
+\begin{figure}[H]
     \begin{center}       
     \includegraphics[width=0.95\textwidth]{fig_vgg16_base_pixel_energy.png}
     \caption[Average score map pixel activations and energy for CAM-based methods in VGG16]{Average score map pixel activations and energy for CAM-based methods in VGG16.}
@@ -196,6 +192,10 @@ Finally, we see a similar trend in pair-wise discrepancies between b-variant and
     \label{fig:vgg16_base_pixel_energy}
     \end{center}
 \end{figure}
+
+Figure \ref{fig:vgg16_base_pixel_energy} illustrates the average pixel activation counts and the average pixel energy in the score maps for each dataset. We clearly observe that Grad-CAM++ has the highest number of activated pixels and the highest average pixel value, backing our assumption that Grad-CAM++ activates on larger areas, which is impacting precision and recall.
+
+Finally, we see a similar trend in pair-wise discrepancies between b-variant and t-variant datasets having the same number of object instances as observed for the VGG16-GAP network.  
 
 \subsubsection{ResNet-50}
 Localization performance results for the ResNet-50 network on the synthetic dataset are illustrated in Table \ref{tab:maxboxaccv3_recall_resnet50_synthetic} for MaxBoxAccV3 recall, in Table \ref{tab:maxboxaccv3_precision_resnet50_synthetic} for MaxBoxAccV3 precision and in Table \ref{tab:pxap_resnet50_synthetic} for PxAP. Here Grad-CAM is not evaluated as it is identical to CAM for architectures with a \acrshort{gap} architecture.
@@ -239,8 +239,7 @@ Score-CAM & \color{purple} \bfseries \underline{68.87} & \color{teal} \bfseries 
 \caption[MaxBoxAccV3 precision for ResNet-50 on synthetic datasets]{MaxBoxAccV3 precision for ResNet-50 on synthetic datasets. First 3 rows show results for CAM-based methods evaluated on the non-regularized model. Last 3 rows show results for CAM-based models evaluated on MinMaxCAM-regularized model. Column-wise minimum and maximum per sub-table are highlighted in red and green. Global column-wise minimum and maximum are underlined.}
 \label{tab:maxboxaccv3_precision_resnet50_synthetic}
 \end{table}
-
-\begin{table}[H]
+\begin{table}[h]
 \centering
 \begin{tabular}{lrrrrrrrr}
 \toprule
@@ -403,12 +402,17 @@ The most computationally costly method by far is Score-CAM. This method computes
 Using the iterative localization method proposed in section \ref{sec:method_localization_improvement}, we analyze the effect of this method on the ResNet-50 architecture for the synthetic and ImageNet datasets. We use the same models that were used to evaluate the non-iterative approach.
 
 \subsection{Recall versus precision}
-The aim of the iterative approach is to improve the accurate localization of ground truth object instances. This localization accuracy is measured by the MaxBoxAccV3 recall metric. A naive approach to improving recall would be to use a localization method that exhaustively generates bounding boxes of different granularity at various locations. Such a method would accurately localize most object instances and thus have a high recall value. At the same time this method would suffer from a lot of false positives, i.e., many of the predicted object localization instances would not match with the actual ground truth localization annotations. Hence, precision would be very low. To measure the impact of the iterative localization method, we want to measure both precision and recall. Ideally, we would like to have a localization method that has good precision and recall.
+The aim of the iterative approach is to improve the accurate localization of ground truth object instances. This localization accuracy is measured by the MaxBoxAccV3 recall metric. 
+
+A naive approach to improving recall would be to use a localization method that exhaustively generates bounding boxes of different granularity at various locations. Such a method would accurately localize most object instances and thus have a high recall value. At the same time this method would suffer from a lot of false positives, i.e., many of the predicted object localization instances would not match with the actual ground truth localization annotations. Hence, precision would be very low. 
+
+To measure the impact of the iterative localization method, we want to measure both precision and recall. Ideally, we would like to have a localization method that has good precision and recall.
 
 \subsection{Evaluation approach}
+
 In our iterative localization approach, we apply different mask strategies, bounding box merge strategies and iteration stop criteria in our experiments. The different parameters and their possible values are illustrated in Table \ref{tab:iterative_localizaton_parameters}.
 
-\begin{table}[ht]
+\begin{table}[h]
 \centering
 \begin{tabular}{ll}
 \toprule
@@ -424,21 +428,32 @@ Classification score drop threshold & 0.25, 0.5, 1.0 \\
 \label{tab:iterative_localizaton_parameters}
 \end{table}
 
- Due to the number of possible parameter combinations, we have to compare a lot of results. It is rather difficult to represent these results in a single table and draw conclusions from it. Therefore we graphically represent and interpret the results as follows:
+Due to the number of possible parameter combinations, we have to compare a lot of results. It is rather difficult to represent these results in a single table and draw conclusions from it. 
+
+Therefore we graphically represent and interpret the results as follows:
+
 \begin{itemize}
-    \item Per dataset, network and localization method, we create a two-dimensional plot with recall on the horizontal axis and precision on the vertical axis. In this plot, for each of the different combinations of mask strategies, merge strategies and stop criteria, an experiment is run and its resulting precision and recall are added to the plot.
-    \item The precision and recall for the non-iterative approach is plotted as two orthogonal lines: A horizontal line for precision and vertical line for recall. We use the precision and recall from the non-iterative approach as baseline to compare with results from the iterative approach.
-    \item The horizontal and vertical lines of the baseline create four quadrants which allow easy graphical interpretation of iterative localization results depending in which quadrant a result is situated.
-    \begin{itemize}
-        \item Bottom left: Worse precision and recall than the baseline.
-        \item Top left: Better precision but worse recall than baseline.
-        \item Bottom right: Better recall but worse precision than baseline.
-        \item Top right: Better precision and recall than the baseline.
-    \end{itemize}
+    \item Per dataset, network and localization method, we create a two-dimensional plot with recall on the horizontal axis and precision on the vertical axis.
+    \item For each of the different combinations of mask strategies, merge strategies and stop criteria, an iterative localization experiment is run and the resulting precision and recall are added to the plot.
+    \item The precision and recall for non-iterative localization is plotted as two orthogonal lines: A horizontal line for precision and vertical line for recall. We use the precision and recall from the non-iterative approach as baseline to compare with results from the iterative approach.
+    \item The horizontal and vertical lines of the baseline create four quadrants which allow easy graphical interpretation of iterative localization results depending in which quadrant a result is situated. Table \ref{tab:iterative_precision_recall_quadrants} visually shows the four quadrants and how to interpret results based on the quadrant the results are plotted in.
 \end{itemize}
 
+\begin{table}[h]
+\centering
+\begin{tabular}{l|l}
+better precision & better precision \\
+worse recall     & better recall \\ 
+\hline
+worse precision & worse precision \\
+worse recall    & better recall \\ 
+\end{tabular}
+\caption[Precision and recall quadrants]{Quadrants positioning precision and recall from iterative localization results with respect to baseline localization result.}
+\label{tab:iterative_precision_recall_quadrants}
+\end{table}
+
 \subsection{Evaluation for ResNet-50 on synthetic datasets} \label{sec:exp_iter_resnet50_syn}
-Here we evaluate the results of the iterative localization for the ResNet-50 network on the synthetic test datasets. We only evaluate datasets that have images with a background to analyze the effect of using different bounding box mask strategies. The localization methods used are CAM, Grad-CAM++, Score-CAM and MinMaxCAM. The former three methods are evaluated on a model trained without regularization while the latter is evaluated on a model trained with MinMaxCAM regularization. 
+Here we evaluate the results of the iterative localization for the ResNet-50 network on the synthetic test datasets. We only evaluate datasets that have images with a background to analyze the effect of using different mask strategies. The localization methods used are CAM, Grad-CAM++, Score-CAM and MinMaxCAM. The former three methods are evaluated on a model trained without regularization while the latter is evaluated on a model trained with MinMaxCAM regularization. 
 
 We will evaluate iterative localization done both with oracle based masks and score map based masks, to compare the impact of using both mask techniques on multiple-instance localization performance.
 
@@ -455,7 +470,11 @@ As explained in section \ref{sec:method_localization_improvement}, we use the \a
     \end{center}
 \end{figure}
 
-When comparing with the baseline, we observe that for all methods, recall can be improved by using the 'add' merge strategy and classification score drop threshold 1.0. This threshold actually means that no iteration stop criterion is used. It's easy to see that this threshold has the worst precision for any mask or merge strategy. The 'add' merge strategy improves recall but at the cost of decreased precision, as this strategy causes more false positives. The relatively small gain in recall is to be expected for a dataset with single-instance object images where the baseline already has a high localization performance.
+When comparing with the baseline, we observe that for all methods, recall can be improved by using the 'add' merge strategy and classification score drop threshold 1.0. This threshold actually means that no iteration stop criterion is used. It's easy to see that this threshold has the worst precision for any mask or merge strategy. The 'add' merge strategy improves recall but at the cost of decreased precision, as this strategy causes more false positives. 
+
+The relatively small gain in recall is to be expected for a dataset with single-instance object images where the baseline already has a high localization performance.
+
+Iterative localization results for the d2b dataset are shown in Figure \ref{fig:prec_iter_resnet50_syn_d2b}. Looking at the upper right quadrant, we can observe that there are iterative approaches that improve both precision and recall for all localization methods except MinMaxCAM. For Grad-CAM++ and Score-CAM, applying the 'unify' merge strategy, combined with 'mean' mask strategy and stop criterion with classification drop threshold of 0.25, provides the best precision and recall improvements compared to the baseline. For CAM, applying the 'drop' merge strategy is the best approach. For MinMaxCAM, any iteration strategy that improves recall, does so at the cost of lower precision than the baseline.
 
 \begin{figure}[h]
     \begin{center}       
@@ -465,8 +484,6 @@ When comparing with the baseline, we observe that for all methods, recall can be
     \label{fig:prec_iter_resnet50_syn_d2b}
     \end{center}
 \end{figure}
-
-Iterative localization results for the d2b dataset are shown in Figure \ref{fig:prec_iter_resnet50_syn_d2b}. Looking at the upper right quadrant, we can observe that there are iterative approaches that improve both precision and recall for all localization methods except MinMaxCAM. For Grad-CAM++ and Score-CAM, applying the 'unify' merge strategy, combined with 'mean' mask strategy and stop criterion with classification drop threshold of 0.25, provides the best precision and recall improvements compared to the baseline. For CAM, applying the 'drop' merge strategy is the best approach. For MinMaxCAM, any iteration strategy that improves recall, does so at the cost of lower precision than the baseline.
 
 The highest recall improvement at the cost of precision, is provided by the 'add' merge strategy combined with iteration drop criterion 1.0. The worst precision and recall results are observed for the 'unify' merge strategy with drop criterion 1.0. Intuitively, masking images with bounding boxes found in previous iterations, and unifying newly predicted bounding boxes with overlapping boxes of previous iterations, increases the probability of no longer matching predicted bounding boxes with ground truth boxes, and thus impacting recall.
 

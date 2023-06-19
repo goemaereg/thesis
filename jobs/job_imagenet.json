@@ -1,7 +1,7 @@
 {
     "request": {
         "resources": {
-            "cpus": 4,
+            "cpus": 2,
             "gpus": 1,
             "cpuMemoryGb": 32,
             "gpuModel": [ "V100", "A100" ]
