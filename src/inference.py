@@ -84,8 +84,9 @@ class CAMComputer(object):
         self.iter_max = max(1, config.iter_max)
         self.log = log
         self.bboxes_meta_path = os.path.join(self.scoremap_root, self.split, 'bboxes_metadata.txt')
+        self.bboxes_delta_meta_path = os.path.join(self.scoremap_root, self.split, 'bboxes_delta_metadata.txt')
         self.optimal_thresholds_path = os.path.join(self.scoremap_root, self.split, 'optimal_thresholds.npy')
-        self.metadata = configure_metadata(os.path.join(config.metadata_root, split))
+        self.metadata = configure_metadata(os.path.join(self.metadata_root, split))
         self.image_sizes = get_image_sizes(self.metadata)
         cam_threshold_list = list(np.arange(0, 1, config.cam_curve_interval))
         eval_args = dict(
@@ -112,6 +113,7 @@ class CAMComputer(object):
         cams_saved = {}
         cams_stats = {}
         contexts = {}
+        contexts_delta = {}
         metrics = {}
         optimal_threshold_list = []
         tq0 = tqdm.tqdm(range(self.iter_max), total=self.iter_max, desc='iterative bbox extraction')
@@ -157,11 +159,13 @@ class CAMComputer(object):
                     if self.config.xai and save_xai:
                         if xai_images < self.config.xai_images_max:
                             xai_save_cam_inference(
-                                xai_root=self.config.xai_root, metadata=self.metadata, split=self.split,
+                                split=self.split,
+                                xai_root=self.config.xai_root, metadata=self.metadata, data_root=self.data_root,
                                 image_id=image_id, image=t2n(image), size_orig=self.image_sizes[image_id], cam=cam,
                                 iter_index=iter_index, log=True)
                     xai_images += 1
                     context = contexts[image_id] if image_id in contexts else None
+                    context_delta = contexts_delta.get(image_id, None)
                     # softmax: extract prediction probability from logit scores
                     y = np.exp(output - np.max(output))  # numerically stable version of softmax
                     smax = y / np.sum(y)
@@ -179,14 +183,15 @@ class CAMComputer(object):
                     cam_merged = cam
                     if image_id in cams_saved:
                         raw = self.db_txn.get(u'{}'.format(image_id).encode('ascii'))
-                        cam_loaded = pickle.loads(raw)
+                        unpacked = pickle.loads(raw)
+                        cam_loaded = unpacked[0]
                         if skip:
                             cam_merged = cam_loaded
                         else:
                             cam_merged = np.max(np.stack([cam, cam_loaded], axis=0), axis=0)
                     if not skip:
                         # save into lmdb
-                        self.db_txn.put(u'{}'.format(image_id).encode('ascii'), pickle.dumps(cam_merged))
+                        self.db_txn.put(u'{}'.format(image_id).encode('ascii'), pickle.dumps((cam_merged, cam)))
                         self.db_writes += 1
                         if self.db_writes % self.db_commit_writes == 0:
                             self.db_txn.commit()
@@ -197,9 +202,13 @@ class CAMComputer(object):
                     if self.box_evaluator:
                         if skip:
                             bbox_context = context
+                            bbox_context_delta = context_delta
                         else:
-                            bbox_context = self.box_evaluator.accumulate_bboxes(cam, image_id, context)
+                            bbox_context, bbox_context_delta = self.box_evaluator.accumulate_bboxes(cam,
+                                                                                                    image_id,
+                                                                                                    context)
                         self.box_evaluator.accumulate_boxacc(bbox_context)
+                        contexts_delta[image_id] = bbox_context_delta
                     if self.mask_evaluator:
                         self.mask_evaluator.accumulate(cam_merged, image_id)
                     contexts[image_id] = bbox_context | {'image_id': image_id, 'prob': prob, 'skip': skip}
@@ -262,6 +271,13 @@ class CAMComputer(object):
                         x0, y0, x1, y1 = bbox
                         line = f'{image_id},{x0},{y0},{x1},{y1}\n'
                         fp.write(line)
+            with open(self.bboxes_delta_meta_path, 'w') as fp:
+                for image_id, context in contexts_delta.items():
+                    bboxes = context['thresh_boxes'][optimal_threshold_index]
+                    for bbox in bboxes:
+                        x0, y0, x1, y1 = bbox
+                        line = f'{image_id},{x0},{y0},{x1},{y1}\n'
+                        fp.write(line)
             # write optimal threshold list
             if not os.path.exists(os.path.dirname(self.optimal_thresholds_path)):
                 os.makedirs(os.path.dirname(self.optimal_thresholds_path))
@@ -272,14 +288,12 @@ class CAMComputer(object):
             self.db.close()
             if self.config.xai and save_xai:
                 image_ids = list(cams_saved)
-                metadata_root = os.path.join(self.config.metadata_root, self.split)
-                metadata = configure_metadata(metadata_root)
                 xai_save_cams(xai_root=self.config.xai_root,
                               split=self.split,
                               image_ids=image_ids,
-                              metadata=metadata,
-                              data_root=self.config.data_paths[self.split],
-                              scoremap_root=self.config.scoremap_root,
+                              metadata=self.metadata,
+                              data_root=self.data_root,
+                              scoremap_root=self.scoremap_root,
                               log=True,
                               images_max=self.config.xai_images_max,
                               iter_index=iter_index)

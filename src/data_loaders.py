@@ -279,7 +279,8 @@ class WSOLImageLabelDataset(Dataset):
         with self.scoremap_db.begin(write=False) as txn:
             key = u'{}'.format(image_id).encode('ascii')
             raw = txn.get(key)
-            cam = pickle.loads(raw)
+            unpacked = pickle.loads(raw)
+            cam = unpacked[0]
         # mask image with score map: image x (1 - scoremap) (element-wise product)
         cam_threshold = np.mean(cam)
         mask = torch.tile(torch.tensor(cam, dtype=image.dtype) > cam_threshold, dims=(image.shape[0], 1, 1))
@@ -489,8 +490,10 @@ class CamLmdbDataset(Dataset):
             image_id = self.image_ids[index]
             key = u'{}'.format(image_id).encode('ascii')
             raw = txn.get(key)
-            cam = pickle.loads(raw)
-            return cam, image_id
+            unpacked = pickle.loads(raw)
+            cam = unpacked[0]
+            cam_delta = unpacked[1]
+            return cam, cam_delta, image_id
 
     def __len__(self):
         return self.length

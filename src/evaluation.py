@@ -386,11 +386,13 @@ class BoxEvaluator(LocalizationEvaluator):
         #     if len(intersect_list) > 0:
         #         print(f'{image_id}: Intersecting bboxes at threshold {i/100}: {intersect_list}')
 
+        context_delta = dict(image_id=image_id,
+                             thresh_boxes=thresh_boxes,
+                             thresh_boxes_num=thresh_boxes_num,
+                             thresh_boxes_areas=thresh_boxes_areas)
+
         if context is None or context['image_id'] != image_id:
-            context = dict(image_id=image_id,
-                           thresh_boxes=thresh_boxes,
-                           thresh_boxes_num=thresh_boxes_num,
-                           thresh_boxes_areas=thresh_boxes_areas)
+            context = context_delta
         else:
             for i in range(len(thresh_boxes)):
                 if self.bbox_merge_strategy == 'add':
@@ -442,7 +444,7 @@ class BoxEvaluator(LocalizationEvaluator):
                         [context['thresh_boxes_areas'][i], thresh_boxes_areas[i][bboxes_index_add_list]], axis=0)
                     context['thresh_boxes_num'][i] += len(bboxes_index_add_list)
                     # drop: just ignore boxes in bboxes_index_drop_list
-        return context
+        return context, context_delta
 
     def _accumulate_maxboxacc_v1_2(self, multiple_iou, number_of_box_list, metric):
         # Computes single best match (1 box) over sets of estimated and GT-boxes per cam threshold
@@ -847,7 +849,7 @@ def scale_bounding_boxes(bboxes_dict, image_sizes, orig_shape):
         for image_id, bboxes in bboxes_dict.items() }
     return resized_bboxes
 
-def xai_save_cam_inference(xai_root, metadata, split, image_id, image, size_orig, cam, iter_index=None, log=False):
+def xai_save_cam_inference(xai_root, metadata, data_root, split, image_id, image, size_orig, cam, iter_index=None, log=False):
     # get dataset mean and std
     mean_std = _CAT_IMAGE_MEAN_STD[metadata.root]
     mean = mean_std['mean']
@@ -860,6 +862,9 @@ def xai_save_cam_inference(xai_root, metadata, split, image_id, image, size_orig
     cam = cv2.applyColorMap(cam, cv2.COLORMAP_JET)
     # resize to original image size
     cam = cv2.resize(cam, size_orig, interpolation=cv2.INTER_CUBIC)
+    # load original image
+    path_img = os.path.join(data_root, image_id)
+    image_orig = cv2.imread(path_img)  # color channels in BGR format
     # de-normalize image
     for i, image_color in enumerate(image):
         image[i, :, :] = std[i] * image_color + mean[i]
@@ -883,7 +888,7 @@ def xai_save_cam_inference(xai_root, metadata, split, image_id, image, size_orig
     if not os.path.exists(os.path.dirname(img_cam_path)):
         os.makedirs(os.path.dirname(img_cam_path))
     # merge cam heatmap and image
-    image_cam = cam * 0.5 + image * 0.5
+    image_cam = cam * 0.5 + image_orig * 0.5
     # save image
     cv2.imwrite(img_path, image)
     cv2.imwrite(img_cam_path, image_cam)
@@ -899,70 +904,81 @@ def xai_save_cams(xai_root, split, image_ids, metadata, data_root, scoremap_root
     gt_bbox_dict = get_bounding_boxes(metadata)
     est_bbox_dict = get_bounding_boxes_from_file(os.path.join(scoremap_root, split, 'bboxes_metadata.txt'))
     est_bbox_dict = scale_bounding_boxes(est_bbox_dict, image_sizes, (224,224))
+    est_bbox_delta_dict = get_bounding_boxes_from_file(os.path.join(scoremap_root, split, 'bboxes_delta_metadata.txt'))
+    est_bbox_delta_dict = scale_bounding_boxes(est_bbox_delta_dict, image_sizes, (224,224))
     cam_loader = get_cam_lmdb_loader(scoremap_root, image_ids, split)
     images_num = 0
     color_red = (0, 0, 255)  # BGR
     color_green = (0, 255, 0)  # BGR
     tq0 = tqdm.tqdm(cam_loader, total=len(cam_loader), desc='xai_cam_batches')
-    for cams, img_ids in tq0:
+    for cams, cams_delta, img_ids in tq0:
         cams = t2n(cams)
-        cams_it = zip(cams, img_ids)
-        for cam, image_id in cams_it:
+        cams_delta = t2n(cams_delta)
+        cams_it = zip(cams, cams_delta, img_ids)
+        for cam_merged, cam_delta, image_id in cams_it:
             images_num += 1
             if images_num > images_max:
                 return
-            # estimated and GT bboxes overlay
-            gt_bbox_list = gt_bbox_dict[image_id]
-            est_bbox_list = est_bbox_dict[image_id]
+
             # render image overlayed with CAM heatmap
             path_img = os.path.join(data_root, image_id)
             # load image
-            img = cv2.imread(path_img) # color channels in BGR format
+            img = cv2.imread(path_img)  # color channels in BGR format
             orig_img_shape = image_sizes[image_id]
-            # resize cam from 224x224 to original image size
-            cam = cv2.resize(cam, orig_img_shape, interpolation=cv2.INTER_CUBIC)
-            # normalize
-            cam = normalize_scoremap(cam)
-            # mask cam above optimal threshold
-            cam_mask = cam >= optimal_threshold
-            # assign minimal value to area outside segment mask so normalization is constrained to segment values
-            cam_heatmap = cam.copy()
-            # zero out area outside masked scoremap
-            # cam_heatmap[np.logical_not(cam_mask)] = 0.0
-            # transform to grey image
-            cam_grey = (cam_heatmap * 255).astype('uint8')
-            heatmap = cv2.applyColorMap(cam_grey, cv2.COLORMAP_JET)
-            img_ann = heatmap * 0.5 + img * 0.5
-            # CAM segment mask
-            segment = np.zeros(shape=img.shape, dtype=np.uint8)
-            segment[cam_mask] = color_red
-            img_seg = segment * 0.5 + img * 0.5
-            if (len(gt_bbox_list) + len(est_bbox_list)) > 0:
-                thickness = 2  # Pixels
-                for bbox in gt_bbox_list:
-                    start, end = bbox[:2], bbox[2:]
-                    img_ann = cv2.rectangle(img_ann, start, end, color_green, thickness)
-                    img_seg = cv2.rectangle(img_seg, start, end, color_green, thickness)
-                for bbox in est_bbox_list:
-                    start, end = bbox[:2], bbox[2:]
-                    img_ann = cv2.rectangle(img_ann, start, end, color_red, thickness)
-                    img_seg = cv2.rectangle(img_seg, start, end, color_red, thickness)
-            # image path naming
-            suffix = f'_{str(iter_index)}' if iter_index is not None else ''
-            img_base_id = os.path.basename(image_id).split(".")[0]
-            img_ann_id = f'{img_base_id}_ann{suffix}.png'
-            img_seg_id = f'{img_base_id}_seg{suffix}.png'
-            img_ann_path = os.path.join(xai_root, split, os.path.basename(img_ann_id))
-            img_seg_path = os.path.join(xai_root, split, os.path.basename(img_seg_id))
-            if not os.path.exists(os.path.dirname(img_ann_path)):
-                os.makedirs(os.path.dirname(img_ann_path))
-            if not os.path.exists(os.path.dirname(img_seg_path)):
-                os.makedirs(os.path.dirname(img_seg_path))
-            cv2.imwrite(img_ann_path, img_ann)
-            cv2.imwrite(img_seg_path, img_seg)
-            if log:
-                mlflow.log_artifact(img_ann_path, f'xai/{split}')
-                mlflow.log_artifact(img_seg_path, f'xai/{split}')
+            # estimated and GT bboxes overlay
+            gt_bbox_list = gt_bbox_dict[image_id]
+
+            est_bbox_merged_list = est_bbox_dict[image_id]
+            est_bbox_delta_list = est_bbox_delta_dict[image_id]
+
+            items = [(cam_merged, est_bbox_merged_list, ''), (cam_delta, est_bbox_delta_list, '_delta')]
+            for cam, est_bbox_list, marker in items:
+                # resize cam from 224x224 to original image size
+                cam = cv2.resize(cam, orig_img_shape, interpolation=cv2.INTER_CUBIC)
+                # normalize
+                cam = normalize_scoremap(cam)
+                # assign minimal value to area outside segment mask so normalization is constrained to segment values
+                cam_heatmap = cam.copy()
+                # transform to grey image
+                cam_grey = (cam_heatmap * 255).astype('uint8')
+                heatmap = cv2.applyColorMap(cam_grey, cv2.COLORMAP_JET)
+                img_ann = heatmap * 0.5 + img * 0.5
+
+                # CAM segment mask
+                segment = np.zeros(shape=img.shape, dtype=np.uint8)
+                # mask cam above optimal threshold
+                cam_mask = cam >= optimal_threshold
+                segment[cam_mask] = color_red
+                img_seg = segment * 0.5 + img * 0.5
+
+                if (len(gt_bbox_list) + len(est_bbox_list)) > 0:
+                    thickness = 2  # Pixels
+                    for bbox in gt_bbox_list:
+                        start, end = bbox[:2], bbox[2:]
+                        img_ann = cv2.rectangle(img_ann, start, end, color_green, thickness)
+                        img_seg = cv2.rectangle(img_seg, start, end, color_green, thickness)
+                    for bbox in est_bbox_list:
+                        start, end = bbox[:2], bbox[2:]
+                        img_ann = cv2.rectangle(img_ann, start, end, color_red, thickness)
+                        img_seg = cv2.rectangle(img_seg, start, end, color_red, thickness)
+
+                # image path naming
+                suffix = f'{marker}_{str(iter_index)}' if iter_index is not None else marker
+                img_base_id = os.path.basename(image_id).split(".")[0]
+                img_ann_id = f'{img_base_id}_ann{suffix}.png'
+                img_seg_id = f'{img_base_id}_seg{suffix}.png'
+                img_ann_path = os.path.join(xai_root, split, os.path.basename(img_ann_id))
+                img_seg_path = os.path.join(xai_root, split, os.path.basename(img_seg_id))
+                if not os.path.exists(os.path.dirname(img_ann_path)):
+                    os.makedirs(os.path.dirname(img_ann_path))
+                if not os.path.exists(os.path.dirname(img_seg_path)):
+                    os.makedirs(os.path.dirname(img_seg_path))
+                cv2.imwrite(img_ann_path, img_ann)
+                cv2.imwrite(img_seg_path, img_seg)
+
+                if log:
+                    mlflow.log_artifact(img_ann_path, f'xai/{split}')
+                    mlflow.log_artifact(img_seg_path, f'xai/{split}')
 
 def get_evaluators(**args):
     dataset_name = args.get('dataset_name', 'SYNTHETIC')
