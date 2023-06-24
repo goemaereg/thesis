@@ -37,6 +37,9 @@ from typing import Iterator, List
 _IMAGE_MEAN_VALUE = [0.485, 0.456, 0.406]
 _IMAGE_STD_VALUE = [0.229, 0.224, 0.225]
 
+# _LMDB_MAPSIZE = 34359738368 # 32 GB
+_LMDB_MAPSIZE = 68719476736 # 64 GB
+
 _CAT_IMAGE_MEAN_STD = {
 'data/metadata/ILSVRC/train': {'mean': _IMAGE_MEAN_VALUE, 'std': _IMAGE_STD_VALUE},
 'data/metadata/ILSVRC/val': {'mean': _IMAGE_MEAN_VALUE, 'std': _IMAGE_STD_VALUE},
@@ -209,7 +212,7 @@ class WSOLImageLabelDataset(Dataset):
         self.scoremap_lmdb_path = scoremap_lmdb_path
         if scoremap_lmdb_path is not None:
             self.scoremap_db = lmdb.open(self.scoremap_lmdb_path, subdir=os.path.isdir(self.scoremap_lmdb_path),
-                                         map_size=34359738368, # map_size 32 GB
+                                         map_size=_LMDB_MAPSIZE,
                                          readonly=True, lock=False,
                                          readahead=False, meminit=False)
         else:
@@ -458,16 +461,6 @@ class CamDataset(Dataset):
 
 
 class CamLmdbDataset(Dataset):
-    @classmethod
-    def _init_db(cls, lmdb_path):
-        env = lmdb.open(lmdb_path, subdir=os.path.isdir(lmdb_path),
-                        readonly=True, lock=False,
-                        readahead=False, meminit=False)
-        with env.begin(write=False) as txn:
-            length = txn.stat()['entries']
-            keys = [key for key, _ in txn.cursor()]
-            return env, length, keys
-
     def __init__(self, lmdb_path, image_ids):
         super(CamLmdbDataset, self).__init__()
         self.lmdb_path = lmdb_path
@@ -483,7 +476,7 @@ class CamLmdbDataset(Dataset):
     def __getitem__(self, index):
         if self.db is None:
             self.db = lmdb.open(self.lmdb_path, subdir=os.path.isdir(self.lmdb_path),
-                                map_size=34359738368,  # map_size 32 GB
+                                map_size=_LMDB_MAPSIZE,
                                 readonly=True, lock=False,
                                 readahead=False, meminit=False)
         with self.db.begin(write=False) as txn:

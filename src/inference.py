@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import numpy as np
 from util import t2n
-from data_loaders import get_eval_loader, get_image_sizes, CamLmdbDataset
+from data_loaders import get_eval_loader, get_image_sizes, _LMDB_MAPSIZE
 from evaluation import BoxEvaluator, MaskEvaluator
 from evaluation import configure_metadata, xai_save_cams, xai_save_cam_inference
 import os
@@ -135,7 +135,7 @@ class CAMComputer(object):
                 mask_method=mask_method, scoremap_lmdb_path=lmdb_path, filter_instances=self.config.filter_instances)
             tq1 = tqdm.tqdm(loader, total=len(loader), desc='evaluate cams batches')
             self.db = lmdb.open(self.lmdb_scoremaps_path, subdir=False,
-                                map_size=34359738368, readonly=False,  # map_size 32 GB
+                                map_size=_LMDB_MAPSIZE, readonly=False,
                                 meminit=False, map_async=True)
             self.db_txn = self.db.begin(write=True)
             cam_pixels = np.asarray([])
